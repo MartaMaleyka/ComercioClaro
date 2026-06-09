@@ -1,0 +1,48 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getBusinessId } from "@/lib/auth";
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const businessId = await getBusinessId();
+  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+  const sale = await prisma.sale.findFirst({
+    where: { id, businessId },
+    include: { items: { include: { product: true } } },
+  });
+
+  if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
+  return NextResponse.json(sale);
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const businessId = await getBusinessId();
+  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+  const sale = await prisma.sale.findFirst({
+    where: { id, businessId },
+    include: { items: true },
+  });
+
+  if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
+
+  await prisma.$transaction(async (tx) => {
+    for (const item of sale.items) {
+      await tx.product.update({
+        where: { id: item.productId },
+        data: { stock: { increment: item.quantity } },
+      });
+    }
+    await tx.sale.delete({ where: { id } });
+  });
+
+  return NextResponse.json({ success: true });
+}

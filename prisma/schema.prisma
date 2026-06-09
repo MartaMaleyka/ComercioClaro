@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  resetToken   String?
+  resetExpires DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business Business?
+}
+
+model Business {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  phone       String?
+  address     String?
+  currency    String   @default("MXN")
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products   Product[]
+  sales      Sale[]
+  purchases  Purchase[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  cost          Float    @default(0)
+  stock         Int      @default(0)
+  minStock      Int      @default(5)
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  saleItems     SaleItem[]
+  purchaseItems PurchaseItem[]
+}
+
+model Sale {
+  id         String   @id @default(cuid())
+  total      Float
+  notes      String?
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items SaleItem[]
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  quantity  Int
+  unitPrice Float
+  subtotal  Float
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Purchase {
+  id         String   @id @default(cuid())
+  total      Float
+  supplier   String?
+  notes      String?
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items PurchaseItem[]
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  quantity   Int
+  unitCost   Float
+  subtotal   Float
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+}
