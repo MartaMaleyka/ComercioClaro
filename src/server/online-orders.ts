@@ -7,6 +7,7 @@ import { audit } from "@/lib/audit";
 import type { onlineOrderSchema } from "@/lib/validation";
 import type { Actor } from "./inventory";
 import { deliveryProductName, deliveryZones } from "./delivery";
+import { accessState, resolveFeatures } from "@/lib/features";
 
 export type OnlineOrderInput = Omit<z.infer<typeof onlineOrderSchema>, "deliveryZone"> & {
   deliveryZone?: string | null;
@@ -22,6 +23,27 @@ export interface OnlineOrderItem {
 
 const ACTIVE: OnlineOrderStatus[] = ["NEW", "ACCEPTED", "READY"];
 
+/** Campos para saber si el catálogo público puede usarse (plan y estado del negocio). */
+export const catalogAccessSelect = {
+  plan: { select: { features: true } },
+  featureOverrides: true,
+  status: true,
+  trialEndsAt: true,
+  paidUntil: true,
+  suspendedReason: true,
+} as const;
+
+export function catalogAvailable(business: {
+  plan: { features: string[] } | null;
+  featureOverrides: unknown;
+  status: string;
+  trialEndsAt: Date | null;
+  paidUntil: Date | null;
+  suspendedReason: string | null;
+}) {
+  return resolveFeatures(business).includes("catalog") && !accessState(business).blocked;
+}
+
 /** Transiciones permitidas desde cada estado. */
 const NEXT: Record<OnlineOrderStatus, OnlineOrderStatus[]> = {
   NEW: ["ACCEPTED", "READY", "CANCELLED"],
@@ -35,9 +57,9 @@ const NEXT: Record<OnlineOrderStatus, OnlineOrderStatus[]> = {
 export async function createOnlineOrder(slug: string, input: OnlineOrderInput) {
   const business = await prisma.business.findFirst({
     where: { catalogSlug: slug, catalogEnabled: true },
-    select: { id: true, deliveryZones: true },
+    select: { ...catalogAccessSelect, id: true, deliveryZones: true },
   });
-  if (!business) throw notFound("Catálogo");
+  if (!business || !catalogAvailable(business)) throw notFound("Catálogo");
   const zones = deliveryZones(business);
   const zone =
     input.fulfillment === "DELIVERY" && zones.length > 0

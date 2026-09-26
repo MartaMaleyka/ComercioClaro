@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toPromotionRule } from "@/server/sales";
 import { deliveryZones } from "@/server/delivery";
+import { catalogAccessSelect, catalogAvailable } from "@/server/online-orders";
 import { describePromotion, isPromotionActive } from "@/lib/promotions";
 import { formatCurrency } from "@/lib/utils";
 import { CatalogClient, type CatalogProduct } from "./CatalogClient";
@@ -21,9 +22,10 @@ async function load(slug: string) {
       showBalboa: true,
       catalogWhatsapp: true,
       deliveryZones: true,
+      ...catalogAccessSelect,
     },
   });
-  return business;
+  return business && catalogAvailable(business) ? business : null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

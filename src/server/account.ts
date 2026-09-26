@@ -7,7 +7,9 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import type { Role } from "@/generated/prisma/enums";
 import { countryConfig } from "@/lib/country";
+import { D } from "@/lib/decimal";
 import type { Actor } from "./inventory";
+import { assertWithinLimit } from "./limits";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
 
@@ -17,10 +19,12 @@ export async function registerAccount(input: {
   name: string;
   businessName: string;
   country?: "MX" | "PA" | "OTHER";
+  plan?: string | null;
 }) {
   const country = countryConfig(input.country ?? "MX");
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError(409, "Ya existe una cuenta con este correo");
+  const subscription = await initialSubscription(input.plan ?? null);
 
   const user = await prisma.user.create({
     data: {
@@ -38,6 +42,7 @@ export async function registerAccount(input: {
               locale: country.locale,
               timezone: country.timezone,
               showBalboa: country.showBalboa,
+              ...subscription,
             },
           },
         },
@@ -46,6 +51,26 @@ export async function registerAccount(input: {
     include: { memberships: true },
   });
   return { user, businessId: user.memberships[0].businessId };
+}
+
+/**
+ * Plan con el que empieza un negocio nuevo: el elegido en la página de precios (si es público y
+ * está activo) o el plan por defecto, con sus días de prueba. Sin planes configurados, sin plan.
+ */
+async function initialSubscription(code: string | null) {
+  const chosen = code
+    ? await prisma.plan.findFirst({ where: { code, active: true, isPublic: true } })
+    : null;
+  const plan = chosen ?? (await prisma.plan.findFirst({ where: { isDefault: true, active: true } }));
+  if (!plan) return {};
+  return plan.trialDays > 0
+    ? {
+        planId: plan.id,
+        status: "TRIAL" as const,
+        trialEndsAt: new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000),
+      }
+    : // Sin prueba: un plan de pago queda pendiente de su primer pago (aviso de pago vencido).
+      { planId: plan.id, status: "ACTIVE" as const, paidUntil: D(plan.priceMonthly).gt(0) ? new Date() : null };
 }
 
 /** Valida credenciales y devuelve el negocio con el que inicia la sesión. */
@@ -58,6 +83,9 @@ export async function authenticate(input: { email: string; password: string }) {
   const hash = user?.passwordHash ?? "$2b$12$oydGX.VzPsccZ01xYi4/rePMaX3YgZliEa2MxX5AIdX1KBrGeM4Xu";
   const valid = await verifyPassword(input.password, hash);
   if (!user || !valid) throw new AppError(401, "Correo o contraseña incorrectos");
+  if (user.disabledAt) throw new AppError(403, "Tu usuario está bloqueado. Contacta al administrador.");
+  // El super admin puede no pertenecer a ningún negocio: entra al panel de administración.
+  if (user.memberships.length === 0 && user.isSuperAdmin) return { user, businessId: "" };
   if (user.memberships.length === 0) throw new AppError(403, "Tu usuario no tiene acceso a ningún negocio");
   return { user, businessId: user.memberships[0].businessId };
 }
@@ -127,6 +155,7 @@ export async function listMemberships(userId: string) {
 export async function createBranch(actor: Actor, input: { name: string; copyCatalog: boolean }) {
   const source = await prisma.business.findUniqueOrThrow({ where: { id: actor.businessId } });
   return prisma.$transaction(async (tx) => {
+    await assertWithinLimit(tx, actor, "branches");
     const branch = await tx.business.create({
       data: {
         name: input.name,
@@ -145,6 +174,13 @@ export async function createBranch(actor: Actor, input: { name: string; copyCata
         rfc: source.rfc,
         legalName: source.legalName,
         taxRegime: source.taxRegime,
+        // La sucursal comparte la suscripción del negocio del que sale.
+        planId: source.planId,
+        status: source.status,
+        trialEndsAt: source.trialEndsAt,
+        paidUntil: source.paidUntil,
+        billingCycle: source.billingCycle,
+        ...(source.featureOverrides ? { featureOverrides: source.featureOverrides } : {}),
         memberships: { create: { userId: actor.userId, role: "OWNER" } },
       },
     });
@@ -189,7 +225,7 @@ export async function createBranch(actor: Actor, input: { name: string; copyCata
   });
 }
 
-function temporaryPassword() {
+export function temporaryPassword() {
   // 12 caracteres legibles (sin 0/O, 1/l).
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   const bytes = crypto.randomBytes(12);
@@ -221,6 +257,7 @@ export async function addMember(actor: Actor, input: { name: string; email: stri
     where: { userId_businessId: { userId: user.id, businessId: actor.businessId } },
   });
   if (exists) throw new AppError(409, "Ese usuario ya pertenece al negocio");
+  await assertWithinLimit(prisma, actor, "users");
 
   const membership = await prisma.$transaction(async (tx) => {
     const m = await tx.membership.create({

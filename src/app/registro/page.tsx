@@ -32,7 +32,8 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // Plan elegido en la página de precios (/registro?plan=pro).
+        body: JSON.stringify({ ...form, plan: new URLSearchParams(window.location.search).get("plan") }),
       });
       const data = await res.json();
 

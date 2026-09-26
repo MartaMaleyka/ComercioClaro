@@ -1,5 +1,5 @@
 import { handler, parseBody } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { businessSchema } from "@/lib/validation";
@@ -15,6 +15,13 @@ export const GET = handler(async () => {
 export const PUT = handler(async (request) => {
   const auth = await requireAuth("OWNER");
   const { userName, deliveryZones, ...data } = await parseBody(request, businessSchema);
+  // Solo se pueden encender las funciones que incluye el plan (apagarlas siempre se puede).
+  const current = auth.business;
+  if ((data.catalogEnabled && !current.catalogEnabled) || deliveryZones?.length) requireFeature(auth, "catalog");
+  if (data.loyaltyEnabled && !current.loyaltyEnabled) requireFeature(auth, "loyalty");
+  if (data.restaurantMode && !current.restaurantMode) requireFeature(auth, "restaurant");
+  if (data.einvoiceMode === "PAC" && current.einvoiceMode !== "PAC") requireFeature(auth, "einvoice");
+  if (data.yappyMode === "API" && current.yappyMode !== "API") requireFeature(auth, "yappyApi");
   if (data.catalogEnabled && !(data.catalogSlug ?? auth.business.catalogSlug)) {
     throw new AppError(400, "Elige la dirección del catálogo");
   }

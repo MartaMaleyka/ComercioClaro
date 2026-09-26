@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CASH_DENOMINATIONS } from "./cash";
+import { FEATURE_KEYS, type FeatureKey } from "./features";
 import { isValidTimeZone } from "./dates";
 
 const MAX_MONEY = 99_999_999;
@@ -72,6 +73,12 @@ export const registerSchema = z.object({
   name: text(100, "Tu nombre es obligatorio"),
   businessName: text(120, "El nombre del negocio es obligatorio"),
   country: country.default("MX"),
+  plan: z
+    .string()
+    .trim()
+    .max(40)
+    .nullish()
+    .transform((v) => v || null),
 });
 
 export const loginSchema = z.object({
@@ -648,4 +655,87 @@ export const openOrderSchema = z.object({
 
 export const kitchenStatusSchema = z.object({
   status: z.enum(["PENDING", "PREPARING", "READY", "SERVED"]),
+});
+
+// ---------- Super admin ----------
+
+const featureKey = z.enum(FEATURE_KEYS as [FeatureKey, ...FeatureKey[]], { error: "Función inválida" });
+const optLimit = z.coerce.number().int().min(1, "Mínimo 1").max(100_000).nullish().transform((v) => v ?? null);
+
+export const planSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Usa solo minúsculas, números y guiones")
+    .max(40),
+  name: text(60, "Escribe el nombre del plan"),
+  description: optText(300),
+  priceMonthly: moneyInput,
+  priceYearly: moneyInput.nullish().transform((v) => v ?? null),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/, "Moneda inválida")
+    .default("USD"),
+  trialDays: z.coerce.number().int().min(0).max(365).default(14),
+  maxUsers: optLimit,
+  maxBranches: optLimit,
+  maxProducts: optLimit,
+  features: z.array(featureKey).max(FEATURE_KEYS.length).default([]),
+  active: z.boolean().default(true),
+  isDefault: z.boolean().default(false),
+  isPublic: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(1000).default(0),
+});
+
+/** Texto opcional que se conserva si no se envía (undefined) y se borra con "" o null. */
+const optKeep = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullish()
+    .transform((v) => (v === undefined ? undefined : v || null));
+
+export const adminBusinessSchema = z.object({
+  planId: id.nullish(),
+  status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED"]).optional(),
+  trialEndsAt: z.coerce.date().nullish(),
+  paidUntil: z.coerce.date().nullish(),
+  billingCycle: z.enum(["MONTHLY", "YEARLY"]).optional(),
+  suspendedReason: optKeep(300),
+  featureOverrides: z.record(z.string(), z.boolean()).nullish(),
+  adminNotes: optKeep(2000),
+});
+
+export const subscriptionPaymentSchema = z.object({
+  amount: moneyInput,
+  method: z.enum(["TRANSFER", "YAPPY", "CASH", "CARD", "OTHER"]).default("TRANSFER"),
+  reference: optText(80),
+  // Meses que cubre el pago (12 = un año)
+  months: z.coerce.number().int().min(1).max(36).default(1),
+  periodStart: z.coerce.date().nullish(),
+  notes: optText(300),
+  reactivate: z.boolean().default(true),
+});
+
+export const adminUserSchema = z.object({
+  isSuperAdmin: z.boolean().optional(),
+  disabled: z.boolean().optional(),
+});
+
+export const adminNewBusinessSchema = z.object({
+  businessName: text(120, "El nombre del negocio es obligatorio"),
+  ownerName: text(100, "El nombre del dueño es obligatorio"),
+  email,
+  country: country.default("PA"),
+  planId: id.nullish(),
+});
+
+export const adminListSchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "OVERDUE"]).optional(),
+  planId: z.string().max(64).optional(),
 });

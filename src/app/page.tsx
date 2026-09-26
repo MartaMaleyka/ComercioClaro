@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { publicPlans } from "@/server/admin";
+import { FEATURES } from "@/lib/features";
+import { formatCurrency } from "@/lib/utils";
 import {
   BarChart3,
   FileText,
@@ -8,12 +11,26 @@ import {
   ShoppingCart,
   Smartphone,
   Store,
+  Check,
   Tag,
   TrendingUp,
   Wallet,
 } from "lucide-react";
 
-export default function LandingPage() {
+// Los precios salen de los planes que administra el super admin.
+export const dynamic = "force-dynamic";
+
+async function loadPlans() {
+  try {
+    return await publicPlans();
+  } catch {
+    // Sin base de datos (p. ej. al compilar) la portada se muestra sin precios.
+    return [];
+  }
+}
+
+export default async function LandingPage() {
+  const plans = await loadPlans();
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-surface-secondary">
       <header className="px-4 py-6 max-w-5xl mx-auto flex items-center justify-between">
@@ -119,6 +136,58 @@ export default function LandingPage() {
             ))}
           </ul>
         </section>
+
+        {plans.length > 0 && (
+          <section aria-labelledby="precios" className="mt-16">
+            <h2 id="precios" className="text-2xl font-bold text-slate-900 text-center mb-2">
+              Planes y precios
+            </h2>
+            <p className="text-center text-slate-600 mb-6">
+              Todos incluyen punto de venta, caja, inventario, fiado y venta sin conexión.
+            </p>
+            <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {plans.map((plan) => (
+                <li
+                  key={plan.id}
+                  className="bg-surface rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col"
+                >
+                  <h3 className="font-semibold text-lg text-slate-900">{plan.name}</h3>
+                  {plan.description && <p className="text-sm text-slate-600 mt-1">{plan.description}</p>}
+                  <p className="mt-4">
+                    <span className="text-3xl font-bold text-slate-900">
+                      {formatCurrency(plan.priceMonthly.toNumber(), plan.currency, "es-PA")}
+                    </span>
+                    <span className="text-slate-500"> / mes</span>
+                  </p>
+                  {plan.priceYearly && (
+                    <p className="text-sm text-slate-500">
+                      o {formatCurrency(plan.priceYearly.toNumber(), plan.currency, "es-PA")} al año
+                    </p>
+                  )}
+                  <ul className="mt-4 space-y-1 text-sm text-slate-700 flex-1">
+                    {plan.trialDays > 0 && (
+                      <li className="font-medium text-brand-700 dark:text-brand-300">{plan.trialDays} días de prueba</li>
+                    )}
+                    <li>{plan.maxUsers ? `Hasta ${plan.maxUsers} usuarios` : "Usuarios ilimitados"}</li>
+                    <li>{plan.maxBranches ? `Hasta ${plan.maxBranches} sucursal(es)` : "Sucursales ilimitadas"}</li>
+                    {FEATURES.filter((f) => plan.features.includes(f.key)).map((f) => (
+                      <li key={f.key} className="flex items-start gap-1.5">
+                        <Check className="w-4 h-4 text-brand-600 mt-0.5 shrink-0" aria-hidden="true" />
+                        {f.label}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={`/registro?plan=${plan.code}`}
+                    className="mt-5 text-center px-4 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700"
+                  >
+                    Elegir {plan.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
 
       <footer className="px-4 py-8 text-center text-sm text-slate-500 border-t border-slate-100">

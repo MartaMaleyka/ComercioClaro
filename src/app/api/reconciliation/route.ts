@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { handler, parseBody } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { reconcileStatement } from "@/server/reconciliation";
 
 const schema = z.object({
@@ -10,6 +10,7 @@ const schema = z.object({
 
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "reconciliation");
   const input = await parseBody(request, schema);
   return reconcileStatement(auth.business, input);
 });

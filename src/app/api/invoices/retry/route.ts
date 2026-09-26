@@ -1,9 +1,10 @@
 import { handler } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { retryPendingInvoices } from "@/server/einvoice/service";
 
 /** Reintenta ya las facturas pendientes por contingencia. */
 export const POST = handler(async () => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "einvoice");
   return retryPendingInvoices(auth.businessId, true);
 });

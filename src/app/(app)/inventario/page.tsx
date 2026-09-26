@@ -1,6 +1,7 @@
 "use client";
 
 import { useText } from "@/lib/client/i18n";
+import type { FeatureKey } from "@/lib/features";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, History, Package, Pencil, Plus, RotateCcw, SlidersHorizontal, Archive, Upload } from "lucide-react";
@@ -9,7 +10,7 @@ import { api, fetcher, withQuery } from "@/lib/client/api";
 import { useDebounce, usePaginated } from "@/lib/client/hooks";
 import { useFormat } from "@/lib/client/format";
 import type { Category, Product } from "@/lib/client/types";
-import { useSession } from "@/components/providers/SessionProvider";
+import { useFeature, useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
@@ -42,8 +43,9 @@ export default function InventoryPage() {
 
 function Inventory() {
   const tr = useText();
-  const { role } = useSession();
+  const { role, business } = useSession();
   const isOwner = role === "OWNER";
+  const has = (feature: FeatureKey) => business.features.includes(feature);
   const router = useRouter();
   const params = useSearchParams();
   const tab = (params.get("tab") as Tab) || "productos";
@@ -55,8 +57,8 @@ function Inventory() {
     { value: "caducidad", label: tr("Caducidad") },
     ...(isOwner
       ? [
-          { value: "conteo" as Tab, label: tr("Conteo físico") },
-          { value: "traspasos" as Tab, label: tr("Traspasos") },
+          ...(has("inventoryCounts") ? [{ value: "conteo" as Tab, label: tr("Conteo físico") }] : []),
+          ...(has("branches") ? [{ value: "traspasos" as Tab, label: tr("Traspasos") }] : []),
           { value: "etiquetas" as Tab, label: tr("Etiquetas") },
           { value: "categorias" as Tab, label: tr("Categorías") },
           { value: "importar" as Tab, label: tr("Importar / exportar") },
@@ -284,6 +286,7 @@ function IconButton({ label, onClick, icon: Icon }: { label: string; onClick: ()
 
 function ImportExportTab() {
   const tr = useText();
+  const canExport = useFeature("export");
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -380,7 +383,7 @@ function ImportExportTab() {
             {tr("Descarga tu información en CSV (se abre en Excel) o un respaldo completo.")}
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {exports.map((e) => (
+            {(canExport ? exports : []).map((e) => (
               <a
                 key={e.type}
                 href={withQuery(`/api/export/${e.type}`, {})}

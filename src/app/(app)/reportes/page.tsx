@@ -20,6 +20,7 @@ import { fetcher, withQuery } from "@/lib/client/api";
 import { useFormat, todayKey } from "@/lib/client/format";
 import { PAYMENT_METHOD_LABELS, UNIT_LABELS } from "@/lib/utils";
 import { useSession } from "@/components/providers/SessionProvider";
+import type { FeatureKey } from "@/lib/features";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Tabs } from "@/components/ui/Tabs";
@@ -98,6 +99,7 @@ const tooltipStyle = {
 export default function ReportsPage() {
   const tr = useText();
   const { business, businesses } = useSession();
+  const has = (feature: FeatureKey) => business.features.includes(feature);
   const fmt = useFormat();
   const [period, setPeriod] = useState("30");
   const [from, setFrom] = useState(todayKey(business.timezone, -29));
@@ -135,7 +137,8 @@ export default function ReportsPage() {
         title={tr("Reportes")}
         description={tr("Ventas, utilidad real y lo que más se vende")}
         actions={
-          data && (
+          data &&
+          business.features.includes("export") && (
             <a
               href={withQuery("/api/export/sale-items", { from: data.from, to: data.to })}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -150,10 +153,10 @@ export default function ReportsPage() {
         label={tr("Tipo de reporte")}
         tabs={[
           { value: "summary", label: tr("Resumen") },
-          { value: "taxes", label: tr("Impuestos") },
+          ...(has("advancedReports") ? [{ value: "taxes" as const, label: tr("Impuestos") }] : []),
           ...(business.seniorDiscountRate > 0 ? [{ value: "seniors" as const, label: tr("Jubilados") }] : []),
-          { value: "team", label: tr("Equipo") },
-          { value: "reconcile", label: tr("Conciliación") },
+          ...(has("advancedReports") ? [{ value: "team" as const, label: tr("Equipo") }] : []),
+          ...(has("reconciliation") ? [{ value: "reconcile" as const, label: tr("Conciliación") }] : []),
         ]}
         value={view}
         onChange={setView}

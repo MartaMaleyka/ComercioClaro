@@ -1,5 +1,5 @@
 import { handler, parseQuery } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { csvResponse, toCsv } from "@/lib/csv";
 import { monthQuerySchema } from "@/lib/validation";
 import { taxReport } from "@/server/insights";
@@ -8,6 +8,7 @@ const pct = (n: number) => `${Math.round(n * 10000) / 100}%`;
 
 export const GET = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "advancedReports");
   const query = parseQuery(request, monthQuerySchema);
   const report = await taxReport(auth.business, query.month);
   if (query.format === "json") return report;

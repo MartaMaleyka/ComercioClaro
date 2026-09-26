@@ -18,6 +18,7 @@ import {
   Package,
   Receipt,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   Store,
@@ -65,7 +66,13 @@ const navItems: NavItem[] = [
     badge: "orders",
   },
   { href: "/inventario", label: "nav.inventory" as MessageKey, icon: Package, roles: ["OWNER", "CASHIER"] },
-  { href: "/vales", label: "nav.giftCards" as MessageKey, icon: Gift, roles: ["OWNER", "CASHIER"] },
+  {
+    href: "/vales",
+    label: "nav.giftCards" as MessageKey,
+    icon: Gift,
+    roles: ["OWNER", "CASHIER"],
+    when: (b) => b.features.includes("giftCards"),
+  },
   {
     href: "/cocina",
     label: "nav.kitchen" as MessageKey,
@@ -75,7 +82,13 @@ const navItems: NavItem[] = [
   },
   { href: "/clientes", label: "nav.customers" as MessageKey, icon: Users, roles: ["OWNER", "CASHIER"] },
   { href: "/compras", label: "nav.purchases" as MessageKey, icon: ShoppingBag, roles: ["OWNER"] },
-  { href: "/promociones", label: "nav.promotions" as MessageKey, icon: Tag, roles: ["OWNER"] },
+  {
+    href: "/promociones",
+    label: "nav.promotions" as MessageKey,
+    icon: Tag,
+    roles: ["OWNER"],
+    when: (b) => b.features.includes("promotions"),
+  },
   { href: "/proveedores", label: "nav.suppliers" as MessageKey, icon: Truck, roles: ["OWNER"] },
   { href: "/gastos", label: "nav.expenses" as MessageKey, icon: Coins, roles: ["OWNER"] },
   { href: "/reportes", label: "nav.reports" as MessageKey, icon: BarChart3, roles: ["OWNER"] },
@@ -97,7 +110,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const tr = useText();
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, business, businesses } = useSession();
+  const { user, role, business, businesses, support } = useSession();
   const online = useOnline();
   const t = useT();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -256,6 +269,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
         <OfflineSync />
+        <AccountNotices
+          support={support}
+          businessName={business.name}
+          access={business.access}
+          isSuperAdmin={user.isSuperAdmin}
+        />
 
         <main id="contenido" className="px-4 py-5 max-w-6xl mx-auto w-full">
           {children}
@@ -333,5 +352,65 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Avisos de la cuenta: soporte del super admin, prueba por terminar y pago vencido. */
+function AccountNotices({
+  support,
+  businessName,
+  access,
+  isSuperAdmin,
+}: {
+  support: boolean;
+  businessName: string;
+  access: SessionBusiness["access"];
+  isSuperAdmin: boolean;
+}) {
+  const tr = useText();
+  const router = useRouter();
+  const warning = access.blocked ? null : access.warning;
+  return (
+    <>
+      {(support || isSuperAdmin) && (
+        <div role="status" className="bg-purple-50 text-purple-800 text-sm px-4 py-2 flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+            {support
+              ? tr("Modo soporte en {name}: tus cambios quedan en la bitácora.", { name: businessName })
+              : tr("Eres administrador de la plataforma.")}
+          </span>
+          <span className="flex gap-3">
+            {support && (
+              <button
+                onClick={async () => {
+                  await fetch("/api/admin/exit", { method: "POST" });
+                  router.push("/admin");
+                  router.refresh();
+                }}
+                className="font-medium underline"
+              >
+                {tr("Salir del modo soporte")}
+              </button>
+            )}
+            <Link href="/admin" className="font-medium underline">
+              {tr("Panel de administración")}
+            </Link>
+          </span>
+        </div>
+      )}
+      {warning?.kind === "trial" && (
+        <div role="status" className="bg-blue-50 text-blue-800 text-sm px-4 py-2">
+          {tr("Tu periodo de prueba termina en {days} día(s). Contacta al administrador para activar tu plan.", {
+            days: warning.daysLeft,
+          })}
+        </div>
+      )}
+      {warning?.kind === "overdue" && (
+        <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2">
+          {tr("El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.")}
+        </div>
+      )}
+    </>
   );
 }

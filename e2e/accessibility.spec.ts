@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { BUSINESS, CASHIER, OWNER, login, setLanguage } from "./helpers";
+import { BUSINESS, CASHIER, OWNER, adminBusinessId, login, loginAdmin, setLanguage } from "./helpers";
 
 // Requiere los datos de demostración (npm run db:seed).
 
@@ -46,6 +46,21 @@ for (const scheme of ["light", "dark"] as const) {
         "/pedidos",
         "/vales",
         "/pantalla-cliente",
+      ]) {
+        await expectAccessible(page, url);
+      }
+    });
+
+    test("panel del super admin", async ({ page }) => {
+      await loginAdmin(page);
+      const id = await adminBusinessId(page, BUSINESS.panama);
+      for (const url of [
+        "/admin",
+        "/admin/negocios",
+        `/admin/negocios/${id}`,
+        "/admin/planes",
+        "/admin/usuarios",
+        "/admin/bitacora",
       ]) {
         await expectAccessible(page, url);
       }

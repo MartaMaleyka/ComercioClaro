@@ -35,6 +35,7 @@ import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types"
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
 import { countryConfig } from "@/lib/country";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
+import type { FeatureKey } from "@/lib/features";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
@@ -206,9 +207,10 @@ export default function PosPage() {
   const catalog = useCachedList<Product>("/api/products?all=true", `catalog:${business.id}`);
   const customers = useCachedList<Customer>("/api/customers", `customers:${business.id}`);
   const country = countryConfig(business.country);
-  // El vale se acepta en todos los países (lo emite el propio negocio).
-  const paymentOptions = PAYMENT_OPTIONS.filter(
-    (o) => o.value === "GIFT_CARD" || (country.paymentMethods as PaymentMethod[]).includes(o.value)
+  const has = (feature: FeatureKey) => business.features.includes(feature);
+  // El vale se acepta en todos los países (lo emite el propio negocio) si el plan lo incluye.
+  const paymentOptions = PAYMENT_OPTIONS.filter((o) =>
+    o.value === "GIFT_CARD" ? has("giftCards") : (country.paymentMethods as PaymentMethod[]).includes(o.value)
   );
   const { data: cash } = useSWR<{ current: { session: { id: string } } | null }>("/api/cash", fetcher);
 
@@ -229,7 +231,7 @@ export default function PosPage() {
   const [redeemPoints, setRedeemPoints] = useState("");
   const [senior, setSenior] = useState(false);
   const [seniorId, setSeniorId] = useState("");
-  const { data: promotionList } = useSWR<PromotionRule[]>("/api/promotions", fetcher);
+  const { data: promotionList } = useSWR<PromotionRule[]>(has("promotions") ? "/api/promotions" : null, fetcher);
   // Con la API de Yappy la venta se registra sola al confirmarse el pago.
   const [yappyManual, setYappyManual] = useState(false);
   const yappyApi = business.yappyMode === "API" && !yappyManual;
@@ -1066,12 +1068,16 @@ export default function PosPage() {
                 {(openOrders?.length ?? 0) > 0 && <span className="tabular-nums">{openOrders!.length}</span>}
               </Button>
             )}
-            <Button variant="secondary" onClick={() => setServicesOpen(true)} aria-label={tr("Recargas y servicios")}>
-              <Zap className="w-5 h-5" />
-            </Button>
-            <Button variant="secondary" onClick={() => setDisplayOpen(true)} aria-label={tr("Pantalla del cliente")}>
-              <MonitorSmartphone className="w-5 h-5" />
-            </Button>
+            {has("services") && (
+              <Button variant="secondary" onClick={() => setServicesOpen(true)} aria-label={tr("Recargas y servicios")}>
+                <Zap className="w-5 h-5" />
+              </Button>
+            )}
+            {has("customerDisplay") && (
+              <Button variant="secondary" onClick={() => setDisplayOpen(true)} aria-label={tr("Pantalla del cliente")}>
+                <MonitorSmartphone className="w-5 h-5" />
+              </Button>
+            )}
           </div>
 
           {categories.length > 0 && (

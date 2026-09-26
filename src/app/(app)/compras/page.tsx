@@ -88,12 +88,14 @@ function Purchases() {
         description={tr("Mercancía que entra al inventario")}
         actions={
           <>
-            <a
-              href={withQuery("/api/export/purchases", { from, to })}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
-            >
-              <Download className="w-4 h-4" /> {tr("CSV")}
-            </a>
+            {business.features.includes("export") && (
+              <a
+                href={withQuery("/api/export/purchases", { from, to })}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
+              >
+                <Download className="w-4 h-4" /> {tr("CSV")}
+              </a>
+            )}
             <Button onClick={() => setOpen(true)}>
               <Plus className="w-4 h-4" /> {tr("Nueva compra")}
             </Button>
@@ -105,7 +107,9 @@ function Purchases() {
         label={tr("Compras")}
         tabs={[
           { value: "purchases", label: tr("Compras") },
-          { value: "orders", label: tr("Órdenes de compra") },
+          ...(business.features.includes("purchaseOrders")
+            ? [{ value: "orders" as const, label: tr("Órdenes de compra") }]
+            : []),
         ]}
         value={tab}
         onChange={setTab}
