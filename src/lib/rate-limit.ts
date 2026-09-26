@@ -25,3 +25,12 @@ export async function rateLimit(key: string, limit: number, windowSeconds: numbe
 export async function resetRateLimit(key: string) {
   await prisma.rateLimit.deleteMany({ where: { key } });
 }
+
+/** Rechaza si la clave ya llegó al límite, sin sumar un intento (para contar solo los fallidos). */
+export async function assertBelowRateLimit(key: string, limit: number) {
+  const row = await prisma.rateLimit.findUnique({ where: { key } });
+  if (row && row.resetAt > new Date() && row.count >= limit) {
+    const minutes = Math.max(1, Math.ceil((row.resetAt.getTime() - Date.now()) / 60000));
+    throw new AppError(429, `Demasiados intentos. Intenta de nuevo en ${minutes} min.`);
+  }
+}

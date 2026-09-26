@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { AppError } from "@/lib/errors";
 import { D, money, qty, unitCost } from "@/lib/decimal";
 import { parseCsv } from "@/lib/csv";
@@ -45,6 +45,10 @@ export async function createProduct(actor: Actor, input: ProductInput) {
         satProductKey: input.satProductKey,
         satUnitKey: input.satUnitKey,
         categoryId: input.categoryId ?? null,
+        variantGroup: input.variantGroup ?? null,
+        sendToKitchen: input.sendToKitchen ?? false,
+        variantLabel: input.variantLabel ?? null,
+        ...(input.modifiers?.length ? { modifiers: input.modifiers } : {}),
         businessId: actor.businessId,
       },
     });
@@ -57,7 +61,12 @@ export async function createProduct(actor: Actor, input: ProductInput) {
       });
       if (input.trackExpiry) {
         await tx.productBatch.create({
-          data: { quantity: qty(input.stock), remaining: qty(input.stock), productId: product.id, businessId: actor.businessId },
+          data: {
+            quantity: qty(input.stock),
+            remaining: qty(input.stock),
+            productId: product.id,
+            businessId: actor.businessId,
+          },
         });
       }
     }
@@ -82,8 +91,10 @@ export async function updateProduct(
   if (input.barcode !== undefined) data.barcode = input.barcode;
   if (input.unit !== undefined) data.unit = input.unit;
   if (input.price !== undefined) data.price = money(input.price);
-  if (input.wholesalePrice !== undefined) data.wholesalePrice = input.wholesalePrice != null ? money(input.wholesalePrice) : null;
-  if (input.wholesaleMinQty !== undefined) data.wholesaleMinQty = input.wholesaleMinQty != null ? qty(input.wholesaleMinQty) : null;
+  if (input.wholesalePrice !== undefined)
+    data.wholesalePrice = input.wholesalePrice != null ? money(input.wholesalePrice) : null;
+  if (input.wholesaleMinQty !== undefined)
+    data.wholesaleMinQty = input.wholesaleMinQty != null ? qty(input.wholesaleMinQty) : null;
   if (input.cost !== undefined) data.cost = unitCost(input.cost);
   if (input.minStock !== undefined) data.minStock = qty(input.minStock);
   if (input.trackExpiry !== undefined) data.trackExpiry = input.trackExpiry;
@@ -96,6 +107,10 @@ export async function updateProduct(
     data.category = input.categoryId ? { connect: { id: input.categoryId } } : { disconnect: true };
   }
   if (input.archived !== undefined) data.archivedAt = input.archived ? new Date() : null;
+  if (input.variantGroup !== undefined) data.variantGroup = input.variantGroup;
+  if (input.sendToKitchen !== undefined) data.sendToKitchen = input.sendToKitchen;
+  if (input.variantLabel !== undefined) data.variantLabel = input.variantLabel;
+  if (input.modifiers !== undefined) data.modifiers = input.modifiers?.length ? input.modifiers : Prisma.DbNull;
 
   return prisma.$transaction(async (tx) => {
     const product = await tx.product.update({ where: { id }, data, include: { category: true } });
@@ -170,7 +185,10 @@ export async function importProducts(actor: Actor, csv: string) {
 
   const results = { created: 0, updated: 0, errors: [] as { row: number; error: string }[] };
   const categories = new Map(
-    (await prisma.category.findMany({ where: { businessId: actor.businessId } })).map((c) => [c.name.toLowerCase(), c.id])
+    (await prisma.category.findMany({ where: { businessId: actor.businessId } })).map((c) => [
+      c.name.toLowerCase(),
+      c.id,
+    ])
   );
 
   for (let i = 1; i < rows.length && i <= 5000; i++) {
@@ -234,4 +252,79 @@ export async function importProducts(actor: Actor, csv: string) {
     }
   }
   return results;
+}
+
+export interface ProductModifier {
+  id: string;
+  name: string;
+  price: number;
+}
+
+/** Extras configurados en un producto (JSON validado al guardarse). */
+export function productModifiers(product: { modifiers: unknown }): ProductModifier[] {
+  return Array.isArray(product.modifiers) ? (product.modifiers as ProductModifier[]) : [];
+}
+
+/**
+ * Asistente de variantes: crea copias del producto (mismo precio, costo, impuestos y categoría,
+ * sin existencias ni código) con cada etiqueta, todas en el mismo grupo.
+ */
+export async function createVariants(actor: Actor, productId: string, input: { baseLabel: string; labels: string[] }) {
+  const base = await prisma.product.findFirst({
+    where: { id: productId, businessId: actor.businessId, archivedAt: null },
+  });
+  if (!base) throw new AppError(404, "Producto no encontrado");
+  const group = base.variantGroup ?? base.name;
+  const existing = await prisma.product.findMany({
+    where: { businessId: actor.businessId, variantGroup: group, archivedAt: null },
+    select: { variantLabel: true },
+  });
+  const taken = new Set(existing.map((p) => p.variantLabel?.toLowerCase()));
+  const labels: string[] = [];
+  for (const raw of input.labels) {
+    const label = raw.trim();
+    if (!label || taken.has(label.toLowerCase())) continue;
+    taken.add(label.toLowerCase());
+    labels.push(label);
+  }
+  if (labels.length === 0) throw new AppError(400, "Esas variantes ya existen");
+
+  return prisma.$transaction(async (tx) => {
+    if (!base.variantGroup) {
+      await tx.product.update({
+        where: { id: base.id },
+        data: { variantGroup: group, variantLabel: base.variantLabel ?? input.baseLabel },
+      });
+    }
+    const created = [];
+    for (const label of labels) {
+      created.push(
+        await tx.product.create({
+          data: {
+            name: `${group} ${label}`,
+            variantGroup: group,
+            variantLabel: label,
+            unit: base.unit,
+            price: base.price,
+            wholesalePrice: base.wholesalePrice,
+            wholesaleMinQty: base.wholesaleMinQty,
+            cost: base.cost,
+            minStock: base.minStock,
+            trackExpiry: base.trackExpiry,
+            packSize: base.packSize,
+            taxRate: base.taxRate,
+            iepsRate: base.iepsRate,
+            satProductKey: base.satProductKey,
+            satUnitKey: base.satUnitKey,
+            categoryId: base.categoryId,
+            ...(base.modifiers ? { modifiers: base.modifiers } : {}),
+            sendToKitchen: base.sendToKitchen,
+            businessId: actor.businessId,
+          },
+        })
+      );
+    }
+    await audit(tx, actor, "product.variants", "Product", base.id, { group, labels });
+    return created;
+  });
 }

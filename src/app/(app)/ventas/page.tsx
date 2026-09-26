@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import {
   AlertTriangle,
   Banknote,
+  ClipboardList,
   CreditCard,
+  Gift,
   HandCoins,
   Landmark,
   Minus,
@@ -14,34 +17,71 @@ import {
   Printer,
   ScanBarcode,
   Share2,
+  MonitorSmartphone,
   ShoppingCart,
   Smartphone,
   Trash2,
   Wallet,
+  Zap,
 } from "lucide-react";
-import { api, fetcher, isNetworkError } from "@/lib/client/api";
+import { api, fetcher, isNetworkError, withQuery } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
 import { useT, useText } from "@/lib/client/i18n";
-import { useDebounce } from "@/lib/client/hooks";
+import { useDebounce, useOnline } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
-import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
+import { buildReceiptText, modifierText, whatsappLink } from "@/lib/client/receipt";
+import { useDisplayRemote, usePublishDisplay } from "@/lib/client/display";
 import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types";
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
 import { countryConfig } from "@/lib/country";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input, Select } from "@/components/ui/Input";
+import { Checkbox, Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
+import { ServicesModal } from "@/components/pos/ServicesModal";
+
+interface OpenOrderData {
+  id: string;
+  number: number;
+  label: string;
+  createdAt: string;
+  items: {
+    id: string;
+    productId: string;
+    quantity: number;
+    modifiers: { id: string; name: string; price: number }[] | null;
+    product: { price: number };
+  }[];
+}
+
+interface OnlineOrderData {
+  id: string;
+  number: number;
+  customerName: string;
+  items: { productId: string; name: string; quantity: number }[];
+}
+
+interface Modifier {
+  id: string;
+  name: string;
+  price: number;
+}
 
 interface CartLine {
+  /** Identifica el renglón: el mismo producto con distintos extras va en renglones separados */
+  key: string;
   productId: string;
+  modifiers: Modifier[];
+  /** Renglón de una cuenta abierta (se conserva su estado en cocina) */
+  orderItemId?: string;
   categoryId: string | null;
   name: string;
   unit: Product["unit"];
@@ -61,6 +101,7 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Bankn
   { value: "TRANSFER", label: "Transferencia", icon: Landmark },
   { value: "YAPPY", label: "Yappy", icon: Smartphone },
   { value: "CREDIT", label: "Fiado", icon: HandCoins },
+  { value: "GIFT_CARD", label: "Vale", icon: Gift },
 ];
 
 const num = (v: string | number) => {
@@ -72,10 +113,36 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 function unitPrice(line: CartLine, isOwner: boolean) {
   if (isOwner && line.priceOverride !== "") return num(line.priceOverride);
   const q = num(line.quantity);
+  const extras = line.modifiers.reduce((acc, m) => acc + m.price, 0);
   if (line.wholesalePrice != null && line.wholesaleMinQty != null && q >= line.wholesaleMinQty)
-    return line.wholesalePrice;
-  return line.price;
+    return round2(line.wholesalePrice + extras);
+  return round2(line.price + extras);
 }
+
+const lineKey = (productId: string, modifiers: Modifier[]) =>
+  [productId, ...modifiers.map((m) => m.id).sort()].join("|");
+
+function toCartLine(product: Product, quantity: number, modifiers: Modifier[] = []): CartLine {
+  return {
+    key: lineKey(product.id, modifiers),
+    productId: product.id,
+    modifiers,
+    categoryId: product.categoryId,
+    name: product.name,
+    unit: product.unit,
+    quantity: String(quantity),
+    stock: product.stock,
+    price: product.price,
+    wholesalePrice: product.wholesalePrice,
+    wholesaleMinQty: product.wholesaleMinQty,
+    priceOverride: "",
+    discount: "",
+  };
+}
+
+/** Cantidad de un producto en todo el carrito (puede estar en varios renglones por sus extras). */
+const qtyInCart = (cart: CartLine[], productId: string) =>
+  cart.filter((l) => l.productId === productId).reduce((acc, l) => acc + num(l.quantity), 0);
 
 /** Promoción que el servidor aplicará al renglón (misma regla que en el servidor). */
 function linePromotion(line: CartLine, isOwner: boolean, promotions: PromotionRule[]) {
@@ -117,11 +184,15 @@ export default function PosPage() {
   const fmt = useFormat();
   const t = useT();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const catalog = useCachedList<Product>("/api/products?all=true", `catalog:${business.id}`);
   const customers = useCachedList<Customer>("/api/customers", `customers:${business.id}`);
   const country = countryConfig(business.country);
-  const paymentOptions = PAYMENT_OPTIONS.filter((o) => country.paymentMethods.includes(o.value));
+  // El vale se acepta en todos los países (lo emite el propio negocio).
+  const paymentOptions = PAYMENT_OPTIONS.filter(
+    (o) => o.value === "GIFT_CARD" || (country.paymentMethods as PaymentMethod[]).includes(o.value)
+  );
   const { data: cash } = useSWR<{ current: { session: { id: string } } | null }>("/api/cash", fetcher);
 
   const [search, setSearch] = useState("");
@@ -134,6 +205,10 @@ export default function PosPage() {
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  // Vale: código y saldo consultado
+  const [giftCode, setGiftCode] = useState("");
+  const [giftBalance, setGiftBalance] = useState<{ code: string; balance: number; status: string } | null>(null);
+  const online = useOnline();
   const [redeemPoints, setRedeemPoints] = useState("");
   const { data: promotionList } = useSWR<PromotionRule[]>("/api/promotions", fetcher);
   // Con la API de Yappy la venta se registra sola al confirmarse el pago.
@@ -172,34 +247,150 @@ export default function PosPage() {
       .slice(0, 60);
   }, [products, debouncedSearch, categoryId]);
 
-  const addProduct = (product: Product, quantity?: number) => {
+  // Pedido del catálogo en línea que se cobra en esta venta (llega como /ventas?pedido=ID).
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const orderParam = searchParams.get("pedido");
+  const [onlineOrder, setOnlineOrder] = useState<{ id: string; number: number; customerName: string } | null>(null);
+  useEffect(() => {
+    if (!orderParam || products.length === 0) return;
+    let cancelled = false;
+    api<OnlineOrderData>(`/api/orders/${orderParam}`)
+      .then((order) => {
+        if (cancelled) return;
+        const missing: string[] = [];
+        const lines: CartLine[] = [];
+        for (const item of order.items) {
+          const product = products.find((p) => p.id === item.productId);
+          const quantity = product ? Math.min(item.quantity, product.stock) : 0;
+          if (!product || quantity <= 0) {
+            missing.push(item.name);
+            continue;
+          }
+          lines.push(toCartLine(product, quantity));
+        }
+        setCart(lines);
+        setOnlineOrder({ id: order.id, number: order.number, customerName: order.customerName });
+        setNotes(tr("Pedido en línea #{n} · {name}", { n: order.number, name: order.customerName }));
+        if (missing.length > 0) toast.error(tr("Sin existencias: {items}", { items: missing.join(", ") }));
+        router.replace("/ventas");
+      })
+      .catch((err) => toast.error(err));
+    return () => {
+      cancelled = true;
+    };
+  }, [orderParam, products, router, toast, tr]);
+
+  // Selector de variante y extras (se abre al tocar un grupo de variantes o un producto con extras).
+  const [picker, setPicker] = useState<{ group: string | null; product: Product | null } | null>(null);
+
+  // Modo restaurante: cuentas abiertas (mesas) que se guardan y se cobran al final.
+  const [activeOrder, setActiveOrder] = useState<{ id: string; number: number; label: string } | null>(null);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const { data: openOrders, mutate: mutateOpenOrders } = useSWR<OpenOrderData[]>(
+    business.restaurantMode ? "/api/open-orders" : null,
+    fetcher,
+    { refreshInterval: 15_000 }
+  );
+
+  async function saveOrder() {
+    let label = activeOrder?.label;
+    if (!label) {
+      const answer = await confirm({
+        title: tr("Guardar cuenta"),
+        message: tr("Los platillos que se preparan en cocina se envían a la pantalla de cocina."),
+        inputLabel: tr("Nombre de la cuenta (p. ej. Mesa 3)"),
+        inputRequired: false,
+        confirmLabel: tr("Guardar"),
+      });
+      if (answer === false) return;
+      label = (typeof answer === "string" && answer) || tr("Cuenta");
+    }
+    setSavingOrder(true);
+    try {
+      await api(activeOrder ? `/api/open-orders/${activeOrder.id}` : "/api/open-orders", {
+        method: activeOrder ? "PUT" : "POST",
+        body: {
+          label,
+          notes: null,
+          items: cart.map((l) => ({
+            id: l.orderItemId ?? null,
+            productId: l.productId,
+            quantity: num(l.quantity),
+            ...(l.modifiers.length > 0 ? { modifierIds: l.modifiers.map((m) => m.id) } : {}),
+            notes: null,
+          })),
+        },
+      });
+      toast.success(tr("Cuenta guardada"));
+      mutateOpenOrders();
+      resetSale();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function openOrder(order: OpenOrderData) {
+    const lines: CartLine[] = [];
+    for (const item of order.items) {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product) continue;
+      const modifiers = item.modifiers ?? [];
+      lines.push({
+        ...toCartLine(product, Number(item.quantity), modifiers),
+        key: `${lineKey(product.id, modifiers)}@${item.id}`,
+        orderItemId: item.id,
+      });
+    }
+    setCart(lines);
+    setActiveOrder({ id: order.id, number: order.number, label: order.label });
+    setOrdersOpen(false);
+  }
+
+  // Las variantes de un mismo grupo se muestran como una sola tarjeta.
+  const gridItems = useMemo(() => {
+    type Item = { kind: "product"; product: Product } | { kind: "group"; group: string; variants: Product[] };
+    const groups = new Map<string, Product[]>();
+    const items: Item[] = [];
+    for (const p of filtered) {
+      if (!p.variantGroup) {
+        items.push({ kind: "product", product: p });
+        continue;
+      }
+      const existing = groups.get(p.variantGroup);
+      if (existing) existing.push(p);
+      else {
+        const variants = [p];
+        groups.set(p.variantGroup, variants);
+        items.push({ kind: "group", group: p.variantGroup, variants });
+      }
+    }
+    return items.map(
+      (i): Item => (i.kind === "group" && i.variants.length === 1 ? { kind: "product", product: i.variants[0] } : i)
+    );
+  }, [filtered]);
+
+  const addProduct = (product: Product, quantity?: number, modifiers?: Modifier[]) => {
+    if (modifiers === undefined && (product.modifiers?.length ?? 0) > 0) {
+      setPicker({ group: null, product });
+      return;
+    }
+    const chosen = modifiers ?? [];
+    const key = lineKey(product.id, chosen);
     const step = quantity ?? 1;
     setCart((current) => {
-      const existing = current.find((c) => c.productId === product.id);
-      const inCart = existing ? num(existing.quantity) : 0;
-      if (inCart + step > product.stock) {
+      if (qtyInCart(current, product.id) + step > product.stock) {
         toast.error(t("pos.onlyStock", { qty: fmt.qty(product.stock, product.unit), name: product.name }));
         return current;
       }
+      const existing = current.find((c) => c.key === key);
       if (existing) {
-        return current.map((c) => (c.productId === product.id ? { ...c, quantity: String(round2(inCart + step)) } : c));
+        return current.map((c) => (c.key === key ? { ...c, quantity: String(round2(num(c.quantity) + step)) } : c));
       }
-      return [
-        ...current,
-        {
-          productId: product.id,
-          categoryId: product.categoryId,
-          name: product.name,
-          unit: product.unit,
-          quantity: String(step),
-          stock: product.stock,
-          price: product.price,
-          wholesalePrice: product.wholesalePrice,
-          wholesaleMinQty: product.wholesaleMinQty,
-          priceOverride: "",
-          discount: "",
-        },
-      ];
+      return [...current, toCartLine(product, step, chosen)];
     });
   };
 
@@ -222,16 +413,16 @@ export default function PosPage() {
     }
   }
 
-  function updateLine(productId: string, patch: Partial<CartLine>) {
-    setCart((c) => c.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
+  function updateLine(key: string, patch: Partial<CartLine>) {
+    setCart((c) => c.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
   function stepLine(line: CartLine, delta: number) {
     const next = round2(num(line.quantity) + delta);
-    if (next <= 0) return setCart((c) => c.filter((l) => l.productId !== line.productId));
-    if (next > line.stock)
+    if (next <= 0) return setCart((c) => c.filter((l) => l.key !== line.key));
+    if (qtyInCart(cart, line.productId) + delta > line.stock)
       return toast.error(t("pos.onlyStock", { qty: fmt.qty(line.stock, line.unit), name: line.name }));
-    updateLine(line.productId, { quantity: String(next) });
+    updateLine(line.key, { quantity: String(next) });
   }
 
   const promotions = useMemo(() => promotionList ?? [], [promotionList]);
@@ -251,6 +442,43 @@ export default function PosPage() {
   const customer = customers.list?.find((c) => c.id === customerId);
   const itemsCount = cart.reduce((acc, l) => acc + (isFractionalUnit(l.unit) ? 1 : num(l.quantity)), 0);
 
+  // Pantalla para el cliente: lo que se cobra, el ahorro y el QR de Yappy.
+  const grossTotal = round2(cart.reduce((acc, l) => acc + num(l.quantity) * unitPrice(l, isOwner), 0));
+  usePublishDisplay(
+    completed
+      ? {
+          status: "done",
+          lines: [],
+          subtotal: completed.total,
+          discount: 0,
+          total: completed.total,
+          paymentMethod: "CASH",
+          customerName: null,
+          points: null,
+          change: completed.change,
+        }
+      : {
+          status: cart.length > 0 ? "cart" : "idle",
+          lines: cart.map((l) => ({
+            name: l.name + modifierText(l.modifiers),
+            quantity: num(l.quantity),
+            unit: l.unit,
+            total: lineTotal(l, isOwner, promotions),
+            promotion: linePromotion(l, isOwner, promotions)?.promotion.name ?? null,
+          })),
+          subtotal,
+          discount: Math.max(0, round2(grossTotal - total)),
+          total,
+          paymentMethod,
+          customerName: customer?.name ?? null,
+          points: business.loyaltyEnabled && customer ? (customer.points ?? 0) : null,
+          change: 0,
+        }
+  );
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
+  const [displayRemote, setDisplayRemote] = useDisplayRemote();
+
   const invalidLine = cart.find((l) => {
     const q = num(l.quantity);
     return q <= 0 || q > l.stock || (!isFractionalUnit(l.unit) && !Number.isInteger(q));
@@ -265,7 +493,9 @@ export default function PosPage() {
     !invalidLine &&
     !(paymentMethod === "CREDIT" && !customerId) &&
     !creditExceeded &&
-    !(paymentMethod === "CASH" && amountReceived !== "" && received < total);
+    !(paymentMethod === "CASH" && amountReceived !== "" && received < total) &&
+    // El vale se valida en el servidor: no se puede cobrar sin conexión.
+    !(paymentMethod === "GIFT_CARD" && (!giftCode.trim() || !online));
 
   function resetSale() {
     setCart([]);
@@ -274,8 +504,12 @@ export default function PosPage() {
     setCustomerId("");
     setNotes("");
     setPaymentReference("");
+    setGiftCode("");
+    setGiftBalance(null);
     setRedeemPoints("");
     setYappyManual(false);
+    setOnlineOrder(null);
+    setActiveOrder(null);
     setPaymentMethod("CASH");
     setCheckoutOpen(false);
     searchRef.current?.focus();
@@ -290,6 +524,7 @@ export default function PosPage() {
         productId: l.productId,
         quantity: num(l.quantity),
         discount: num(l.discount),
+        ...(l.modifiers.length > 0 ? { modifierIds: l.modifiers.map((m) => m.id) } : {}),
         ...(isOwner && l.priceOverride !== "" ? { unitPrice: num(l.priceOverride) } : {}),
       })),
       discount,
@@ -297,6 +532,9 @@ export default function PosPage() {
       amountReceived: paymentMethod === "CASH" && amountReceived ? received : null,
       paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
       yappyChargeId: yappyChargeId ?? null,
+      onlineOrderId: onlineOrder?.id ?? null,
+      giftCardCode: paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
+      openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
       notes: notes || null,
@@ -320,8 +558,8 @@ export default function PosPage() {
           });
           // Descuenta las existencias en la copia local para no vender lo que ya no hay.
           const updated = products.map((p) => {
-            const line = cart.find((l) => l.productId === p.id);
-            return line ? { ...p, stock: round2(p.stock - num(line.quantity)) } : p;
+            const sold = qtyInCart(cart, p.id);
+            return sold > 0 ? { ...p, stock: round2(p.stock - sold) } : p;
           });
           await kvSet(`catalog:${business.id}`, { items: updated });
           catalog.mutate({ items: updated, nextCursor: null } as never, { revalidate: false });
@@ -355,6 +593,11 @@ export default function PosPage() {
 
   const cartPanel = (
     <div className="space-y-4">
+      {activeOrder && (
+        <p role="status" className="rounded-xl bg-blue-50 text-blue-700 px-3 py-2 text-sm">
+          {tr("Cuenta {label} (#{n})", { label: activeOrder.label, n: activeOrder.number })}
+        </p>
+      )}
       {cart.length === 0 ? (
         <div className="text-center py-8 text-sm text-slate-500">
           <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" aria-hidden="true" />
@@ -368,10 +611,13 @@ export default function PosPage() {
             const wholesale = line.wholesalePrice != null && price === line.wholesalePrice && line.priceOverride === "";
             const promo = linePromotion(line, isOwner, promotions);
             return (
-              <li key={line.productId} className="py-3 space-y-2">
+              <li key={line.key} className="py-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900 truncate">{line.name}</p>
+                    {line.modifiers.length > 0 && (
+                      <p className="text-xs text-slate-600">{line.modifiers.map((m) => `+${m.name}`).join(", ")}</p>
+                    )}
                     <p className="text-xs text-slate-500">
                       {fmt.money(price)} / {UNIT_LABELS[line.unit]}
                       {wholesale && (
@@ -407,7 +653,7 @@ export default function PosPage() {
                       aria-label={`Cantidad de ${line.name}`}
                       inputMode={fractional ? "decimal" : "numeric"}
                       value={line.quantity}
-                      onChange={(e) => updateLine(line.productId, { quantity: e.target.value })}
+                      onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
                       className="w-16 text-center py-1.5 bg-surface border border-slate-200 rounded-lg text-sm"
                     />
                     <button
@@ -424,7 +670,7 @@ export default function PosPage() {
                     inputMode="decimal"
                     placeholder={t("pos.lineDiscount")}
                     value={line.discount}
-                    onChange={(e) => updateLine(line.productId, { discount: e.target.value })}
+                    onChange={(e) => updateLine(line.key, { discount: e.target.value })}
                     className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
                   />
                   {isOwner && (
@@ -433,12 +679,12 @@ export default function PosPage() {
                       inputMode="decimal"
                       placeholder={t("pos.price")}
                       value={line.priceOverride}
-                      onChange={(e) => updateLine(line.productId, { priceOverride: e.target.value })}
+                      onChange={(e) => updateLine(line.key, { priceOverride: e.target.value })}
                       className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
                     />
                   )}
                 </div>
-                {invalidLine?.productId === line.productId && (
+                {invalidLine?.key === line.key && (
                   <p className="text-xs text-red-600">
                     {t("pos.invalidQty")} ({t("pos.available")}: {fmt.qty(line.stock, line.unit)}
                     {!fractional && `, ${t("pos.onlyIntegers")}`})
@@ -513,6 +759,56 @@ export default function PosPage() {
             value={paymentReference}
             onChange={(e) => setPaymentReference(e.target.value)}
           />
+        )}
+
+        {paymentMethod === "GIFT_CARD" && (
+          <div className="space-y-2">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  label={tr("Código del vale")}
+                  inputMode="numeric"
+                  value={giftCode}
+                  onChange={(e) => {
+                    setGiftCode(e.target.value);
+                    setGiftBalance(null);
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                disabled={giftCode.trim().length < 4}
+                onClick={async () => {
+                  try {
+                    setGiftBalance(await api(withQuery("/api/gift-cards/lookup", { code: giftCode.trim() })));
+                  } catch (err) {
+                    toast.error(err);
+                  }
+                }}
+              >
+                {tr("Ver saldo")}
+              </Button>
+            </div>
+            {giftBalance && (
+              <p
+                role="status"
+                className={cn(
+                  "text-sm",
+                  giftBalance.balance < total || giftBalance.status !== "ACTIVE"
+                    ? "text-red-600"
+                    : "text-brand-700 dark:text-brand-300"
+                )}
+              >
+                {giftBalance.status !== "ACTIVE"
+                  ? tr("El vale está anulado")
+                  : tr("Saldo del vale: {amount}", { amount: fmt.money(giftBalance.balance) })}
+                {giftBalance.status === "ACTIVE" &&
+                  giftBalance.balance < total &&
+                  ` · ${tr("No alcanza para esta venta")}`}
+              </p>
+            )}
+            {!online && <p className="text-sm text-amber-700">{tr("Para cobrar con vale necesitas conexión.")}</p>}
+          </div>
         )}
 
         {(paymentMethod === "CREDIT" || customerId) && (
@@ -634,6 +930,14 @@ export default function PosPage() {
         >
           {t("pos.charge")} {fmt.money(total)}
         </Button>
+        {business.restaurantMode && cart.length > 0 && (
+          <Button variant="secondary" className="w-full" onClick={saveOrder} loading={savingOrder}>
+            <ClipboardList className="w-4 h-4" aria-hidden="true" />
+            {activeOrder
+              ? tr("Guardar cambios en {label}", { label: activeOrder.label })
+              : tr("Guardar como cuenta abierta")}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -645,6 +949,22 @@ export default function PosPage() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {cart.length > 0 ? `${t("pos.total")}: ${fmt.money(total)}` : ""}
       </p>
+      {onlineOrder && (
+        <div
+          role="status"
+          className="rounded-xl bg-blue-50 text-blue-700 px-4 py-2 text-sm flex items-center justify-between gap-2"
+        >
+          <span>
+            {tr("Cobrando el pedido en línea #{n} de {name}", {
+              n: onlineOrder.number,
+              name: onlineOrder.customerName,
+            })}
+          </span>
+          <button type="button" className="font-medium underline" onClick={() => setOnlineOrder(null)}>
+            {tr("Desvincular")}
+          </button>
+        </div>
+      )}
       {!cash?.current && cash !== undefined && (
         <div className="rounded-xl bg-amber-50 text-amber-800 px-4 py-2 text-sm flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
@@ -671,6 +991,18 @@ export default function PosPage() {
             </div>
             <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label={t("pos.scan")}>
               <ScanBarcode className="w-5 h-5" />
+            </Button>
+            {business.restaurantMode && (
+              <Button variant="secondary" onClick={() => setOrdersOpen(true)} aria-label={tr("Cuentas abiertas")}>
+                <ClipboardList className="w-5 h-5" />
+                {(openOrders?.length ?? 0) > 0 && <span className="tabular-nums">{openOrders!.length}</span>}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setServicesOpen(true)} aria-label={tr("Recargas y servicios")}>
+              <Zap className="w-5 h-5" />
+            </Button>
+            <Button variant="secondary" onClick={() => setDisplayOpen(true)} aria-label={tr("Pantalla del cliente")}>
+              <MonitorSmartphone className="w-5 h-5" />
             </Button>
           </div>
 
@@ -717,30 +1049,41 @@ export default function PosPage() {
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {filtered.map((p) => {
-                const inCart = cart.find((c) => c.productId === p.id);
-                const out = p.stock <= 0;
+              {gridItems.map((item) => {
+                const isGroup = item.kind === "group";
+                const p = isGroup ? item.variants[0] : item.product;
+                const stock = isGroup ? item.variants.reduce((acc, v) => acc + v.stock, 0) : p.stock;
+                const inCart = isGroup
+                  ? item.variants.reduce((acc, v) => acc + qtyInCart(cart, v.id), 0)
+                  : qtyInCart(cart, p.id);
+                const prices = isGroup ? item.variants.map((v) => v.price) : [p.price];
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                const out = stock <= 0;
                 return (
                   <button
-                    key={p.id}
-                    onClick={() => addProduct(p)}
+                    key={isGroup ? `group:${item.group}` : p.id}
+                    onClick={() => (isGroup ? setPicker({ group: item.group, product: null }) : addProduct(p))}
                     disabled={out}
+                    aria-haspopup={isGroup || (p.modifiers?.length ?? 0) > 0 ? "dialog" : undefined}
                     className={cn(
                       "relative text-left p-3 rounded-xl border bg-surface transition-[color,border-color,transform] motion-safe:active:scale-[0.98] disabled:opacity-50",
-                      inCart ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
+                      inCart > 0 ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
                     )}
                   >
-                    {inCart && (
+                    {inCart > 0 && (
                       <span
                         aria-hidden="true"
                         className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow tabular-nums"
                       >
-                        {fmt.number(Number(inCart.quantity))}
+                        {fmt.number(inCart)}
                       </span>
                     )}
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">{p.name}</p>
+                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">
+                      {isGroup ? item.group : p.name}
+                    </p>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mt-1">
-                      {fmt.money(p.price)}
+                      {minPrice === maxPrice ? fmt.money(minPrice) : `${fmt.money(minPrice)} – ${fmt.money(maxPrice)}`}
                       {p.unit !== "PIECE" && (
                         <span className="text-xs font-normal text-slate-500">/{UNIT_LABELS[p.unit]}</span>
                       )}
@@ -748,11 +1091,12 @@ export default function PosPage() {
                     <p
                       className={cn(
                         "text-xs",
-                        out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
+                        out ? "text-red-600" : !isGroup && p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
                       )}
                     >
-                      {out ? t("pos.soldOut") : `${fmt.qty(p.stock, p.unit)} ${t("pos.available")}`}
-                      {inCart && <span className="sr-only">{` · ${inCart.quantity} ${t("pos.inCart")}`}</span>}
+                      {out ? t("pos.soldOut") : `${fmt.qty(stock, p.unit)} ${t("pos.available")}`}
+                      {isGroup && ` · ${tr("{n} variantes", { n: item.variants.length })}`}
+                      {inCart > 0 && <span className="sr-only">{` · ${inCart} ${t("pos.inCart")}`}</span>}
                     </p>
                   </button>
                 );
@@ -777,6 +1121,80 @@ export default function PosPage() {
 
       <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title={t("pos.currentSale")}>
         {cartPanel}
+      </Modal>
+
+      {servicesOpen && <ServicesModal open onClose={() => setServicesOpen(false)} />}
+      <Modal open={ordersOpen} onClose={() => setOrdersOpen(false)} title={tr("Cuentas abiertas")}>
+        {!openOrders || openOrders.length === 0 ? (
+          <p className="text-sm text-slate-500">{tr("No hay cuentas abiertas.")}</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {openOrders.map((o) => {
+              const estimate = o.items.reduce(
+                (acc, i) =>
+                  acc +
+                  Number(i.quantity) * (Number(i.product.price) + (i.modifiers ?? []).reduce((a, m) => a + m.price, 0)),
+                0
+              );
+              return (
+                <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">
+                      {o.label} <span className="text-slate-500 font-normal">#{o.number}</span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {tr("{n} productos", { n: o.items.length })} · {fmt.money(estimate)} · {fmt.dateTime(o.createdAt)}
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => openOrder(o)}>
+                    {tr("Abrir")}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Modal>
+      {picker && (
+        <VariantPicker
+          group={picker.group}
+          initialProduct={picker.product}
+          products={products}
+          onClose={() => setPicker(null)}
+          onPick={(product, modifiers) => {
+            setPicker(null);
+            addProduct(product, undefined, modifiers);
+          }}
+        />
+      )}
+
+      <Modal open={displayOpen} onClose={() => setDisplayOpen(false)} title={tr("Pantalla del cliente")}>
+        <div className="space-y-4 text-sm text-slate-600">
+          <p>
+            {tr(
+              "Muestra al cliente lo que se cobra, el total y el QR de Yappy. Úsala en un segundo monitor o en una tableta."
+            )}
+          </p>
+          <Button
+            className="w-full"
+            onClick={() => {
+              window.open("/pantalla-cliente", "comercioclaro-pantalla", "popup,width=1024,height=768");
+              setDisplayOpen(false);
+            }}
+          >
+            <MonitorSmartphone className="w-4 h-4" /> {tr("Abrir en este equipo")}
+          </Button>
+          <Checkbox
+            label={tr("Enviar también a otra pantalla o tableta")}
+            checked={displayRemote}
+            onChange={(e) => setDisplayRemote(e.target.checked)}
+          />
+          <p className="text-xs text-slate-500">
+            {tr("En la tableta, inicia sesión con cualquier usuario de este negocio y abre {url}.", {
+              url: "/pantalla-cliente",
+            })}
+          </p>
+        </div>
       </Modal>
 
       <BarcodeScanner
@@ -841,5 +1259,86 @@ export default function PosPage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/** Elige la variante (talla, color) y los extras con precio antes de agregar al carrito. */
+function VariantPicker({
+  group,
+  initialProduct,
+  products,
+  onClose,
+  onPick,
+}: {
+  group: string | null;
+  initialProduct: Product | null;
+  products: Product[];
+  onClose: () => void;
+  onPick: (product: Product, modifiers: Modifier[]) => void;
+}) {
+  const tr = useText();
+  const fmt = useFormat();
+  const [product, setProduct] = useState<Product | null>(initialProduct);
+  const [selected, setSelected] = useState<string[]>([]);
+  const variants = group ? products.filter((p) => p.variantGroup === group) : [];
+
+  function choose(variant: Product) {
+    if ((variant.modifiers?.length ?? 0) > 0) setProduct(variant);
+    else onPick(variant, []);
+  }
+
+  const modifiers = product?.modifiers ?? [];
+  const chosen = modifiers.filter((m) => selected.includes(m.id));
+  const price = (product?.price ?? 0) + chosen.reduce((acc, m) => acc + m.price, 0);
+
+  return (
+    <Modal open onClose={onClose} title={product ? product.name : (group ?? "")}>
+      {!product ? (
+        <ul className="grid grid-cols-2 gap-2">
+          {variants.map((v) => (
+            <li key={v.id}>
+              <button
+                type="button"
+                disabled={v.stock <= 0}
+                onClick={() => choose(v)}
+                className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-brand-600 disabled:opacity-50"
+              >
+                <span className="block font-medium text-slate-900">{v.variantLabel ?? v.name}</span>
+                <span className="block text-sm text-brand-700 dark:text-brand-300">{fmt.money(v.price)}</span>
+                <span className="block text-xs text-slate-500">{fmt.qty(v.stock, v.unit)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="space-y-3">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-slate-700 mb-1">{tr("Extras")}</legend>
+            {modifiers.map((m) => (
+              <label
+                key={m.id}
+                className="flex items-center justify-between gap-2 min-h-10 px-3 rounded-lg border border-slate-100"
+              >
+                <span className="flex items-center gap-2 text-sm text-slate-900">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 accent-brand-600"
+                    checked={selected.includes(m.id)}
+                    onChange={(e) =>
+                      setSelected((s) => (e.target.checked ? [...s, m.id] : s.filter((id) => id !== m.id)))
+                    }
+                  />
+                  {m.name}
+                </span>
+                <span className="text-sm tabular-nums text-slate-600">+{fmt.money(m.price)}</span>
+              </label>
+            ))}
+          </fieldset>
+          <Button className="w-full" onClick={() => onPick(product, chosen)}>
+            {tr("Agregar · {price}", { price: fmt.money(price) })}
+          </Button>
+        </div>
+      )}
+    </Modal>
   );
 }

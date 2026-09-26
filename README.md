@@ -41,6 +41,21 @@ Plan y alcance en [`docs/plan-panama.md`](docs/plan-panama.md).
 - **Etiquetas de precio** con código de barras (se asigna un EAN-13 interno a los productos sin código).
 - **Conteo físico** de inventario: se escanea el anaquel y se ajustan las diferencias con su motivo.
 
+### Lo que ofrece la competencia
+
+Plan y alcance en [`docs/plan-funciones-competencia.md`](docs/plan-funciones-competencia.md).
+
+- **Reporte mensual de ITBMS/IVA** por tasa (base e impuesto, devoluciones como nota de crédito) con CSV para la declaración.
+- **Desempeño por cajero**: ventas, descuentos manuales, cancelaciones, devoluciones y faltantes de caja.
+- **Pantalla para el cliente** (`/pantalla-cliente`) en un segundo monitor o tableta: productos, ahorro, total y QR de Yappy.
+- **Conciliación bancaria**: se sube el estado de cuenta en CSV y se cruza con las ventas de Yappy, transferencia o tarjeta.
+- **Pedidos en línea**: el catálogo guarda los pedidos en una bandeja con estados y se cobran desde el punto de venta.
+- **Órdenes de compra** (enviadas por WhatsApp, recepción parcial) y **traspasos entre sucursales**.
+- **Recargas y pago de servicios**: el efectivo cuadra en la caja y la comisión cuenta como ganancia.
+- **Vales (tarjetas de regalo)** imprimibles con código de barras, como forma de pago.
+- **Variantes** (talla, color) y **extras con precio** ("Queso +0.50").
+- **Modo restaurante**: cuentas abiertas por mesa y **pantalla de cocina** (`/cocina`).
+
 ## Requisitos
 
 - Node.js 20.19+ (recomendado 22)
@@ -68,7 +83,7 @@ Abre [http://localhost:3000](http://localhost:3000).
 | Dueño (Panamá)  | `demo.pa@comercioclaro.com`   | `demo1234` |
 | Cajero (Panamá, interfaz en chino) | `cajero.pa@comercioclaro.com` | `demo1234` |
 
-La demo de Panamá incluye una promoción de cerveza, puntos de lealtad y el catálogo público en `/c/minisuper-el-dorado`.
+La demo de Panamá incluye una promoción de cerveza, puntos de lealtad y el catálogo público en `/c/minisuper-el-dorado`. La fonda `demo.fonda@comercioclaro.com` (contraseña `demo1234`) está en modo restaurante, con extras, variantes y pantalla de cocina.
 
 ## Scripts
 

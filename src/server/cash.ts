@@ -35,7 +35,8 @@ export async function openCashSession(actor: Actor, input: { openingAmount: numb
 
 /**
  * Resumen del turno: efectivo esperado = fondo inicial + ventas en efectivo
- * + abonos en efectivo + entradas − devoluciones en efectivo − salidas
+ * + abonos en efectivo + entradas + recargas y servicios en efectivo
+ * − devoluciones en efectivo − salidas
  * − gastos y compras pagados de caja.
  */
 export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: string) {
@@ -57,7 +58,10 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
     where: { cashSessionId: sessionId, method: "CASH" },
     _sum: { amount: true },
   });
-  const movements = await db.cashMovement.findMany({ where: { cashSessionId: sessionId }, orderBy: { createdAt: "asc" } });
+  const movements = await db.cashMovement.findMany({
+    where: { cashSessionId: sessionId },
+    orderBy: { createdAt: "asc" },
+  });
   const expenses = await db.expense.aggregate({
     where: { cashSessionId: sessionId, paymentMethod: "CASH" },
     _sum: { amount: true },
@@ -65,6 +69,11 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
   const purchases = await db.purchase.aggregate({
     where: { cashSessionId: sessionId, paidFromCash: true, status: "ACTIVE" },
     _sum: { total: true },
+  });
+  // Recargas y pagos de servicios cobrados en efectivo (dinero del proveedor que está en la caja).
+  const services = await db.serviceSale.aggregate({
+    where: { cashSessionId: sessionId, paymentMethod: "CASH", status: "ACTIVE" },
+    _sum: { amount: true },
   });
 
   const byMethod = Object.fromEntries(
@@ -78,12 +87,21 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
   const customerPayments = D(payments._sum.amount);
   const cashExpenses = D(expenses._sum.amount);
   const cashPurchases = D(purchases._sum.total);
+  const serviceCash = D(services._sum.amount);
+  // Vales vendidos en efectivo en este turno (pasivo: se canjearán después).
+  const giftCards = await db.giftCardTransaction.aggregate({
+    where: { cashSessionId: sessionId, type: "ISSUE", paymentMethod: "CASH" },
+    _sum: { amount: true },
+  });
+  const giftCardCash = D(giftCards._sum.amount);
 
   const expected = money(
     D(session.openingAmount)
       .plus(cashSales)
       .plus(customerPayments)
       .plus(cashIn)
+      .plus(serviceCash)
+      .plus(giftCardCash)
       .minus(refunds)
       .minus(cashOut)
       .minus(cashExpenses)
@@ -100,15 +118,14 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
     refunds,
     cashExpenses,
     cashPurchases,
+    serviceCash,
+    giftCardCash,
     expected,
     movements,
   };
 }
 
-export async function addCashMovement(
-  actor: Actor,
-  input: { type: "IN" | "OUT"; amount: number; reason: string }
-) {
+export async function addCashMovement(actor: Actor, input: { type: "IN" | "OUT"; amount: number; reason: string }) {
   return prisma.$transaction(async (tx) => {
     const session = await getOpenSession(tx, actor.businessId);
     if (!session) throw new AppError(409, "No hay una caja abierta");

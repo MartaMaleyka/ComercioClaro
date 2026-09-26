@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
-import { getSale } from "@/server/sales";
+import { getSale, modifierSuffix } from "@/server/sales";
 import { formatCurrency, formatDateTime, formatNumber, PAYMENT_METHOD_LABELS, UNIT_LABELS } from "@/lib/utils";
 import QRCode from "qrcode";
 import { PrintButton } from "./PrintButton";
@@ -77,7 +77,10 @@ export default async function TicketPage({
         <hr className="my-2 border-dashed border-black" />
         {sale.items.map((i) => (
           <div key={i.id} className="mb-1">
-            <p>{i.product.name}</p>
+            <p>
+              {i.product.name}
+              {modifierSuffix(i.modifiers)}
+            </p>
             <div className="flex justify-between">
               <span>
                 {formatNumber(i.quantity.toNumber(), b.locale)} {UNIT_LABELS[i.product.unit]} x {money(i.unitPrice)}

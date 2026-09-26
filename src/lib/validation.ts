@@ -37,7 +37,7 @@ export const password = z
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(128, "La contraseña es demasiado larga");
 
-export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY"], { error: "Forma de pago inválida" });
+export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY", "GIFT_CARD"], { error: "Forma de pago inválida" });
 export const immediatePaymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "YAPPY"], { error: "Forma de pago inválida" });
 export const country = z.enum(["MX", "PA", "OTHER"], { error: "País inválido" });
 const feeRate = number.min(0).max(0.2, "La comisión debe estar entre 0% y 20%");
@@ -165,6 +165,8 @@ export const businessSchema = z.object({
   cardFeeRate: feeRate.optional(),
   transferFeeRate: feeRate.optional(),
   yappyFeeRate: feeRate.optional(),
+  serviceProviders: z.lazy(() => serviceProvidersSchema).optional(),
+  restaurantMode: z.boolean().optional(),
 });
 
 export const languageSchema = z.object({ language: z.enum(["es", "zh", "en"]) });
@@ -219,6 +221,20 @@ const productBase = {
     .regex(/^[A-Z0-9]{2,3}$/, "Clave SAT de unidad inválida")
     .default("H87"),
   categoryId: id.nullish(),
+  variantGroup: optText(150).optional(),
+  sendToKitchen: z.boolean().optional(),
+  variantLabel: optText(60).optional(),
+  modifiers: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(40),
+        name: text(60, "Escribe el nombre del extra"),
+        price: moneyInput,
+      })
+    )
+    .max(30, "Máximo 30 extras por producto")
+    .refine((list) => new Set(list.map((m) => m.id)).size === list.length, "Hay extras repetidos")
+    .nullish(),
 };
 
 export const productCreateSchema = z.object({
@@ -286,6 +302,7 @@ export const saleSchema = z.object({
         quantity: positiveQty,
         unitPrice: moneyInput.nullish(),
         discount: moneyInput.default(0),
+        modifierIds: z.array(z.string().max(40)).max(20).optional(),
       })
     )
     .min(1, "Agrega al menos un producto")
@@ -295,6 +312,9 @@ export const saleSchema = z.object({
   amountReceived: moneyInput.nullish(),
   paymentReference: optText(60),
   yappyChargeId: id.nullish(),
+  onlineOrderId: id.nullish(),
+  openOrderId: id.nullish(),
+  giftCardCode: optText(40),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
   notes: optText(),
@@ -477,4 +497,117 @@ export const translationFeedbackSchema = z.object({
   screen: z.string().trim().max(200).default(""),
   original: z.string().trim().min(1, "Escribe el texto que viste").max(500),
   suggestion: z.string().trim().min(1, "Escribe cómo debería decir").max(500),
+});
+
+export const monthQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes inválido")
+    .optional(),
+  format: z.enum(["json", "csv"]).default("json"),
+});
+
+export const onlineOrderSchema = z.object({
+  customerName: text(80, "Escribe tu nombre"),
+  phone: optText(30),
+  notes: optText(300),
+  fulfillment: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
+  address: optText(300),
+  items: z
+    .array(z.object({ productId: id, quantity: z.coerce.number().gt(0).max(999) }))
+    .min(1, "Agrega al menos un producto")
+    .max(100, "Demasiados productos en un pedido"),
+});
+
+export const onlineOrderStatusSchema = z.object({
+  status: z.enum(["ACCEPTED", "READY", "DELIVERED", "CANCELLED"]),
+});
+
+export const purchaseOrderSchema = z.object({
+  supplierId: id.nullish(),
+  supplierName: optText(150),
+  notes: optText(),
+  expectedAt: z.coerce.date().nullish(),
+  lines: z
+    .array(z.object({ productId: id, quantity: positiveQty, unitCost: moneyInput.nullish() }))
+    .min(1, "Agrega al menos un producto")
+    .max(300),
+});
+
+export const purchaseOrderReceiveSchema = z.object({
+  paidFromCash: z.boolean().default(false),
+  notes: optText(),
+  lines: z
+    .array(
+      z.object({
+        lineId: id,
+        quantity: nonNegativeQty,
+        unitCost: moneyInput.nullish(),
+        lotCode: optText(60),
+        expiresAt: z.coerce.date().nullish(),
+      })
+    )
+    .min(1)
+    .max(300),
+});
+
+export const transferSchema = z.object({
+  toBusinessId: id,
+  notes: optText(),
+  lines: z
+    .array(z.object({ productId: id, quantity: positiveQty }))
+    .min(1, "Agrega al menos un producto")
+    .max(300),
+});
+
+export const serviceKind = z.enum(["RECHARGE", "BILL", "OTHER"]);
+
+export const serviceProvidersSchema = z
+  .array(
+    z.object({
+      name: text(60, "Escribe el nombre del proveedor"),
+      kind: serviceKind,
+      commissionRate: rate,
+    })
+  )
+  .max(40);
+
+export const serviceSaleSchema = z.object({
+  kind: serviceKind,
+  provider: text(60, "Elige el proveedor"),
+  reference: optText(60),
+  amount: positiveMoney,
+  paymentMethod: immediatePaymentMethod.default("CASH"),
+});
+
+export const giftCardSchema = z.object({
+  amount: positiveMoney,
+  paymentMethod: immediatePaymentMethod.default("CASH"),
+  customerName: optText(100),
+  expiresAt: z.coerce.date().nullish(),
+});
+
+export const variantsSchema = z.object({
+  baseLabel: text(60, "Escribe la variante de este producto"),
+  labels: z.array(z.string().trim().max(60)).min(1, "Escribe al menos una variante").max(30),
+});
+
+export const openOrderSchema = z.object({
+  label: text(60, "Escribe el nombre de la cuenta (p. ej. Mesa 3)"),
+  notes: optText(300),
+  items: z
+    .array(
+      z.object({
+        id: id.nullish(),
+        productId: id,
+        quantity: positiveQty,
+        modifierIds: z.array(z.string().max(40)).max(20).optional(),
+        notes: optText(200),
+      })
+    )
+    .max(200),
+});
+
+export const kitchenStatusSchema = z.object({
+  status: z.enum(["PENDING", "PREPARING", "READY", "SERVED"]),
 });

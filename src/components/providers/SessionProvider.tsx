@@ -17,6 +17,8 @@ export interface SessionBusiness {
   rfc: string | null;
   yappyDirectory: string | null;
   hasYappyQr: boolean;
+  catalogEnabled: boolean;
+  restaurantMode: boolean;
   usesFreeInvoicer: boolean;
   einvoiceMode: string;
   autoInvoice: boolean;

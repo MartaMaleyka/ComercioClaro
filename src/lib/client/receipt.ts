@@ -28,7 +28,7 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
     "",
     ...sale.items.map(
       (i) =>
-        `${formatNumber(i.quantity, business.locale)} ${UNIT_LABELS[i.product.unit] ?? ""} ${i.product.name}  ${money(i.subtotal)}`
+        `${formatNumber(i.quantity, business.locale)} ${UNIT_LABELS[i.product.unit] ?? ""} ${i.product.name}${modifierText(i.modifiers)}  ${money(i.subtotal)}`
     ),
     "",
     sale.discount > 0 ? `Descuento: -${money(sale.discount)}` : null,
@@ -44,9 +44,25 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
 }
 
 const COUNTRY_CODES: Record<string, string> = {
-  MX: "52", GT: "502", SV: "503", HN: "504", NI: "505", CR: "506", PA: "507",
-  CO: "57", PE: "51", EC: "593", BO: "591", CL: "56", AR: "54", UY: "598", PY: "595",
-  VE: "58", DO: "1", US: "1", ES: "34",
+  MX: "52",
+  GT: "502",
+  SV: "503",
+  HN: "504",
+  NI: "505",
+  CR: "506",
+  PA: "507",
+  CO: "57",
+  PE: "51",
+  EC: "593",
+  BO: "591",
+  CL: "56",
+  AR: "54",
+  UY: "598",
+  PY: "595",
+  VE: "58",
+  DO: "1",
+  US: "1",
+  ES: "34",
 };
 
 /** Enlace de WhatsApp; con teléfono local agrega la lada del país del negocio. */
@@ -55,4 +71,9 @@ export function whatsappLink(text: string, phone?: string | null, locale = "es-M
   const code = COUNTRY_CODES[locale.split("-")[1] ?? ""] ?? "";
   const number = digits && digits.length <= 10 && code ? `${code}${digits}` : digits;
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+/** " (+Queso, +Tocino)" para los extras de un renglón. */
+export function modifierText(modifiers: { name: string }[] | null | undefined) {
+  return modifiers && modifiers.length > 0 ? ` (${modifiers.map((m) => `+${m.name}`).join(", ")})` : "";
 }

@@ -75,6 +75,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
 
   return (
     <CatalogClient
+      slug={slug}
       business={{
         name: business.name,
         description: business.description,

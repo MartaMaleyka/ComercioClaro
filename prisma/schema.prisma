@@ -23,6 +23,7 @@ enum PaymentMethod {
   TRANSFER
   CREDIT
   YAPPY
+  GIFT_CARD
 }
 
 enum DocStatus {
@@ -47,6 +48,8 @@ enum StockMovementType {
   PURCHASE
   PURCHASE_CANCEL
   ADJUSTMENT
+  TRANSFER_OUT
+  TRANSFER_IN
 }
 
 enum AdjustmentReason {
@@ -149,6 +152,11 @@ model Business {
   catalogEnabled       Boolean  @default(false)
   catalogSlug          String?  @unique
   catalogWhatsapp      String?
+  // Recargas y pagos de servicios que se cobran: [{ name, kind, commissionRate }]
+  serviceProviders     Json?
+  // Modo restaurante: cuentas abiertas (mesas) y pantalla de cocina
+  restaurantMode       Boolean  @default(false)
+  openOrderCounter     Int      @default(0)
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
@@ -157,6 +165,8 @@ model Business {
   // Contadores para folios consecutivos por negocio
   saleCounter          Int      @default(0)
   purchaseCounter      Int      @default(0)
+  orderCounter         Int      @default(0)
+  purchaseOrderCounter Int      @default(0)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -179,6 +189,15 @@ model Business {
   yappyCharges     YappyCharge[]
   promotions       Promotion[]
   inventoryCounts  InventoryCount[]
+  customerDisplays CustomerDisplay[]
+  onlineOrders     OnlineOrder[]
+  purchaseOrders   PurchaseOrder[]
+  transfersOut     StockTransfer[]       @relation("TransferFrom")
+  transfersIn      StockTransfer[]       @relation("TransferTo")
+  serviceSales     ServiceSale[]
+  giftCards        GiftCard[]
+  giftCardMoves    GiftCardTransaction[]
+  openOrders       OpenOrder[]
 }
 
 model Category {
@@ -209,6 +228,13 @@ model Product {
   trackExpiry     Boolean     @default(false)
   // Unidades por caja/paquete al comprar (venta suelta)
   packSize        Int?
+  // Variantes: productos del mismo grupo (p. ej. "Camiseta básica") con su etiqueta ("M / Azul")
+  variantGroup    String?
+  variantLabel    String?
+  // Extras que se pueden agregar al vender: [{ id, name, price }]
+  modifiers       Json?
+  // En modo restaurante, se envía a la pantalla de cocina al guardarse en una cuenta
+  sendToKitchen   Boolean     @default(false)
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -229,10 +255,13 @@ model Product {
   stockMovements StockMovement[]
   promotions     Promotion[]
   countLines     InventoryCountLine[]
+  orderLines     PurchaseOrderLine[]
+  openOrderItems OpenOrderItem[]
 
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
   @@index([categoryId])
+  @@index([businessId, variantGroup])
 }
 
 model Customer {
@@ -298,7 +327,8 @@ model Supplier {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  purchases Purchase[]
+  purchases      Purchase[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([businessId, archivedAt, name])
 }
@@ -326,6 +356,11 @@ model Sale {
   pointsRedeemed   Int           @default(0)
   pointsDiscount   Decimal       @default(0) @db.Decimal(12, 2)
   yappyCharge      YappyCharge?
+  onlineOrder      OnlineOrder?
+  openOrder        OpenOrder?
+  // Vale con el que se pagó la venta
+  giftCardId       String?
+  giftCard         GiftCard?     @relation(fields: [giftCardId], references: [id], onDelete: SetNull)
   notes            String?
   customerId       String?
   customer         Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -366,6 +401,8 @@ model SaleItem {
   // Descuento aplicado por una promoción (incluido en discount)
   promotionDiscount Decimal    @default(0) @db.Decimal(12, 2)
   promotionId       String?
+  // Extras cobrados en el renglón (incluidos en unitPrice): [{ id, name, price }]
+  modifiers         Json?
   promotion         Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   saleId            String
   sale              Sale       @relation(fields: [saleId], references: [id], onDelete: Cascade)
@@ -415,25 +452,28 @@ model SaleReturnItem {
 }
 
 model Purchase {
-  id            String       @id @default(cuid())
-  folio         Int
-  status        DocStatus    @default(ACTIVE)
-  total         Decimal      @db.Decimal(12, 2)
+  id              String         @id @default(cuid())
+  folio           Int
+  status          DocStatus      @default(ACTIVE)
+  total           Decimal        @db.Decimal(12, 2)
   // Nombre libre del proveedor cuando no se usa el catálogo
-  supplierName  String?
-  notes         String?
-  paidFromCash  Boolean      @default(false)
-  supplierId    String?
-  supplier      Supplier?    @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  cashSessionId String?
-  cashSession   CashSession? @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
-  userId        String?
-  cancelledAt   DateTime?
-  cancelReason  String?
-  businessId    String
-  business      Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  supplierName    String?
+  notes           String?
+  paidFromCash    Boolean        @default(false)
+  // Orden de compra que se recibió con esta compra
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
+  supplierId      String?
+  supplier        Supplier?      @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  cashSessionId   String?
+  cashSession     CashSession?   @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  userId          String?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   items PurchaseItem[]
 
@@ -519,6 +559,7 @@ model CashSession {
   movements        CashMovement[]
   expenses         Expense[]
   customerPayments CustomerPayment[]
+  serviceSales     ServiceSale[]
 
   @@index([businessId, closedAt])
   @@index([businessId, openedAt])
@@ -720,6 +761,279 @@ model TranslationFeedback {
   createdAt  DateTime @default(now())
 
   @@index([language, createdAt])
+}
+
+/**
+ * Lo que muestra la pantalla para el cliente de cada cajero (se sincroniza desde el punto de venta).
+ */
+model CustomerDisplay {
+  id         String   @id @default(cuid())
+  state      Json
+  userId     String
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, userId])
+  @@index([businessId, updatedAt])
+}
+
+enum OnlineOrderStatus {
+  NEW
+  ACCEPTED
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+/**
+ * Pedido hecho desde el catálogo público. Se cobra en el punto de venta y queda enlazado a la venta.
+ */
+model OnlineOrder {
+  id           String            @id @default(cuid())
+  number       Int
+  status       OnlineOrderStatus @default(NEW)
+  customerName String
+  phone        String?
+  notes        String?
+  // PICKUP (recoge en tienda) o DELIVERY (a domicilio)
+  fulfillment  String            @default("PICKUP")
+  address      String?
+  // [{ productId, name, unit, quantity, price }] con el precio al momento del pedido
+  items        Json
+  total        Decimal           @db.Decimal(12, 2)
+  saleId       String?           @unique
+  sale         Sale?             @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  businessId   String
+  business     Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([businessId, number])
+  @@index([businessId, status, createdAt])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+/**
+ * Pedido formal al proveedor. Al recibir la mercancía se registra una compra por lo que llegó.
+ */
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  folio        Int
+  status       PurchaseOrderStatus @default(DRAFT)
+  supplierId   String?
+  supplier     Supplier?           @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierName String?
+  notes        String?
+  expectedAt   DateTime?
+  // Total estimado con el costo pedido
+  total        Decimal             @db.Decimal(12, 2)
+  userId       String?
+  sentAt       DateTime?
+  businessId   String
+  business     Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  lines     PurchaseOrderLine[]
+  purchases Purchase[]
+
+  @@unique([businessId, folio])
+  @@index([businessId, status, createdAt])
+}
+
+model PurchaseOrderLine {
+  id               String        @id @default(cuid())
+  quantity         Decimal       @db.Decimal(12, 3)
+  receivedQuantity Decimal       @default(0) @db.Decimal(12, 3)
+  unitCost         Decimal       @db.Decimal(12, 4)
+  orderId          String
+  order            PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+enum StockTransferStatus {
+  IN_TRANSIT
+  RECEIVED
+  CANCELLED
+}
+
+/**
+ * Traspaso de mercancía entre sucursales del mismo dueño: sale del origen al enviarse
+ * y entra al destino al recibirse.
+ */
+model StockTransfer {
+  id             String              @id @default(cuid())
+  status         StockTransferStatus @default(IN_TRANSIT)
+  notes          String?
+  fromBusinessId String
+  fromBusiness   Business            @relation("TransferFrom", fields: [fromBusinessId], references: [id], onDelete: Cascade)
+  toBusinessId   String
+  toBusiness     Business            @relation("TransferTo", fields: [toBusinessId], references: [id], onDelete: Cascade)
+  createdById    String
+  receivedById   String?
+  createdAt      DateTime            @default(now())
+  receivedAt     DateTime?
+
+  lines StockTransferLine[]
+
+  @@index([fromBusinessId, createdAt])
+  @@index([toBusinessId, status])
+}
+
+model StockTransferLine {
+  id            String        @id @default(cuid())
+  transferId    String
+  transfer      StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  // Producto en la sucursal de origen y copia de sus datos para encontrarlo o crearlo en el destino
+  productId     String
+  name          String
+  barcode       String?
+  sku           String?
+  unit          ProductUnit
+  quantity      Decimal       @db.Decimal(12, 3)
+  unitCost      Decimal       @db.Decimal(12, 4)
+  price         Decimal       @db.Decimal(12, 2)
+  taxRate       Decimal       @db.Decimal(5, 4)
+  destProductId String?
+
+  @@index([transferId])
+}
+
+/**
+ * Recarga o pago de servicio cobrado en la tienda y procesado en la terminal del proveedor.
+ * El monto se le debe al proveedor (no es venta); la comisión es ingreso del negocio.
+ */
+model ServiceSale {
+  id            String        @id @default(cuid())
+  // RECHARGE (recarga celular), BILL (luz, agua, internet) u OTHER
+  kind          String
+  provider      String
+  reference     String?
+  amount        Decimal       @db.Decimal(12, 2)
+  commission    Decimal       @default(0) @db.Decimal(12, 2)
+  paymentMethod PaymentMethod
+  status        DocStatus     @default(ACTIVE)
+  cancelledAt   DateTime?
+  cashSessionId String?
+  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  userId        String?
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([cashSessionId])
+}
+
+enum GiftCardStatus {
+  ACTIVE
+  VOID
+}
+
+/**
+ * Vale o tarjeta de regalo. Al emitirlo el dinero recibido es un pasivo (no venta);
+ * la venta se reconoce cuando se paga con el vale.
+ */
+model GiftCard {
+  id            String         @id @default(cuid())
+  code          String
+  initialAmount Decimal        @db.Decimal(12, 2)
+  balance       Decimal        @db.Decimal(12, 2)
+  status        GiftCardStatus @default(ACTIVE)
+  customerName  String?
+  expiresAt     DateTime?
+  issuedById    String?
+  businessId    String
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  sales        Sale[]
+  transactions GiftCardTransaction[]
+
+  @@unique([businessId, code])
+  @@index([businessId, createdAt])
+}
+
+model GiftCardTransaction {
+  id            String         @id @default(cuid())
+  // ISSUE (emisión), REDEEM (pago), REFUND (devolución/cancelación) o VOID (anulación)
+  type          String
+  // Con signo: positivo aumenta el saldo del vale
+  amount        Decimal        @db.Decimal(12, 2)
+  // Forma en que se pagó la emisión
+  paymentMethod PaymentMethod?
+  saleId        String?
+  cashSessionId String?
+  giftCardId    String
+  giftCard      GiftCard       @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  userId        String?
+  businessId    String
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+
+  @@index([giftCardId, createdAt])
+  @@index([cashSessionId])
+}
+
+enum OpenOrderStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+/**
+ * Cuenta abierta (mesa, para llevar): se agregan productos y se cobra al final.
+ */
+model OpenOrder {
+  id         String          @id @default(cuid())
+  number     Int
+  label      String
+  status     OpenOrderStatus @default(OPEN)
+  notes      String?
+  userId     String?
+  saleId     String?         @unique
+  sale       Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  businessId String
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  items OpenOrderItem[]
+
+  @@unique([businessId, number])
+  @@index([businessId, status])
+}
+
+model OpenOrderItem {
+  id            String    @id @default(cuid())
+  quantity      Decimal   @db.Decimal(12, 3)
+  // Extras elegidos: [{ id, name, price }]
+  modifiers     Json?
+  notes         String?
+  // Copia de product.sendToKitchen al agregarse
+  sendToKitchen Boolean   @default(false)
+  // PENDING, PREPARING, READY o SERVED
+  kitchenStatus String    @default("PENDING")
+  orderId       String
+  order         OpenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([orderId])
 }
 
 model RateLimit {

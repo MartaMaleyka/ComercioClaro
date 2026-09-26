@@ -12,6 +12,10 @@ import type { listQuerySchema, saleReturnSchema, saleSchema } from "@/lib/valida
 import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
+import { productModifiers } from "./catalog";
+import { closeOrderWithSale } from "./online-orders";
+import { closeOpenOrderWithSale } from "./open-orders";
+import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
 
@@ -23,9 +27,15 @@ export function toPromotionRule(p: Promotion): PromotionRule {
   };
 }
 
-export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference" | "yappyChargeId"> & {
+export type SaleInput = Omit<
+  z.infer<typeof saleSchema>,
+  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "openOrderId" | "giftCardCode"
+> & {
   paymentReference?: string | null;
+  giftCardCode?: string | null;
+  openOrderId?: string | null;
   yappyChargeId?: string | null;
+  onlineOrderId?: string | null;
 };
 export type SaleReturnInput = z.infer<typeof saleReturnSchema>;
 type ListQuery = z.infer<typeof listQuerySchema>;
@@ -87,9 +97,16 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         if (product.unit === "PIECE" && !quantity.isInteger()) {
           throw new AppError(400, `${product.name} se vende por pieza; usa cantidades enteras`);
         }
-        const computed = resolveUnitPrice(product, quantity);
+        // Extras elegidos (p. ej. "Queso +0.50"): se validan contra los del producto y suman al precio.
+        const available = productModifiers(product);
+        const modifiers = [...new Set(item.modifierIds ?? [])].map((modifierId) => {
+          const modifier = available.find((m) => m.id === modifierId);
+          if (!modifier) throw new AppError(400, `Un extra de ${product.name} ya no existe; vuelve a agregarlo`);
+          return modifier;
+        });
+        const computed = resolveUnitPrice(product, quantity).plus(sum(modifiers.map((m) => m.price)));
         // Solo el dueño puede cambiar el precio de lista al vender.
-        const unitPrice = item.unitPrice != null && actor.role === "OWNER" ? money(item.unitPrice) : computed;
+        const unitPrice = item.unitPrice != null && actor.role === "OWNER" ? money(item.unitPrice) : money(computed);
         const gross = money(quantity.times(unitPrice));
         // Promoción vigente con mayor descuento (2x1, 3 por B/.1, % por producto o categoría).
         const promo = bestPromotion(promotions, {
@@ -102,6 +119,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         const discount = money(Math.min((item.discount ?? 0) + promotionDiscount.toNumber(), gross.toNumber()));
         return {
           product,
+          modifiers,
           quantity,
           unitPrice,
           discount,
@@ -129,7 +147,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       if (input.redeemPoints && input.redeemPoints > 0) {
         if (!business.loyaltyEnabled) throw new AppError(400, "El programa de puntos no está activo");
         if (!customer) throw new AppError(400, "Selecciona el cliente para canjear puntos");
-        if (customer.points < input.redeemPoints) throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
+        if (customer.points < input.redeemPoints)
+          throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
         const value = D(business.loyaltyPointValue);
         const maxPoints = value.gt(0) ? total.div(value).floor().toNumber() : 0;
         pointsRedeemed = Math.min(input.redeemPoints, maxPoints);
@@ -179,6 +198,12 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       });
 
       const saleId = crypto.randomUUID();
+      // Pago con vale: se descuenta el saldo (debe cubrir toda la venta).
+      let giftCard = null;
+      if (input.paymentMethod === "GIFT_CARD") {
+        if (!input.giftCardCode) throw new AppError(400, "Escribe o escanea el código del vale");
+        giftCard = await redeemGiftCard(tx, actor, input.giftCardCode, total, saleId);
+      }
       // Orden estable por producto para evitar bloqueos cruzados entre ventas simultáneas.
       const ordered = [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id));
       const itemCosts = new Map<(typeof lines)[number], Decimal>();
@@ -210,11 +235,14 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           change,
           pointsRedeemed,
           pointsDiscount,
+          giftCardId: giftCard?.id ?? null,
           paymentReference: yappyCharge
             ? (yappyCharge.providerTxId ?? yappyCharge.orderId)
-            : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
-              ? null
-              : (input.paymentReference ?? null),
+            : giftCard
+              ? maskCode(giftCard.code)
+              : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
+                ? null
+                : (input.paymentReference ?? null),
           dueDate,
           notes: input.notes,
           customerId: customer?.id ?? null,
@@ -230,6 +258,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
               discount: l.discount,
               promotionDiscount: l.promotionDiscount,
               promotionId: l.promotionId,
+              ...(l.modifiers.length > 0 ? { modifiers: l.modifiers as unknown as Prisma.InputJsonValue } : {}),
               subtotal: l.subtotal,
               unitCost: itemCosts.get(l)!,
               taxRate: l.product.taxRate,
@@ -243,6 +272,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       if (yappyCharge) {
         await tx.yappyCharge.update({ where: { id: yappyCharge.id }, data: { saleId: sale.id } });
       }
+      if (input.onlineOrderId) await closeOrderWithSale(tx, actor.businessId, input.onlineOrderId, sale.id);
+      if (input.openOrderId) await closeOpenOrderWithSale(tx, actor.businessId, input.openOrderId, sale.id);
 
       // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
       if (customer && business.loyaltyEnabled) {
@@ -276,11 +307,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
     });
   } catch (err) {
     // Otra petición con el mismo clientRequestId ganó la carrera: devolver esa venta.
-    if (
-      input.clientRequestId &&
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === "P2002"
-    ) {
+    if (input.clientRequestId && err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       const existing = await prisma.sale.findUnique({
         where: { businessId_clientRequestId: { businessId: actor.businessId, clientRequestId: input.clientRequestId } },
         include: saleInclude,
@@ -397,6 +424,18 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
       });
     }
 
+    // Pagada con vale: lo no devuelto regresa al saldo del vale.
+    if (sale.paymentMethod === "GIFT_CARD" && sale.giftCardId) {
+      const refunded = sum(sale.returns.filter((r) => r.refundMethod === "GIFT_CARD").map((r) => r.total));
+      await refundGiftCard(tx, actor, sale.giftCardId, D(sale.total).minus(refunded), sale.id);
+    }
+
+    // Si cerraba una cuenta abierta, la cuenta se reabre para corregirla y cobrarla de nuevo.
+    await tx.openOrder.updateMany({ where: { saleId: sale.id }, data: { status: "OPEN", saleId: null } });
+
+    // Si cobraba un pedido en línea, el pedido vuelve a quedar listo para cobrarse de nuevo.
+    await tx.onlineOrder.updateMany({ where: { saleId: sale.id }, data: { status: "READY", saleId: null } });
+
     await audit(tx, actor, "sale.cancel", "Sale", sale.id, { folio: sale.folio, reason });
     return tx.sale.findUniqueOrThrow({ where: { id }, include: saleInclude });
   });
@@ -420,6 +459,9 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
     }
     if (sale.paymentMethod === "CREDIT" && input.refundMethod !== "CREDIT") {
       throw new AppError(400, "Las ventas fiadas se devuelven descontando del saldo del cliente");
+    }
+    if ((input.refundMethod === "GIFT_CARD") !== (sale.paymentMethod === "GIFT_CARD")) {
+      throw new AppError(400, "Las ventas pagadas con vale se devuelven al mismo vale");
     }
 
     const factor = D(sale.subtotal).gt(0) ? D(sale.total).div(sale.subtotal) : D(0);
@@ -492,10 +534,20 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
     if (input.refundMethod === "CREDIT" && sale.customerId) {
       await tx.customer.update({ where: { id: sale.customerId }, data: { balance: { decrement: total } } });
     }
+    if (input.refundMethod === "GIFT_CARD" && sale.giftCardId) {
+      await refundGiftCard(tx, actor, sale.giftCardId, total, sale.id);
+    }
 
     await audit(tx, actor, "sale.return", "Sale", sale.id, { folio: sale.folio, total: total.toNumber() });
     return saleReturn;
   });
+}
+
+/** " (+Queso, +Tocino)" para mostrar los extras de un renglón. */
+export function modifierSuffix(modifiers: unknown) {
+  return Array.isArray(modifiers) && modifiers.length > 0
+    ? ` (${modifiers.map((m: { name: string }) => `+${m.name}`).join(", ")})`
+    : "";
 }
 
 /** Texto del ticket para compartir por WhatsApp. */
@@ -514,7 +566,8 @@ export function receiptText(
     country?: string;
   }
 ) {
-  const fmt = (n: Decimal | number) => formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
+  const fmt = (n: Decimal | number) =>
+    formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
   const date = new Intl.DateTimeFormat(business.locale, {
     dateStyle: "short",
     timeStyle: "short",
@@ -527,7 +580,9 @@ export function receiptText(
     business.phone ? `Tel. ${business.phone}` : null,
     `Ticket #${sale.folio} · ${date}`,
     "",
-    ...sale.items.map((i) => `${i.quantity.toString()} x ${i.product.name}  ${fmt(i.subtotal)}`),
+    ...sale.items.map(
+      (i) => `${i.quantity.toString()} x ${i.product.name}${modifierSuffix(i.modifiers)}  ${fmt(i.subtotal)}`
+    ),
     "",
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
     D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,

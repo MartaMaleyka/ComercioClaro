@@ -63,6 +63,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   TRANSFER: "Transferencia",
   CREDIT: "Fiado",
   YAPPY: "Yappy",
+  GIFT_CARD: "Vale",
 };
 
 export const ADJUSTMENT_REASON_LABELS: Record<string, string> = {
@@ -82,6 +83,8 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   PURCHASE: "Compra",
   PURCHASE_CANCEL: "Compra cancelada",
   ADJUSTMENT: "Ajuste",
+  TRANSFER_OUT: "Traspaso enviado",
+  TRANSFER_IN: "Traspaso recibido",
 };
 
 /** Unidades que admiten cantidades fraccionarias (venta a granel). */

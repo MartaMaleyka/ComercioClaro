@@ -26,6 +26,7 @@ interface Summary {
   refunds?: number;
   cashExpenses?: number;
   cashPurchases?: number;
+  serviceCash?: number;
   expected?: number;
   movements: { id: string; type: "IN" | "OUT"; amount: number; reason: string; createdAt: string }[];
 }
@@ -159,9 +160,14 @@ export default function CashPage() {
             })}
           </p>
           {isOwner && current.expected !== undefined && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
               <Stat label={t("cash.expected")} value={fmt.money(current.expected)} tone="positive" />
               <Stat label={t("cash.cashSales")} value={fmt.money(current.cashSales)} />
+              <Stat
+                label={tr("Recargas y servicios")}
+                value={fmt.money(current.serviceCash)}
+                hint={tr("Dinero de los proveedores")}
+              />
               <Stat label={t("cash.customerPayments")} value={fmt.money(current.customerPayments)} />
               <Stat
                 label={t("cash.outflows")}
@@ -342,11 +348,12 @@ export default function CashPage() {
               ["Devoluciones", -(detailData.data.refunds ?? 0)],
               ["Gastos de caja", -(detailData.data.cashExpenses ?? 0)],
               ["Compras de caja", -(detailData.data.cashPurchases ?? 0)],
+              ["Recargas y servicios", detailData.data.serviceCash ?? 0],
               ["Esperado", detailData.data.session.expectedAmount],
               ["Contado", detailData.data.session.countedAmount],
             ].map(([label, value]) => (
               <div key={label as string} className="flex justify-between">
-                <dt className="text-slate-600">{label}</dt>
+                <dt className="text-slate-600">{tr(label as string)}</dt>
                 <dd className="tabular-nums">{fmt.money(value as number)}</dd>
               </div>
             ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useText } from "@/lib/client/i18n";
+import { modifierText } from "@/lib/client/receipt";
 import { use, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -75,7 +76,10 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   function openReturn() {
     setReturnQty({});
     setReturnReason("");
-    setRefundMethod(sale!.paymentMethod === "CREDIT" ? "CREDIT" : "CASH");
+    // Fiado y vale se devuelven a la misma cuenta; lo demás, a elección.
+    setRefundMethod(
+      sale!.paymentMethod === "CREDIT" || sale!.paymentMethod === "GIFT_CARD" ? sale!.paymentMethod : "CASH"
+    );
     setReturnOpen(true);
   }
 
@@ -250,7 +254,10 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           {sale.items.map((item) => (
             <div key={item.id} className="py-3 flex justify-between gap-3 text-sm">
               <div>
-                <p className="font-medium text-slate-900">{item.product.name}</p>
+                <p className="font-medium text-slate-900">
+                  {item.product.name}
+                  {modifierText(item.modifiers)}
+                </p>
                 <p className="text-xs text-slate-500">
                   {fmt.qty(item.quantity, item.product.unit)} × {fmt.money(item.unitPrice)}
                   {item.discount > 0 && ` · desc. ${fmt.money(item.discount)}`}
@@ -300,7 +307,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             {sale.returns.map((r) => (
               <div key={r.id} className="flex justify-between text-sm">
                 <span className="text-slate-600">
-                  {fmt.dateTime(r.createdAt)} · {PAYMENT_METHOD_LABELS[r.refundMethod]}
+                  {fmt.dateTime(r.createdAt)} · {tr(PAYMENT_METHOD_LABELS[r.refundMethod])}
                   {r.reason && ` · ${r.reason}`}
                 </span>
                 <span className="font-medium text-red-600">-{fmt.money(r.total)}</span>
@@ -339,10 +346,12 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             label={tr("Reembolso")}
             value={refundMethod}
             onChange={(e) => setRefundMethod(e.target.value as PaymentMethod)}
-            disabled={sale.paymentMethod === "CREDIT"}
+            disabled={sale.paymentMethod === "CREDIT" || sale.paymentMethod === "GIFT_CARD"}
           >
             {sale.paymentMethod === "CREDIT" ? (
               <option value="CREDIT">{tr("Descontar del saldo del cliente")}</option>
+            ) : sale.paymentMethod === "GIFT_CARD" ? (
+              <option value="GIFT_CARD">{tr("Regresar al saldo del vale")}</option>
             ) : (
               <>
                 <option value="CASH">{tr("Efectivo (sale de caja)")}</option>

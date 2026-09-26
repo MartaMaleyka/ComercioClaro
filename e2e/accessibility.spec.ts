@@ -15,7 +15,8 @@ async function login(page: Page, email: string) {
 
 async function expectAccessible(page: Page, url: string) {
   await page.goto(url);
-  await page.waitForLoadState("networkidle");
+  // Algunas pantallas consultan al servidor cada pocos segundos; no esperar indefinidamente a la red inactiva.
+  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const summary = violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
   expect(summary, `${url} tiene problemas de accesibilidad`).toEqual([]);
@@ -24,6 +25,8 @@ async function expectAccessible(page: Page, url: string) {
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`accesibilidad (${scheme === "light" ? "claro" : "oscuro"})`, () => {
     test.use({ colorScheme: scheme });
+    // Revisa muchas pantallas en una sola prueba.
+    test.setTimeout(120_000);
 
     test("páginas públicas", async ({ page }) => {
       for (const url of ["/", "/login", "/registro", "/recuperar-contrasena", "/c/minisuper-el-dorado"]) {
@@ -47,6 +50,9 @@ for (const scheme of ["light", "dark"] as const) {
         "/reportes",
         "/facturas",
         "/configuracion",
+        "/pedidos",
+        "/vales",
+        "/pantalla-cliente",
       ]) {
         await expectAccessible(page, url);
       }
