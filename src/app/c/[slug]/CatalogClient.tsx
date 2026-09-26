@@ -70,8 +70,8 @@ export function CatalogClient({ business, products }: { business: CatalogBusines
           </div>
           <div>
             <h1 className="text-xl font-bold">{business.name}</h1>
-            {business.description && <p className="text-sm opacity-90">{business.description}</p>}
-            {business.address && <p className="text-xs opacity-80">{business.address}</p>}
+            {business.description && <p className="text-sm">{business.description}</p>}
+            {business.address && <p className="text-xs">{business.address}</p>}
           </div>
         </div>
       </header>

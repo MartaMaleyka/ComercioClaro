@@ -27,7 +27,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const push = useCallback((kind: ToastKind, message: string) => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t.slice(-3), { id, kind, message }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === "error" ? 6000 : 3500);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === "error" ? 10000 : 5000);
   }, []);
 
   const api: ToastApi = {

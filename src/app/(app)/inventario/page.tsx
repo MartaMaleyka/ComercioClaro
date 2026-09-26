@@ -266,7 +266,7 @@ function IconButton({ label, onClick, icon: Icon }: { label: string; onClick: ()
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+      className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
     >
       <Icon className="w-4 h-4" />
     </button>

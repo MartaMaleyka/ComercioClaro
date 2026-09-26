@@ -177,7 +177,7 @@ export function CountTab() {
                       }).catch(toast.error);
                       mutate();
                     }}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

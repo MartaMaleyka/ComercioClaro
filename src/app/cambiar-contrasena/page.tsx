@@ -40,7 +40,7 @@ export default function ForcedPasswordChangePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-surface-secondary">
+    <main className="min-h-screen flex items-center justify-center px-4 bg-surface-secondary">
       <form onSubmit={submit} className="w-full max-w-md bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
         <div className="text-center">
           <KeyRound className="w-8 h-8 text-brand-600 mx-auto mb-2" aria-hidden="true" />
@@ -59,6 +59,6 @@ export default function ForcedPasswordChangePage() {
           Guardar y continuar
         </Button>
       </form>
-    </div>
+    </main>
   );
 }

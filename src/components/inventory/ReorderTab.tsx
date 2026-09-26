@@ -83,7 +83,7 @@ export function ReorderTab() {
       {Object.entries(bySupplier).map(([supplier, items]) => (
         <div key={supplier} className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-500">{supplier}</h3>
+            <h2 className="text-sm font-semibold text-slate-500">{supplier}</h2>
             <a
               href={whatsappLink(
                 [

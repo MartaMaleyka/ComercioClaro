@@ -130,7 +130,7 @@ export default function SuppliersPage() {
                     <a
                       href={`tel:${s.phone}`}
                       aria-label={`Llamar a ${s.name}`}
-                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                      className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                     >
                       <Phone className="w-4 h-4" />
                     </a>
@@ -138,14 +138,14 @@ export default function SuppliersPage() {
                   <button
                     aria-label={tr("Editar")}
                     onClick={() => openForm(s)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     aria-label={tr("Eliminar")}
                     onClick={() => archive(s)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

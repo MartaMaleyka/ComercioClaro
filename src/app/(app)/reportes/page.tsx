@@ -86,6 +86,8 @@ const tooltipStyle = {
     fontSize: 12,
   },
   labelStyle: { color: "var(--color-text-secondary)" },
+  // El color de la serie queda en la marca; el texto usa el color normal para cumplir el contraste.
+  itemStyle: { color: "var(--color-text)" },
 };
 
 export default function ReportsPage() {
@@ -299,11 +301,14 @@ export default function ReportsPage() {
                         labelFormatter={(d) => dayLabel(String(d))}
                         formatter={(v) => fmt.money(Number(v))}
                       />
-                      <Legend wrapperStyle={{ fontSize: 12, color: "var(--chart-text)" }} />
+                      <Legend
+                        wrapperStyle={{ fontSize: 12 }}
+                        formatter={(value) => <span style={{ color: "var(--chart-text)" }}>{value}</span>}
+                      />
                       <Line
                         type="monotone"
                         dataKey="sales"
-                        name="Ventas"
+                        name={tr("Ventas")}
                         stroke="var(--series-1)"
                         strokeWidth={2}
                         dot={false}
@@ -312,7 +317,7 @@ export default function ReportsPage() {
                       <Line
                         type="monotone"
                         dataKey="netProfit"
-                        name="Ganancia neta"
+                        name={tr("Ganancia neta")}
                         stroke="var(--series-2)"
                         strokeWidth={2}
                         dot={false}
@@ -408,7 +413,7 @@ export default function ReportsPage() {
                         />
                         <Bar
                           dataKey="profit"
-                          name="Utilidad bruta"
+                          name={tr("Utilidad bruta")}
                           fill="var(--series-1)"
                           radius={[0, 4, 4, 0]}
                           barSize={16}

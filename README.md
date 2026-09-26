@@ -103,6 +103,17 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 - [ZXing](https://github.com/zxing-js/browser) como respaldo de `BarcodeDetector`
 - Vitest, Playwright y GitHub Actions
 
+## Accesibilidad
+
+Objetivo: WCAG 2.2 nivel AA. `e2e/accessibility.spec.ts` revisa con axe-core todas las pantallas en modo claro y oscuro y falla ante cualquier violación.
+
+- Contraste de al menos 4.5:1 en textos y botones (el verde de marca se oscureció a `#15803d`; en oscuro los colores de estado se aclaran).
+- Foco visible en todos los controles; los diálogos atrapan el foco, cierran con Escape y lo devuelven al botón que los abrió.
+- Pestañas con flechas, Inicio y Fin; enlace "Ir al contenido"; landmarks y encabezados en orden.
+- Campos con etiqueta, ayuda y error enlazados (`aria-describedby`, `aria-invalid`) y marca de obligatorio.
+- El total del carrito se anuncia al lector de pantalla; el idioma de la página (`lang`) sigue al del usuario.
+- Respeta "reducir movimiento" del sistema y permite zoom.
+
 ## Seguridad
 
 - Sesiones JWT en cookie `httpOnly` y validadas en la base de datos en cada petición: cambiar la contraseña, "cerrar todas las sesiones" o quitar a un usuario invalida sus sesiones.

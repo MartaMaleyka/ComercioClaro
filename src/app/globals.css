@@ -10,10 +10,13 @@
   --color-brand-300: #86efac;
   --color-brand-400: #4ade80;
   --color-brand-500: #22c55e;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-800: #166534;
-  --color-brand-900: #14532d;
+  /* 600 es el color de acción: texto blanco sobre él y él sobre blanco cumplen 4.5:1 (WCAG AA). */
+  --color-brand-600: #15803d;
+  --color-brand-700: #166534;
+  --color-brand-800: #14532d;
+  --color-brand-900: #0f3d22;
+  /* Ámbar de aviso como texto sobre blanco (el de Tailwind da 3.2:1). */
+  --color-amber-600: #b45309;
 
   --color-surface: #ffffff;
   --color-surface-secondary: #f8fafc;
@@ -124,6 +127,40 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .animate-in {
     animation: none;
+  }
+}
+
+/*
+ * En oscuro los colores de estado usados como TEXTO se aclaran para leerse sobre el fondo
+ * azul marino; como fondo (botones) se mantienen oscuros para que el texto blanco contraste.
+ */
+.dark .text-brand-600 {
+  color: #4ade80;
+}
+.dark .text-red-600 {
+  color: #f87171;
+}
+.dark .text-amber-600 {
+  color: #fbbf24;
+}
+
+/* Foco visible y consistente para teclado en todos los controles (WCAG 2.4.7 / 2.4.11). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+.dark :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: #4ade80;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
