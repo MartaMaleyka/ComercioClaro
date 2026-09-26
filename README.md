@@ -21,6 +21,18 @@ Plataforma web para pequeños negocios (kioscos, misceláneas, tiendas de abarro
 - **Alertas por correo** de bajo inventario y caducidad (cron diario).
 - Modo oscuro, moneda, formato por país y zona horaria configurables.
 
+### Panamá
+
+Plan y alcance en [`docs/plan-panama.md`](docs/plan-panama.md).
+
+- **País del negocio** (Panamá, México u otro) al registrarse: ITBMS 7/10/15% y exento, montos en **B/.**, zona horaria `America/Panama`, RUC y DV en el ticket con el ITBMS incluido desglosado.
+- **Yappy** como forma de pago: QR o directorio del comercio en el punto de venta, número de operación para conciliar, filtro en el historial y separación en el corte de caja.
+- **Comisiones por medio de pago** (Yappy 1.07%, tarjeta y transferencia configurables) y ganancia después de comisiones en los reportes.
+- **Fiado con plazo**: días de crédito por cliente (15 por defecto), vencimientos, saldo vencido con días de atraso (los abonos se aplican FIFO) y recordatorio por WhatsApp.
+- **Factura electrónica DGI**: monitor de los límites del facturador gratuito (B/.36,000 al año y 100 documentos al mes, Resolución 201-6299) con aviso al 80% y registro del **CUFE** de las facturas emitidas en la DGI o un PAC.
+- **Compra por caja, venta suelta** (unidades por empaque) y **pedido al distribuidor por WhatsApp** desde "Qué comprar".
+- **Interfaz en chino simplificado e inglés** (piloto: menú, punto de venta y caja), elegible por usuario.
+
 ## Requisitos
 
 - Node.js 20.19+ (recomendado 22)
@@ -45,6 +57,8 @@ Abre [http://localhost:3000](http://localhost:3000).
 | ------ | -------------------------- | ---------- |
 | Dueño  | `demo@comercioclaro.com`   | `demo1234` |
 | Cajero | `cajero@comercioclaro.com` | `demo1234` |
+| Dueño (Panamá)  | `demo.pa@comercioclaro.com`   | `demo1234` |
+| Cajero (Panamá, interfaz en chino) | `cajero.pa@comercioclaro.com` | `demo1234` |
 
 ## Scripts
 

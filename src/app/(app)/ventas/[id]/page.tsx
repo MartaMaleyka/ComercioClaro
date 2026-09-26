@@ -7,6 +7,7 @@ import { ArrowLeft, FileText, Printer, Share2, Undo2, XCircle } from "lucide-rea
 import { api, fetcher } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
 import { whatsappLink } from "@/lib/client/receipt";
+import { countryConfig } from "@/lib/country";
 import type { Customer, PaymentMethod, Sale } from "@/lib/client/types";
 import { PAYMENT_METHOD_LABELS, UNIT_LABELS, isFractionalUnit } from "@/lib/utils";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -30,6 +31,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const { id } = use(params);
   const { business, role } = useSession();
   const isOwner = role === "OWNER";
+  const country = countryConfig(business.country);
   const fmt = useFormat();
   const toast = useToast();
   const confirm = useConfirm();
@@ -93,6 +95,23 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function registerCufe() {
+    const cufe = await confirm({
+      title: `Registrar factura de la venta #${sale!.folio}`,
+      message: "Pega el CUFE que te dio el facturador de la DGI o tu PAC al emitir la factura.",
+      inputLabel: "CUFE",
+      confirmLabel: "Registrar",
+    });
+    if (typeof cufe !== "string") return;
+    try {
+      await api("/api/invoices/external", { body: { saleId: id, cufe } });
+      toast.success("Factura registrada");
+      mutate();
+    } catch (err) {
+      toast.error(err);
+    }
+  }
+
   async function submitInvoice() {
     setBusy(true);
     try {
@@ -107,11 +126,15 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  const profit = sale.costTotal !== undefined ? sale.total - sale.costTotal - sale.returns.reduce((a, r) => a + r.total, 0) : null;
+  const profit =
+    sale.costTotal !== undefined ? sale.total - sale.costTotal - sale.returns.reduce((a, r) => a + r.total, 0) : null;
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <Link href="/ventas/historial" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+      <Link
+        href="/ventas/historial"
+        className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+      >
         <ArrowLeft className="w-4 h-4" /> Ventas
       </Link>
 
@@ -120,11 +143,17 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           <h1 className="text-xl font-bold text-slate-900">Venta #{sale.folio}</h1>
           <p className="text-sm text-slate-500">
             {fmt.dateTime(sale.createdAt)} · {PAYMENT_METHOD_LABELS[sale.paymentMethod]}
+            {sale.paymentReference && ` (ref. ${sale.paymentReference})`}
             {sale.customer && ` · ${sale.customer.name}`}
           </p>
+          {sale.dueDate && sale.status === "ACTIVE" && (
+            <p className="text-sm text-slate-500">Vence: {fmt.date(sale.dueDate)}</p>
+          )}
           <div className="flex gap-1 mt-1">
             {!active && <Badge tone="red">Cancelada</Badge>}
-            {sale.invoice?.status === "STAMPED" && <Badge tone="blue">Facturada</Badge>}
+            {sale.invoice?.status === "STAMPED" && (
+              <Badge tone="blue">Facturada{sale.invoice.uuid ? ` · ${sale.invoice.uuid.slice(0, 12)}…` : ""}</Badge>
+            )}
           </div>
         </div>
         <p className={`text-2xl font-bold tabular-nums ${active ? "text-slate-900" : "line-through text-slate-400"}`}>
@@ -151,9 +180,14 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             <Button variant="secondary" size="sm" onClick={openReturn}>
               <Undo2 className="w-4 h-4" /> Devolución
             </Button>
-            {!sale.invoice && (
+            {!sale.invoice && country.invoicing === "cfdi" && (
               <Button variant="secondary" size="sm" onClick={() => setInvoiceOpen(true)}>
                 <FileText className="w-4 h-4" /> Facturar
+              </Button>
+            )}
+            {!sale.invoice && country.invoicing === "dgi" && (
+              <Button variant="secondary" size="sm" onClick={registerCufe}>
+                <FileText className="w-4 h-4" /> Registrar CUFE
               </Button>
             )}
             <Button variant="danger" size="sm" onClick={cancel}>
@@ -164,7 +198,9 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {!active && sale.cancelReason && (
-        <p className="text-sm rounded-xl bg-red-50 text-red-700 px-4 py-2">Motivo de cancelación: {sale.cancelReason}</p>
+        <p className="text-sm rounded-xl bg-red-50 text-red-700 px-4 py-2">
+          Motivo de cancelación: {sale.cancelReason}
+        </p>
       )}
 
       <Card>
@@ -267,10 +303,16 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
                 <option value="CASH">Efectivo (sale de caja)</option>
                 <option value="CARD">Tarjeta</option>
                 <option value="TRANSFER">Transferencia</option>
+                {business.country === "PA" && <option value="YAPPY">Yappy</option>}
               </>
             )}
           </Select>
-          <Input label="Motivo" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} placeholder="Opcional" />
+          <Input
+            label="Motivo"
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+            placeholder="Opcional"
+          />
           <Button className="w-full" onClick={submitReturn} loading={busy}>
             Registrar devolución
           </Button>

@@ -37,8 +37,27 @@ export const password = z
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(128, "La contraseña es demasiado larga");
 
-export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT"], { error: "Forma de pago inválida" });
-export const immediatePaymentMethod = z.enum(["CASH", "CARD", "TRANSFER"], { error: "Forma de pago inválida" });
+export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY"], { error: "Forma de pago inválida" });
+export const immediatePaymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "YAPPY"], { error: "Forma de pago inválida" });
+export const country = z.enum(["MX", "PA", "OTHER"], { error: "País inválido" });
+const feeRate = number.min(0).max(0.2, "La comisión debe estar entre 0% y 20%");
+
+/** RUC panameño (persona natural, jurídica, extranjero...) y dígito verificador. */
+const ruc = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^([0-9A-Z]{1,12}-){0,4}[0-9A-Z]{1,12}$/, "RUC inválido")
+  .max(30)
+  .nullish()
+  .or(z.literal(""))
+  .transform((v) => v || null);
+const dv = z
+  .string()
+  .trim()
+  .regex(/^(\d{1,2})?$/, "DV inválido")
+  .nullish()
+  .transform((v) => v || null);
 export const productUnit = z.enum(["PIECE", "KG", "G", "L", "ML", "M"], { error: "Unidad inválida" });
 export const adjustmentReason = z.enum(["COUNT", "WASTE", "EXPIRED", "THEFT", "DAMAGED", "OTHER"], {
   error: "Motivo inválido",
@@ -51,6 +70,7 @@ export const registerSchema = z.object({
   password,
   name: text(100, "Tu nombre es obligatorio"),
   businessName: text(120, "El nombre del negocio es obligatorio"),
+  country: country.default("MX"),
 });
 
 export const loginSchema = z.object({
@@ -111,7 +131,25 @@ export const businessSchema = z.object({
     .nullish()
     .transform((v) => v || null),
   userName: text(100).optional(),
+  country: country.optional(),
+  showBalboa: z.boolean().optional(),
+  ruc,
+  dv,
+  usesFreeInvoicer: z.boolean().optional(),
+  yappyDirectory: optText(60),
+  yappyQr: z
+    .string()
+    .max(400_000, "La imagen del QR es demasiado grande (máximo 300 KB)")
+    .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/, "Imagen de QR inválida")
+    .nullish()
+    .or(z.literal(""))
+    .transform((v) => v || null),
+  cardFeeRate: feeRate.optional(),
+  transferFeeRate: feeRate.optional(),
+  yappyFeeRate: feeRate.optional(),
 });
+
+export const languageSchema = z.object({ language: z.enum(["es", "zh", "en"]) });
 
 export const branchSchema = z.object({
   name: text(120, "El nombre de la sucursal es obligatorio"),
@@ -148,7 +186,9 @@ const productBase = {
   cost: moneyInput.default(0),
   minStock: nonNegativeQty.default(5),
   trackExpiry: z.boolean().default(false),
-  taxRate: rate.default(0.16),
+  packSize: z.coerce.number().int().min(2, "Mínimo 2 unidades por caja").max(10000).nullish(),
+  // Sin valor se usa la tasa por defecto del país del negocio.
+  taxRate: rate.optional(),
   iepsRate: rate.default(0),
   satProductKey: z
     .string()
@@ -200,6 +240,7 @@ export const saleSchema = z.object({
   discount: moneyInput.default(0),
   paymentMethod: paymentMethod.default("CASH"),
   amountReceived: moneyInput.nullish(),
+  paymentReference: optText(60),
   customerId: id.nullish(),
   notes: optText(),
   createdAt: z.coerce.date().nullish(),
@@ -266,6 +307,9 @@ export const customerSchema = z.object({
     .transform((v) => v || null),
   notes: optText(),
   creditLimit: moneyInput.default(0),
+  creditDays: z.coerce.number().int().min(0).max(365).default(15),
+  ruc,
+  dv,
   rfc: z
     .string()
     .trim()
@@ -326,6 +370,17 @@ export const invoiceSaleSchema = z.object({
     .optional(),
 });
 
+export const externalInvoiceSchema = z.object({
+  saleId: id,
+  cufe: z
+    .string()
+    .trim()
+    .min(10, "El CUFE es demasiado corto")
+    .max(120, "El CUFE es demasiado largo")
+    .regex(/^[A-Za-z0-9-]+$/, "El CUFE solo lleva letras, números y guiones"),
+  customerId: id.nullish(),
+});
+
 export const globalInvoiceSchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
@@ -347,6 +402,7 @@ export const listQuerySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   status: z.enum(["ACTIVE", "CANCELLED"]).optional(),
+  paymentMethod: paymentMethod.optional(),
 });
 
 export const reportQuerySchema = z.object({

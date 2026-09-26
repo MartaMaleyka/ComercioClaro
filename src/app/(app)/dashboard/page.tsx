@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 import { useSession } from "@/components/providers/SessionProvider";
+import { DgiLimitCard } from "@/components/panama/DgiLimitCard";
 
 interface Summary {
   revenue: number;
@@ -30,8 +31,13 @@ interface DashboardData {
   lowStockCount: number;
   totalProducts: number;
   totalInventoryValue: number;
-  expiringBatches: { id: string; remaining: number; expiresAt: string; product: { id: string; name: string; unit: string } }[];
-  receivables: { total: number; customers: number };
+  expiringBatches: {
+    id: string;
+    remaining: number;
+    expiresAt: string;
+    product: { id: string; name: string; unit: string };
+  }[];
+  receivables: { total: number; customers: number; overdue: number; overdueCustomers: number };
   cashSession: { id: string; openedAt: string } | null;
   recentSales: {
     id: string;
@@ -45,7 +51,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
-  const { user } = useSession();
+  const { user, business } = useSession();
   const fmt = useFormat();
   const { data, error, mutate } = useSWR<DashboardData>("/api/dashboard", fetcher, { refreshInterval: 60_000 });
 
@@ -68,13 +74,19 @@ export default function DashboardPage() {
         }
       />
 
+      {business.country === "PA" && business.usesFreeInvoicer && <DgiLimitCard compact />}
+
       <section aria-labelledby="hoy">
         <h2 id="hoy" className="text-sm font-semibold text-slate-500 mb-2">
           Hoy
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Stat label="Ventas" value={fmt.money(data.today.revenue)} hint={`${data.today.salesCount} ventas`} />
-          <Stat label="Utilidad bruta" value={fmt.money(data.today.grossProfit)} tone={data.today.grossProfit >= 0 ? "positive" : "negative"} />
+          <Stat
+            label="Utilidad bruta"
+            value={fmt.money(data.today.grossProfit)}
+            tone={data.today.grossProfit >= 0 ? "positive" : "negative"}
+          />
           <Stat label="Ticket promedio" value={fmt.money(data.today.averageTicket)} />
           <Stat
             label="Caja"
@@ -95,8 +107,21 @@ export default function DashboardPage() {
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <Stat label="Ventas" value={fmt.money(data.month.revenue)} hint={`${data.month.salesCount} ventas`} />
-          <Stat label="Utilidad bruta" value={fmt.money(data.month.grossProfit)} hint={`Margen ${data.month.grossMargin}%`} tone="positive" />
-          <Stat label="Gastos" value={fmt.money(data.month.expenses)} hint={<Link href="/gastos" className="underline">Registrar gasto</Link>} />
+          <Stat
+            label="Utilidad bruta"
+            value={fmt.money(data.month.grossProfit)}
+            hint={`Margen ${data.month.grossMargin}%`}
+            tone="positive"
+          />
+          <Stat
+            label="Gastos"
+            value={fmt.money(data.month.expenses)}
+            hint={
+              <Link href="/gastos" className="underline">
+                Registrar gasto
+              </Link>
+            }
+          />
           <Stat
             label="Ganancia neta"
             value={fmt.money(data.month.netProfit)}
@@ -107,12 +132,29 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Valor del inventario" value={fmt.money(data.totalInventoryValue)} hint={`${data.totalProducts} productos`} icon={<Package className="w-4 h-4 text-slate-400" />} />
-        <Stat label="Compras del mes" value={fmt.money(data.month.purchases)} icon={<Wallet className="w-4 h-4 text-slate-400" />} />
+        <Stat
+          label="Valor del inventario"
+          value={fmt.money(data.totalInventoryValue)}
+          hint={`${data.totalProducts} productos`}
+          icon={<Package className="w-4 h-4 text-slate-400" />}
+        />
+        <Stat
+          label="Compras del mes"
+          value={fmt.money(data.month.purchases)}
+          icon={<Wallet className="w-4 h-4 text-slate-400" />}
+        />
         <Stat
           label="Fiado por cobrar"
           value={fmt.money(data.receivables.total)}
-          hint={`${data.receivables.customers} clientes`}
+          hint={
+            data.receivables.overdue > 0 ? (
+              <Link href="/clientes" className="underline text-red-600">
+                {fmt.money(data.receivables.overdue)} vencido ({data.receivables.overdueCustomers})
+              </Link>
+            ) : (
+              `${data.receivables.customers} clientes`
+            )
+          }
           tone={data.receivables.total > 0 ? "warning" : "default"}
           icon={<HandCoins className="w-4 h-4 text-slate-400" />}
         />
@@ -120,7 +162,11 @@ export default function DashboardPage() {
           label="Bajo inventario"
           value={data.lowStockCount}
           tone={data.lowStockCount > 0 ? "negative" : "default"}
-          hint={<Link href="/inventario?tab=reabastecer" className="underline">Qué comprar</Link>}
+          hint={
+            <Link href="/inventario?tab=reabastecer" className="underline">
+              Qué comprar
+            </Link>
+          }
           icon={<AlertTriangle className="w-4 h-4 text-slate-400" />}
         />
       </div>
@@ -187,7 +233,11 @@ export default function DashboardPage() {
           <CardContent className="divide-y divide-slate-100 py-0">
             {data.recentSales.length === 0 && <p className="py-4 text-sm text-slate-500">Aún no hay ventas.</p>}
             {data.recentSales.map((s) => (
-              <Link key={s.id} href={`/ventas/${s.id}`} className="flex justify-between gap-3 py-3 text-sm hover:bg-slate-50 -mx-5 px-5">
+              <Link
+                key={s.id}
+                href={`/ventas/${s.id}`}
+                className="flex justify-between gap-3 py-3 text-sm hover:bg-slate-50 -mx-5 px-5"
+              >
                 <span className="text-slate-700 truncate min-w-0">
                   #{s.folio} · {s.items.map((i) => i.product.name).join(", ")}
                   <span className="block text-xs text-slate-500">
@@ -195,7 +245,9 @@ export default function DashboardPage() {
                     {s.customer && ` · ${s.customer.name}`}
                   </span>
                 </span>
-                <span className={s.status === "CANCELLED" ? "line-through text-slate-400" : "font-semibold text-brand-600"}>
+                <span
+                  className={s.status === "CANCELLED" ? "line-through text-slate-400" : "font-semibold text-brand-600"}
+                >
                   {fmt.money(s.total)}
                 </span>
               </Link>

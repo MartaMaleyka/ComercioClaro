@@ -207,12 +207,22 @@ export async function reorderSuggestions(businessId: string, coverDays = 14) {
     where: { purchase: { businessId, status: "ACTIVE" }, productId: { in: products.map((p) => p.id) } },
     orderBy: { purchase: { createdAt: "desc" } },
     distinct: ["productId"],
-    include: { purchase: { select: { supplierName: true, supplier: { select: { id: true, name: true } } } } },
+    include: {
+      purchase: {
+        select: { supplierName: true, supplier: { select: { id: true, name: true, phone: true, contact: true } } },
+      },
+    },
   });
   const lastSupplier = new Map(
     lastPurchases.map((i) => [
       i.productId,
-      { supplier: i.purchase.supplier?.name ?? i.purchase.supplierName, lastCost: i.unitCost },
+      {
+        supplier: i.purchase.supplier?.name ?? i.purchase.supplierName,
+        supplierId: i.purchase.supplier?.id ?? null,
+        supplierPhone: i.purchase.supplier?.phone ?? null,
+        supplierContact: i.purchase.supplier?.contact ?? null,
+        lastCost: i.unitCost,
+      },
     ])
   );
 
@@ -236,6 +246,9 @@ export async function reorderSuggestions(businessId: string, coverDays = 14) {
         daysOfCover,
         suggestedQuantity: suggested.gt(0) ? suggested : D(0),
         lastSupplier: lastSupplier.get(p.id)?.supplier ?? null,
+        supplierPhone: lastSupplier.get(p.id)?.supplierPhone ?? null,
+        supplierContact: lastSupplier.get(p.id)?.supplierContact ?? null,
+        packSize: p.packSize,
         lastCost: lastSupplier.get(p.id)?.lastCost ?? p.cost,
         low,
         needs,

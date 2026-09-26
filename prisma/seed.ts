@@ -19,7 +19,7 @@ function rng(seed: number) {
   };
 }
 
-async function main() {
+async function seedMexico() {
   const existing = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
   if (existing) {
     console.log("ℹ️  La cuenta de demostración ya existe; no se modificó.");
@@ -185,6 +185,182 @@ async function main() {
   console.log("✅ Datos de demostración creados");
   console.log(`   Dueño:  ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
   console.log(`   Cajero: ${CASHIER_EMAIL} / ${DEMO_PASSWORD}`);
+}
+
+const PA_EMAIL = "demo.pa@comercioclaro.com";
+const PA_CASHIER_EMAIL = "cajero.pa@comercioclaro.com";
+
+/** Minisúper panameño: ITBMS 0/7/10/15%, B/., Yappy, fiado a 15 días y facturador gratuito. */
+async function seedPanama() {
+  const existing = await prisma.user.findUnique({ where: { email: PA_EMAIL } });
+  if (existing) {
+    console.log("ℹ️  La cuenta de demostración de Panamá ya existe; no se modificó.");
+    return;
+  }
+
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  const owner = await prisma.user.create({
+    data: {
+      email: PA_EMAIL,
+      passwordHash,
+      name: "Wei Chen",
+      memberships: {
+        create: {
+          role: "OWNER",
+          business: {
+            create: {
+              name: "Minisúper El Dorado",
+              description: "Abarrotería y minisúper",
+              phone: "6123-4567",
+              address: "Vía Ricardo J. Alfaro, El Dorado, Panamá",
+              country: "PA",
+              currency: "USD",
+              locale: "es-PA",
+              timezone: "America/Panama",
+              showBalboa: true,
+              ruc: "8-812-2345",
+              dv: "45",
+              legalName: "Wei Chen",
+              usesFreeInvoicer: true,
+              yappyDirectory: "@minisupereldorado",
+              cardFeeRate: 0.029,
+              yappyFeeRate: 0.0107,
+            },
+          },
+        },
+      },
+    },
+    include: { memberships: true },
+  });
+  const businessId = owner.memberships[0].businessId;
+  const actor = { userId: owner.id, businessId, role: "OWNER" as const };
+
+  await prisma.user.create({
+    data: {
+      email: PA_CASHIER_EMAIL,
+      passwordHash,
+      name: "Li Na",
+      language: "zh",
+      memberships: { create: { role: "CASHIER", businessId } },
+    },
+  });
+
+  const categoryNames = ["Abarrotes", "Bebidas", "Cervezas", "Cigarrillos", "Lácteos y huevos", "Limpieza"];
+  const categories = Object.fromEntries(
+    await Promise.all(
+      categoryNames.map(async (name) => [name, (await prisma.category.create({ data: { name, businessId } })).id])
+    )
+  ) as Record<string, string>;
+
+  const catalog = [
+    { name: "Arroz Blue Ribbon 5 lb", barcode: "7451001000011", category: "Abarrotes", price: 3.95, cost: 3.1, stock: 180, minStock: 10, taxRate: 0 },
+    { name: "Frijoles rojos 1 lb", barcode: "7451001000028", category: "Abarrotes", price: 1.35, cost: 0.95, stock: 240, minStock: 12, taxRate: 0 },
+    { name: "Aceite Clover 1 L", barcode: "7451001000035", category: "Abarrotes", price: 3.25, cost: 2.6, stock: 90, minStock: 6, taxRate: 0 },
+    { name: "Coca-Cola 2 L", barcode: "7451001000042", category: "Bebidas", price: 2.1, cost: 1.55, stock: 216, minStock: 12, taxRate: 0.07 },
+    { name: "Agua Cristalina 600 ml", barcode: "7451001000059", category: "Bebidas", price: 0.75, cost: 0.4, stock: 288, minStock: 24, taxRate: 0.07, packSize: 24 },
+    { name: "Cerveza Panamá lata", barcode: "7451001000066", category: "Cervezas", price: 1.0, cost: 0.68, stock: 432, minStock: 24, taxRate: 0.1, packSize: 24, wholesalePrice: 0.9, wholesaleMinQty: 12 },
+    { name: "Cerveza Balboa lata", barcode: "7451001000073", category: "Cervezas", price: 1.1, cost: 0.75, stock: 288, minStock: 24, taxRate: 0.1, packSize: 24 },
+    { name: "Cigarrillo suelto", barcode: "7451001000080", category: "Cigarrillos", price: 0.35, cost: 0.24, stock: 600, minStock: 40, taxRate: 0.15, packSize: 20 },
+    { name: "Leche Estrella Azul 1 L", barcode: "7451001000097", category: "Lácteos y huevos", price: 1.65, cost: 1.3, stock: 120, minStock: 12, taxRate: 0, trackExpiry: true },
+    { name: "Huevo (unidad)", barcode: "7451001000103", category: "Lácteos y huevos", price: 0.2, cost: 0.14, stock: 540, minStock: 60, taxRate: 0, packSize: 30 },
+    { name: "Detergente Ace 1 kg", barcode: "7451001000110", category: "Limpieza", price: 3.6, cost: 2.75, stock: 60, minStock: 5, taxRate: 0.07 },
+  ];
+
+  const products = [];
+  for (const p of catalog) {
+    const { category, ...data } = p;
+    products.push(
+      await createProduct(actor, {
+        unit: "PIECE",
+        description: null,
+        sku: null,
+        wholesalePrice: null,
+        wholesaleMinQty: null,
+        iepsRate: 0,
+        trackExpiry: false,
+        packSize: null,
+        satProductKey: "01010101",
+        satUnitKey: "H87",
+        ...data,
+        categoryId: categories[category],
+      })
+    );
+  }
+
+  await prisma.supplier.createMany({
+    data: [
+      { name: "Distribuidora Cervecería Nacional", phone: "6200-1111", contact: "Carlos", businessId },
+      { name: "Abarrotes Mayoristas del Istmo", phone: "6300-2222", contact: "Rosa", businessId },
+    ],
+  });
+
+  const customers = await Promise.all([
+    prisma.customer.create({ data: { name: "Señora Maritza", phone: "6555-1234", creditLimit: 60, creditDays: 15, businessId } }),
+    prisma.customer.create({ data: { name: "Don Aurelio", phone: "6555-9876", creditLimit: 40, creditDays: 15, businessId } }),
+  ]);
+
+  const random = rng(7);
+  const daysAgo = (days: number, hour = 12) => {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    d.setHours(hour, Math.floor(random() * 60), 0, 0);
+    return d;
+  };
+
+  for (let day = 29; day >= 0; day--) {
+    const count = 4 + Math.floor(random() * 6);
+    for (let s = 0; s < count; s++) {
+      const lines = new Map<string, number>();
+      const n = 1 + Math.floor(random() * 3);
+      for (let k = 0; k < n; k++) {
+        const product = products[Math.floor(random() * products.length)];
+        lines.set(product.id, (lines.get(product.id) ?? 0) + 1 + Math.floor(random() * 3));
+      }
+      const r = random();
+      const credit = r < 0.08;
+      const method = credit ? "CREDIT" : r < 0.6 ? "CASH" : r < 0.88 ? "YAPPY" : "CARD";
+      try {
+        const sale = await createSale(actor, {
+          items: [...lines].map(([productId, quantity]) => ({ productId, quantity, discount: 0 })),
+          discount: 0,
+          paymentMethod: method,
+          paymentReference: method === "YAPPY" ? String(100000 + Math.floor(random() * 899999)) : null,
+          customerId: credit ? customers[Math.floor(random() * customers.length)].id : null,
+          notes: null,
+        });
+        const createdAt = daysAgo(day, 7 + Math.floor(random() * 14));
+        await prisma.sale.update({
+          where: { id: sale.id },
+          data: { createdAt, dueDate: credit ? new Date(createdAt.getTime() + 15 * 86_400_000) : null },
+        });
+        await prisma.stockMovement.updateMany({ where: { referenceId: sale.id }, data: { createdAt } });
+      } catch {
+        // Sin existencias o límite de crédito: se omite la venta.
+      }
+    }
+  }
+
+  for (const e of [
+    { category: "Alquiler", amount: 650, days: 26 },
+    { category: "Luz", amount: 185, days: 14 },
+    { category: "Agua", amount: 18, days: 12 },
+    { category: "Internet / teléfono", amount: 42, days: 6 },
+  ]) {
+    await prisma.expense.create({
+      data: { category: e.category, amount: e.amount, paymentMethod: "TRANSFER", date: daysAgo(e.days), userId: owner.id, businessId },
+    });
+  }
+
+  await openCashSession(actor, { openingAmount: 50, notes: "Fondo inicial" });
+
+  console.log("✅ Demostración de Panamá creada");
+  console.log(`   Dueño:  ${PA_EMAIL} / ${DEMO_PASSWORD}`);
+  console.log(`   Cajero: ${PA_CASHIER_EMAIL} / ${DEMO_PASSWORD} (interfaz en chino)`);
+}
+
+async function main() {
+  await seedMexico();
+  await seedPanama();
 }
 
 main()

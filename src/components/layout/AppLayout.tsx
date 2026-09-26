@@ -29,28 +29,30 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useOnline } from "@/lib/client/hooks";
 import { OfflineSync } from "@/components/pwa/OfflineSync";
 import { clearOfflineData } from "@/lib/client/offline-db";
+import { useT } from "@/lib/client/i18n";
+import type { MessageKey } from "@/lib/i18n";
 
 type Role = "OWNER" | "CASHIER";
 interface NavItem {
   href: string;
-  label: string;
+  label: MessageKey;
   icon: typeof Store;
   roles: Role[];
 }
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Inicio", icon: LayoutDashboard, roles: ["OWNER"] },
-  { href: "/ventas", label: "Vender", icon: ShoppingCart, roles: ["OWNER", "CASHIER"] },
-  { href: "/ventas/historial", label: "Ventas", icon: Receipt, roles: ["OWNER", "CASHIER"] },
-  { href: "/caja", label: "Caja", icon: Wallet, roles: ["OWNER", "CASHIER"] },
-  { href: "/inventario", label: "Inventario", icon: Package, roles: ["OWNER", "CASHIER"] },
-  { href: "/clientes", label: "Clientes", icon: Users, roles: ["OWNER", "CASHIER"] },
-  { href: "/compras", label: "Compras", icon: ShoppingBag, roles: ["OWNER"] },
-  { href: "/proveedores", label: "Proveedores", icon: Truck, roles: ["OWNER"] },
-  { href: "/gastos", label: "Gastos", icon: Coins, roles: ["OWNER"] },
-  { href: "/reportes", label: "Reportes", icon: BarChart3, roles: ["OWNER"] },
-  { href: "/facturas", label: "Facturas", icon: FileText, roles: ["OWNER"] },
-  { href: "/configuracion", label: "Configuración", icon: Settings, roles: ["OWNER", "CASHIER"] },
+  { href: "/dashboard", label: "nav.home" as MessageKey, icon: LayoutDashboard, roles: ["OWNER"] },
+  { href: "/ventas", label: "nav.sell" as MessageKey, icon: ShoppingCart, roles: ["OWNER", "CASHIER"] },
+  { href: "/ventas/historial", label: "nav.sales" as MessageKey, icon: Receipt, roles: ["OWNER", "CASHIER"] },
+  { href: "/caja", label: "nav.cash" as MessageKey, icon: Wallet, roles: ["OWNER", "CASHIER"] },
+  { href: "/inventario", label: "nav.inventory" as MessageKey, icon: Package, roles: ["OWNER", "CASHIER"] },
+  { href: "/clientes", label: "nav.customers" as MessageKey, icon: Users, roles: ["OWNER", "CASHIER"] },
+  { href: "/compras", label: "nav.purchases" as MessageKey, icon: ShoppingBag, roles: ["OWNER"] },
+  { href: "/proveedores", label: "nav.suppliers" as MessageKey, icon: Truck, roles: ["OWNER"] },
+  { href: "/gastos", label: "nav.expenses" as MessageKey, icon: Coins, roles: ["OWNER"] },
+  { href: "/reportes", label: "nav.reports" as MessageKey, icon: BarChart3, roles: ["OWNER"] },
+  { href: "/facturas", label: "nav.invoices" as MessageKey, icon: FileText, roles: ["OWNER"] },
+  { href: "/configuracion", label: "nav.settings" as MessageKey, icon: Settings, roles: ["OWNER", "CASHIER"] },
 ];
 
 const mobilePrimary: Record<Role, string[]> = {
@@ -68,6 +70,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, role, business, businesses } = useSession();
   const online = useOnline();
+  const t = useT();
   const [moreOpen, setMoreOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
@@ -163,20 +166,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             >
               <item.icon className="w-5 h-5" aria-hidden="true" />
-              {item.label}
+              {t(item.label)}
             </Link>
           ))}
         </nav>
         <div className="p-3 border-t border-slate-100">
           <p className="px-3 pb-2 text-xs text-slate-500 truncate">
-            {user.name} · {role === "OWNER" ? "Dueño" : "Cajero"}
+            {user.name} · {t(`role.${role}`)}
           </p>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 w-full transition-colors"
           >
             <LogOut className="w-5 h-5" aria-hidden="true" />
-            Cerrar sesión
+            {t("nav.logout")}
           </button>
         </div>
       </aside>
@@ -185,7 +188,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="md:hidden sticky top-0 z-40 bg-surface border-b border-slate-100 px-4 py-3">
           <div className="flex items-center justify-between">
             {logo}
-            <button onClick={handleLogout} aria-label="Cerrar sesión" className="p-2 hover:bg-slate-100 rounded-xl">
+            <button onClick={handleLogout} aria-label={t("nav.logout")} className="p-2 hover:bg-slate-100 rounded-xl">
               <LogOut className="w-5 h-5 text-slate-500" />
             </button>
           </div>
@@ -194,7 +197,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {!online && (
           <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2 flex items-center gap-2">
             <WifiOff className="w-4 h-4" aria-hidden="true" />
-            Sin conexión. Las ventas se guardan en este dispositivo y se enviarán al volver la señal.
+            {t("offline.banner")}
           </div>
         )}
         <OfflineSync />
@@ -220,7 +223,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             >
               <item.icon className="w-5 h-5" aria-hidden="true" />
-              <span className="text-[10px] font-medium truncate">{item.label}</span>
+              <span className="text-[10px] font-medium truncate">{t(item.label)}</span>
             </Link>
           ))}
           <button
@@ -228,17 +231,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 text-slate-400"
           >
             <Menu className="w-5 h-5" aria-hidden="true" />
-            <span className="text-[10px] font-medium">Más</span>
+            <span className="text-[10px] font-medium">{t("nav.more")}</span>
           </button>
         </div>
       </nav>
 
       {moreOpen && (
-        <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menú">
+        <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t("nav.menu")}>
           <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
           <div className="absolute bottom-0 inset-x-0 bg-surface rounded-t-2xl p-4 animate-in safe-area-bottom">
             <div className="flex items-center justify-between mb-3">
-              <p className="font-semibold text-slate-900">Menú</p>
+              <p className="font-semibold text-slate-900">{t("nav.menu")}</p>
               <button onClick={() => setMoreOpen(false)} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-slate-100">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
@@ -255,7 +258,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <item.icon className="w-5 h-5" aria-hidden="true" />
-                  {item.label}
+                  {t(item.label)}
                 </Link>
               ))}
             </div>

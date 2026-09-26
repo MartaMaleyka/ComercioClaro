@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors";
 import { getSale } from "@/server/sales";
 import { formatCurrency, formatDateTime, formatNumber, PAYMENT_METHOD_LABELS, UNIT_LABELS } from "@/lib/utils";
 import { PrintButton } from "./PrintButton";
+import { countryConfig, includedTax } from "@/lib/country";
 
 export default async function TicketPage({
   params,
@@ -27,7 +28,18 @@ export default async function TicketPage({
   }
 
   const b = auth.business;
-  const money = (n: { toNumber(): number } | number | null) => formatCurrency(Number(n ?? 0), b.currency, b.locale);
+  const money = (n: { toNumber(): number } | number | null) =>
+    formatCurrency(Number(n ?? 0), b.currency, b.locale, b.showBalboa);
+  const country = countryConfig(b.country);
+  // Impuesto incluido por tasa (los precios ya lo incluyen); se prorratea el descuento general.
+  const factor = sale.subtotal.gt(0) ? sale.total.toNumber() / sale.subtotal.toNumber() : 0;
+  const taxByRate = new Map<number, number>();
+  for (const i of sale.items) {
+    const rate = i.taxRate.toNumber();
+    if (rate <= 0) continue;
+    const net = (i.subtotal.toNumber() * (i.quantity.toNumber() - i.returnedQuantity.toNumber())) / i.quantity.toNumber();
+    taxByRate.set(rate, (taxByRate.get(rate) ?? 0) + includedTax(net * factor, rate));
+  }
 
   return (
     <>
@@ -46,7 +58,13 @@ export default async function TicketPage({
           <p className="font-bold text-sm">{b.name}</p>
           {b.address && <p>{b.address}</p>}
           {b.phone && <p>Tel. {b.phone}</p>}
-          {b.rfc && <p>RFC {b.rfc}</p>}
+          {country.code === "PA" && b.ruc && (
+            <p>
+              RUC {b.ruc}
+              {b.dv && ` DV ${b.dv}`}
+            </p>
+          )}
+          {country.code === "MX" && b.rfc && <p>RFC {b.rfc}</p>}
         </div>
         <hr className="my-2 border-dashed border-black" />
         <p>Ticket #{sale.folio}</p>
@@ -80,6 +98,15 @@ export default async function TicketPage({
           <span>{PAYMENT_METHOD_LABELS[sale.paymentMethod]}</span>
           <span>{sale.amountReceived ? money(sale.amountReceived) : ""}</span>
         </div>
+        {sale.paymentReference && <p>Ref. {sale.paymentReference}</p>}
+        {[...taxByRate].map(([rate, amount]) => (
+          <div key={rate} className="flex justify-between">
+            <span>
+              {country.taxLabel} {Math.round(rate * 1000) / 10}% incluido
+            </span>
+            <span>{money(amount)}</span>
+          </div>
+        ))}
         {sale.change && sale.change.gt(0) && (
           <div className="flex justify-between">
             <span>Cambio</span>

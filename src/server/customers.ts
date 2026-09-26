@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import type { Actor } from "./inventory";
 import { getOpenSession } from "./cash";
+import { computeAging, type AgingResult } from "@/lib/aging";
 
 /** Registra un abono a la cuenta de fiado de un cliente. */
 export async function addCustomerPayment(
   actor: Actor,
   customerId: string,
-  input: { amount: number; method: "CASH" | "CARD" | "TRANSFER"; notes: string | null }
+  input: { amount: number; method: "CASH" | "CARD" | "TRANSFER" | "YAPPY"; notes: string | null }
 ) {
   return prisma.$transaction(async (tx) => {
     const amount = money(input.amount);
@@ -82,5 +83,67 @@ export async function customerStatement(businessId: string, customerId: string) 
     return { ...e, balance: running };
   });
 
-  return { customer, entries: withBalance };
+  const aging = (await customersAging(businessId, [customerId])).get(customerId);
+  return {
+    customer,
+    entries: withBalance,
+    aging: aging
+      ? {
+          overdue: aging.overdue,
+          daysOverdue: aging.daysOverdue,
+          nextDueDate: aging.nextDueDate,
+          pendingSales: aging.charges
+            .filter((c) => c.pending > 0)
+            .map((c) => ({ id: c.id, folio: c.folio, date: c.date, dueDate: c.dueDate, pending: c.pending, overdue: c.overdue })),
+        }
+      : null,
+  };
+}
+
+/**
+ * Antigüedad del fiado por cliente (saldo vencido, días de atraso, próximo vencimiento).
+ * Las ventas anteriores a los días de crédito sin fecha de vencimiento usan fecha + días del cliente.
+ */
+export async function customersAging(businessId: string, customerIds?: string[]) {
+  const where = { businessId, ...(customerIds ? { id: { in: customerIds } } : { balance: { gt: 0 } }) };
+  const customers = await prisma.customer.findMany({ where, select: { id: true, creditDays: true } });
+  if (customers.length === 0) return new Map<string, AgingResult>();
+  const ids = customers.map((c) => c.id);
+
+  const [sales, payments] = await Promise.all([
+    prisma.sale.findMany({
+      where: { businessId, customerId: { in: ids }, paymentMethod: "CREDIT", status: "ACTIVE" },
+      select: {
+        id: true,
+        folio: true,
+        createdAt: true,
+        dueDate: true,
+        total: true,
+        customerId: true,
+        returns: { where: { refundMethod: "CREDIT" }, select: { total: true } },
+      },
+    }),
+    prisma.customerPayment.groupBy({
+      by: ["customerId"],
+      where: { businessId, customerId: { in: ids } },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const paid = new Map(payments.map((p) => [p.customerId, Number(p._sum.amount ?? 0)]));
+  const days = new Map(customers.map((c) => [c.id, c.creditDays]));
+  const result = new Map<string, AgingResult>();
+  for (const id of ids) {
+    const charges = sales
+      .filter((s) => s.customerId === id)
+      .map((s) => ({
+        id: s.id,
+        folio: s.folio,
+        date: s.createdAt,
+        dueDate: s.dueDate ?? new Date(s.createdAt.getTime() + (days.get(id) ?? 15) * 86_400_000),
+        amount: Number(s.total) - s.returns.reduce((acc, r) => acc + Number(r.total), 0),
+      }));
+    result.set(id, computeAging(charges, paid.get(id) ?? 0));
+  }
+  return result;
 }

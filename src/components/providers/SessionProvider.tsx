@@ -10,10 +10,18 @@ export interface SessionBusiness {
   timezone: string;
   phone: string | null;
   address: string | null;
+  country: string;
+  showBalboa: boolean;
+  ruc: string | null;
+  dv: string | null;
+  rfc: string | null;
+  yappyDirectory: string | null;
+  hasYappyQr: boolean;
+  usesFreeInvoicer: boolean;
 }
 
 export interface SessionData {
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; language: string };
   role: "OWNER" | "CASHIER";
   business: SessionBusiness;
   businesses: { id: string; name: string; role: "OWNER" | "CASHIER" }[];

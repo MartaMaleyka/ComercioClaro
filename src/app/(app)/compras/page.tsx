@@ -26,6 +26,9 @@ interface Line {
   name: string;
   unit: string;
   trackExpiry: boolean;
+  /** Unidades por caja; con byPack la cantidad y el costo se capturan por caja */
+  packSize: number | null;
+  byPack: boolean;
   quantity: string;
   unitCost: string;
   lotCode: string;
@@ -206,6 +209,8 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
         name: p.name,
         unit: p.unit,
         trackExpiry: p.trackExpiry,
+        packSize: p.packSize,
+        byPack: false,
         quantity,
         unitCost: String(p.cost ?? ""),
         lotCode: "",
@@ -222,6 +227,19 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
     });
   }
 
+  function togglePack(l: Line) {
+    if (!l.packSize) return;
+    const q = Number(l.quantity) || 0;
+    const c = Number(l.unitCost) || 0;
+    const round = (n: number, d: number) => String(Math.round(n * 10 ** d) / 10 ** d);
+    update(
+      l.productId,
+      l.byPack
+        ? { byPack: false, quantity: round(q * l.packSize, 3), unitCost: round(c / l.packSize, 4) }
+        : { byPack: true, quantity: round(q / l.packSize, 3), unitCost: round(c * l.packSize, 2) },
+    );
+  }
+
   const update = (id: string, patch: Partial<Line>) =>
     setLines((l) => l.map((x) => (x.productId === id ? { ...x, ...patch } : x)));
   const total = lines.reduce((acc, l) => acc + (Number(l.quantity) || 0) * (Number(l.unitCost) || 0), 0);
@@ -235,13 +253,17 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           supplierName: supplierId ? null : supplierName || null,
           notes: notes || null,
           paidFromCash,
-          items: lines.map((l) => ({
-            productId: l.productId,
-            quantity: Number(l.quantity),
-            unitCost: l.unitCost === "" ? null : Number(l.unitCost),
-            lotCode: l.lotCode || null,
-            expiresAt: l.expiresAt || null,
-          })),
+          items: lines.map((l) => {
+            // Compra por caja: se convierte a unidades y costo unitario.
+            const factor = l.byPack && l.packSize ? l.packSize : 1;
+            return {
+              productId: l.productId,
+              quantity: Number(l.quantity) * factor,
+              unitCost: l.unitCost === "" ? null : Math.round((Number(l.unitCost) / factor) * 10000) / 10000,
+              lotCode: l.lotCode || null,
+              expiresAt: l.expiresAt || null,
+            };
+          }),
         },
       });
       toast.success("Compra registrada; inventario y costos actualizados");
@@ -308,7 +330,23 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
             {lines.map((l) => (
               <div key={l.productId} className="rounded-xl border border-slate-100 p-3 space-y-2">
                 <div className="flex justify-between items-center">
-                  <p className="font-medium text-sm text-slate-900">{l.name}</p>
+                  <div>
+                    <p className="font-medium text-sm text-slate-900">{l.name}</p>
+                    {l.packSize && (
+                      <label className="flex items-center gap-1.5 text-xs text-slate-600 mt-0.5">
+                        <input
+                          type="checkbox"
+                          checked={l.byPack}
+                          onChange={() => togglePack(l)}
+                          className="accent-brand-600"
+                        />
+                        Comprar por caja de {l.packSize}
+                        {l.byPack &&
+                          Number(l.quantity) > 0 &&
+                          ` (= ${Number(l.quantity) * l.packSize} ${UNIT_LABELS[l.unit]})`}
+                      </label>
+                    )}
+                  </div>
                   <button
                     aria-label={`Quitar ${l.name}`}
                     onClick={() => setLines((x) => x.filter((y) => y.productId !== l.productId))}
@@ -319,13 +357,13 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Input
-                    label={`Cantidad (${UNIT_LABELS[l.unit]})`}
+                    label={l.byPack ? "Cajas" : `Cantidad (${UNIT_LABELS[l.unit]})`}
                     inputMode="decimal"
                     value={l.quantity}
                     onChange={(e) => update(l.productId, { quantity: e.target.value })}
                   />
                   <Input
-                    label="Costo unitario"
+                    label={l.byPack ? "Costo por caja" : "Costo unitario"}
                     inputMode="decimal"
                     value={l.unitCost}
                     onChange={(e) => update(l.productId, { unitCost: e.target.value })}

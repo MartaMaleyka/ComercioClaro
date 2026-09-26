@@ -11,6 +11,8 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
+import { COUNTRIES, countryConfig } from "@/lib/country";
+import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
@@ -48,7 +50,7 @@ export default function SettingsPage() {
   );
 }
 
-const CURRENCIES = ["MXN", "USD", "GTQ", "HNL", "NIO", "CRC", "PAB", "COP", "PEN", "CLP", "ARS", "BOB", "DOP", "EUR"];
+const CURRENCIES = ["USD", "MXN", "GTQ", "HNL", "NIO", "CRC", "PAB", "COP", "PEN", "CLP", "ARS", "BOB", "DOP", "EUR"];
 const LOCALES = [
   { value: "es-MX", label: "México" },
   { value: "es-GT", label: "Guatemala" },
@@ -65,6 +67,7 @@ const LOCALES = [
   { value: "es-ES", label: "España" },
 ];
 const TIMEZONES = [
+  "America/Panama",
   "America/Mexico_City",
   "America/Cancun",
   "America/Monterrey",
@@ -92,14 +95,24 @@ interface BusinessData {
   description: string | null;
   phone: string | null;
   address: string | null;
+  country: string;
   currency: string;
   locale: string;
   timezone: string;
+  showBalboa: boolean;
   lowStockEmailAlerts: boolean;
   rfc: string | null;
   legalName: string | null;
   taxRegime: string | null;
   postalCode: string | null;
+  ruc: string | null;
+  dv: string | null;
+  usesFreeInvoicer: boolean;
+  yappyDirectory: string | null;
+  yappyQr: string | null;
+  cardFeeRate: number;
+  transferFeeRate: number;
+  yappyFeeRate: number;
 }
 
 function BusinessSettings() {
@@ -108,17 +121,55 @@ function BusinessSettings() {
   return <BusinessForm initial={data} onSaved={() => mutate()} />;
 }
 
+const MAX_QR_BYTES = 300 * 1024;
+
 function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: () => Promise<unknown> | void }) {
   const toast = useToast();
   const [form, setForm] = useState<BusinessData>(initial);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof BusinessData>(k: K, v: BusinessData[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const country = countryConfig(form.country);
+  // Las comisiones se editan en porcentaje y se guardan como fracción.
+  const pct = (v: number) => String(Math.round(v * 10000) / 100);
+  const [fees, setFees] = useState({
+    card: pct(initial.cardFeeRate),
+    transfer: pct(initial.transferFeeRate),
+    yappy: pct(initial.yappyFeeRate),
+  });
+
+  function changeCountry(code: string) {
+    const c = countryConfig(code);
+    setForm((f) => ({
+      ...f,
+      country: c.code,
+      currency: c.currency,
+      locale: c.locale,
+      timezone: c.timezone,
+      showBalboa: c.showBalboa,
+    }));
+  }
+
+  function loadQr(file: File | undefined) {
+    if (!file) return;
+    if (file.size > MAX_QR_BYTES) return toast.error("La imagen del QR debe pesar menos de 300 KB");
+    const reader = new FileReader();
+    reader.onload = () => set("yappyQr", String(reader.result));
+    reader.readAsDataURL(file);
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await api("/api/business", { method: "PUT", body: form });
+      await api("/api/business", {
+        method: "PUT",
+        body: {
+          ...form,
+          cardFeeRate: (Number(fees.card) || 0) / 100,
+          transferFeeRate: (Number(fees.transfer) || 0) / 100,
+          yappyFeeRate: (Number(fees.yappy) || 0) / 100,
+        },
+      });
       toast.success("Cambios guardados");
       await onSaved();
       // Moneda, idioma y zona horaria se aplican a toda la app.
@@ -138,13 +189,34 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
         </CardHeader>
         <CardContent className="space-y-3">
           <Input label="Nombre" value={form.name} onChange={(e) => set("name", e.target.value)} required />
-          <Input label="Descripción" value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+          <Input
+            label="Descripción"
+            value={form.description ?? ""}
+            onChange={(e) => set("description", e.target.value)}
+          />
           <div className="grid sm:grid-cols-2 gap-3">
-            <Input label="Teléfono" type="tel" value={form.phone ?? ""} onChange={(e) => set("phone", e.target.value)} />
+            <Input
+              label="Teléfono"
+              type="tel"
+              value={form.phone ?? ""}
+              onChange={(e) => set("phone", e.target.value)}
+            />
             <Input label="Dirección" value={form.address ?? ""} onChange={(e) => set("address", e.target.value)} />
           </div>
+          <Select
+            label="País"
+            value={form.country}
+            onChange={(e) => changeCountry(e.target.value)}
+            hint="Define impuestos, facturación y formatos. Al cambiarlo se ajustan moneda, formato y zona horaria."
+          >
+            {Object.values(COUNTRIES).map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
           <div className="grid sm:grid-cols-3 gap-3">
-            <Select label="País (formato)" value={form.locale} onChange={(e) => set("locale", e.target.value)}>
+            <Select label="Formato" value={form.locale} onChange={(e) => set("locale", e.target.value)}>
               {LOCALES.map((l) => (
                 <option key={l.value} value={l.value}>
                   {l.label}
@@ -166,6 +238,13 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               ))}
             </Select>
           </div>
+          {form.currency === "USD" && (
+            <Checkbox
+              label="Mostrar montos como B/. (balboa)"
+              checked={form.showBalboa}
+              onChange={(e) => set("showBalboa", e.target.checked)}
+            />
+          )}
           <Checkbox
             label="Enviarme por correo las alertas diarias de bajo inventario y caducidad"
             checked={form.lowStockEmailAlerts}
@@ -176,25 +255,152 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Datos fiscales (México · CFDI 4.0)</h2>
-          <p className="text-sm text-slate-500">Necesarios para facturar. Cópialos de tu Constancia de Situación Fiscal.</p>
+          <h2 className="font-semibold text-slate-900">Comisiones por forma de pago</h2>
+          <p className="text-sm text-slate-500">
+            Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Input label="RFC" value={form.rfc ?? ""} onChange={(e) => set("rfc", e.target.value.toUpperCase())} />
-            <Input label="C.P. (lugar de expedición)" inputMode="numeric" value={form.postalCode ?? ""} onChange={(e) => set("postalCode", e.target.value)} />
-          </div>
-          <Input label="Razón social / nombre" value={form.legalName ?? ""} onChange={(e) => set("legalName", e.target.value)} />
-          <Select label="Régimen fiscal" value={form.taxRegime ?? ""} onChange={(e) => set("taxRegime", e.target.value)}>
-            <option value="">Selecciona</option>
-            <option value="626">626 · Régimen Simplificado de Confianza (RESICO)</option>
-            <option value="612">612 · Personas Físicas con Actividades Empresariales</option>
-            <option value="625">625 · Plataformas Tecnológicas</option>
-            <option value="601">601 · General de Ley Personas Morales</option>
-            <option value="621">621 · Incorporación Fiscal</option>
-          </Select>
+        <CardContent className="grid sm:grid-cols-3 gap-3">
+          <Input
+            label="Tarjeta (%)"
+            inputMode="decimal"
+            value={fees.card}
+            onChange={(e) => setFees({ ...fees, card: e.target.value })}
+          />
+          <Input
+            label="Transferencia (%)"
+            inputMode="decimal"
+            value={fees.transfer}
+            onChange={(e) => setFees({ ...fees, transfer: e.target.value })}
+          />
+          {country.paymentMethods.includes("YAPPY") && (
+            <Input
+              label="Yappy (%)"
+              inputMode="decimal"
+              value={fees.yappy}
+              onChange={(e) => setFees({ ...fees, yappy: e.target.value })}
+              hint="1% + ITBMS = 1.07%"
+            />
+          )}
         </CardContent>
       </Card>
+
+      {country.code === "PA" && (
+        <>
+          <Card>
+            <CardHeader>
+              <h2 className="font-semibold text-slate-900">Datos fiscales (Panamá · DGI)</h2>
+              <p className="text-sm text-slate-500">El RUC y el DV aparecen en el ticket.</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-[1fr_96px] gap-3">
+                <Input
+                  label="RUC"
+                  value={form.ruc ?? ""}
+                  onChange={(e) => set("ruc", e.target.value.toUpperCase())}
+                  placeholder="8-123-4567"
+                />
+                <Input
+                  label="DV"
+                  inputMode="numeric"
+                  maxLength={2}
+                  value={form.dv ?? ""}
+                  onChange={(e) => set("dv", e.target.value)}
+                />
+              </div>
+              <Input
+                label="Razón social"
+                value={form.legalName ?? ""}
+                onChange={(e) => set("legalName", e.target.value)}
+              />
+              <Checkbox
+                label="Facturo con el facturador gratuito de la DGI (vigilar los límites de B/.36,000 al año y 100 documentos al mes)"
+                checked={form.usesFreeInvoicer}
+                onChange={(e) => set("usesFreeInvoicer", e.target.checked)}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h2 className="font-semibold text-slate-900">Yappy</h2>
+              <p className="text-sm text-slate-500">Se muestra en el punto de venta al cobrar con Yappy.</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                label="Nombre o número en el directorio Yappy"
+                value={form.yappyDirectory ?? ""}
+                onChange={(e) => set("yappyDirectory", e.target.value)}
+                placeholder="@minisuperlaesperanza o 6123-4567"
+              />
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-slate-700">QR de cobro de Yappy Comercial</p>
+                {form.yappyQr && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.yappyQr}
+                    alt="QR de Yappy"
+                    className="w-40 h-40 object-contain rounded-xl border border-slate-200 bg-white"
+                  />
+                )}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    aria-label="Subir imagen del QR de Yappy"
+                    onChange={(e) => loadQr(e.target.files?.[0])}
+                    className="text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700"
+                  />
+                  {form.yappyQr && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => set("yappyQr", null)}>
+                      Quitar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {country.code === "MX" && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-slate-900">Datos fiscales (México · CFDI 4.0)</h2>
+            <p className="text-sm text-slate-500">
+              Necesarios para facturar. Cópialos de tu Constancia de Situación Fiscal.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Input label="RFC" value={form.rfc ?? ""} onChange={(e) => set("rfc", e.target.value.toUpperCase())} />
+              <Input
+                label="C.P. (lugar de expedición)"
+                inputMode="numeric"
+                value={form.postalCode ?? ""}
+                onChange={(e) => set("postalCode", e.target.value)}
+              />
+            </div>
+            <Input
+              label="Razón social / nombre"
+              value={form.legalName ?? ""}
+              onChange={(e) => set("legalName", e.target.value)}
+            />
+            <Select
+              label="Régimen fiscal"
+              value={form.taxRegime ?? ""}
+              onChange={(e) => set("taxRegime", e.target.value)}
+            >
+              <option value="">Selecciona</option>
+              <option value="626">626 · Régimen Simplificado de Confianza (RESICO)</option>
+              <option value="612">612 · Personas Físicas con Actividades Empresariales</option>
+              <option value="625">625 · Plataformas Tecnológicas</option>
+              <option value="601">601 · General de Ley Personas Morales</option>
+              <option value="621">621 · Incorporación Fiscal</option>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
 
       <Button type="submit" loading={saving}>
         Guardar cambios
@@ -227,7 +433,13 @@ function ProfileSettings() {
   }
 
   async function logoutAll() {
-    if (!(await confirm({ title: "Cerrar sesión en todos los dispositivos", message: "Tendrás que volver a iniciar sesión en cada dispositivo.", confirmLabel: "Cerrar todas" })))
+    if (
+      !(await confirm({
+        title: "Cerrar sesión en todos los dispositivos",
+        message: "Tendrás que volver a iniciar sesión en cada dispositivo.",
+        confirmLabel: "Cerrar todas",
+      }))
+    )
       return;
     try {
       await api("/api/auth/logout-all", { body: {} });
@@ -250,6 +462,25 @@ function ProfileSettings() {
         <CardContent className="space-y-3">
           <p className="text-sm font-medium text-slate-700">Tema</p>
           <ThemeToggle />
+          <Select
+            label="Idioma / 语言 / Language"
+            value={user.language}
+            onChange={async (e) => {
+              try {
+                await api("/api/auth/me", { method: "PUT", body: { language: e.target.value } });
+                window.location.reload();
+              } catch (err) {
+                toast.error(err);
+              }
+            }}
+            hint="Piloto: menú, punto de venta y caja."
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </Select>
         </CardContent>
       </Card>
       <Card>
@@ -260,8 +491,24 @@ function ProfileSettings() {
         </CardHeader>
         <CardContent>
           <form onSubmit={changePassword} className="space-y-3">
-            <Input label="Contraseña actual" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-            <Input label="Nueva contraseña" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required hint="Mínimo 8 caracteres" />
+            <Input
+              label="Contraseña actual"
+              type="password"
+              autoComplete="current-password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              required
+            />
+            <Input
+              label="Nueva contraseña"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              required
+              hint="Mínimo 8 caracteres"
+            />
             <Button type="submit" loading={saving}>
               Actualizar contraseña
             </Button>
@@ -308,7 +555,15 @@ function MembersSettings() {
   }
 
   async function remove(m: Member) {
-    if (!(await confirm({ title: `Quitar a ${m.user.name}`, message: "Perderá el acceso a este negocio de inmediato.", danger: true, confirmLabel: "Quitar" }))) return;
+    if (
+      !(await confirm({
+        title: `Quitar a ${m.user.name}`,
+        message: "Perderá el acceso a este negocio de inmediato.",
+        danger: true,
+        confirmLabel: "Quitar",
+      }))
+    )
+      return;
     try {
       await api(`/api/business/members/${m.id}`, { method: "DELETE" });
       mutate();
@@ -340,7 +595,11 @@ function MembersSettings() {
               <div className="flex items-center gap-2">
                 <Badge tone={m.role === "OWNER" ? "green" : "gray"}>{m.role === "OWNER" ? "Dueño" : "Cajero"}</Badge>
                 {m.user.id !== user.id && (
-                  <button aria-label={`Quitar a ${m.user.name}`} onClick={() => remove(m)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                  <button
+                    aria-label={`Quitar a ${m.user.name}`}
+                    onClick={() => remove(m)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
@@ -352,8 +611,19 @@ function MembersSettings() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Agregar usuario">
         <form onSubmit={add} className="space-y-3">
-          <Input label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <Input label="Correo" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <Input
+            label="Nombre"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Correo"
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
           <Select label="Rol" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             <option value="CASHIER">Cajero</option>
             <option value="OWNER">Dueño (acceso total)</option>
@@ -432,8 +702,18 @@ function BranchesSettings() {
       <Card>
         <CardContent>
           <form onSubmit={create} className="space-y-3">
-            <Input label="Nueva sucursal" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Ej. Sucursal Centro" />
-            <Checkbox label="Copiar el catálogo de productos (sin existencias)" checked={copyCatalog} onChange={(e) => setCopyCatalog(e.target.checked)} />
+            <Input
+              label="Nueva sucursal"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="Ej. Sucursal Centro"
+            />
+            <Checkbox
+              label="Copiar el catálogo de productos (sin existencias)"
+              checked={copyCatalog}
+              onChange={(e) => setCopyCatalog(e.target.checked)}
+            />
             <Button type="submit" loading={saving}>
               <Plus className="w-4 h-4" /> Crear sucursal
             </Button>
@@ -498,8 +778,12 @@ function AuditLog() {
                 <span>
                   <span className="font-medium text-slate-900">{e.userName ?? "Sistema"}</span>{" "}
                   <span className="text-slate-600">{ACTION_LABELS[e.action] ?? e.action}</span>
-                  {e.details && "folio" in e.details && <span className="text-slate-500"> #{String(e.details.folio)}</span>}
-                  {e.details && "reason" in e.details && e.details.reason ? <span className="text-slate-500"> · {String(e.details.reason)}</span> : null}
+                  {e.details && "folio" in e.details && (
+                    <span className="text-slate-500"> #{String(e.details.folio)}</span>
+                  )}
+                  {e.details && "reason" in e.details && e.details.reason ? (
+                    <span className="text-slate-500"> · {String(e.details.reason)}</span>
+                  ) : null}
                 </span>
                 <span className="text-xs text-slate-500 whitespace-nowrap">{fmt.dateTime(e.createdAt)}</span>
               </div>

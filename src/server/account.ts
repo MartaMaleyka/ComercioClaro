@@ -6,11 +6,19 @@ import { getAppUrl } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import type { Role } from "@/generated/prisma/enums";
+import { countryConfig } from "@/lib/country";
 import type { Actor } from "./inventory";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
 
-export async function registerAccount(input: { email: string; password: string; name: string; businessName: string }) {
+export async function registerAccount(input: {
+  email: string;
+  password: string;
+  name: string;
+  businessName: string;
+  country?: "MX" | "PA" | "OTHER";
+}) {
+  const country = countryConfig(input.country ?? "MX");
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError(409, "Ya existe una cuenta con este correo");
 
@@ -19,7 +27,21 @@ export async function registerAccount(input: { email: string; password: string; 
       email: input.email,
       passwordHash: await hashPassword(input.password),
       name: input.name,
-      memberships: { create: { role: "OWNER", business: { create: { name: input.businessName } } } },
+      memberships: {
+        create: {
+          role: "OWNER",
+          business: {
+            create: {
+              name: input.businessName,
+              country: country.code,
+              currency: country.currency,
+              locale: country.locale,
+              timezone: country.timezone,
+              showBalboa: country.showBalboa,
+            },
+          },
+        },
+      },
     },
     include: { memberships: true },
   });
@@ -108,9 +130,18 @@ export async function createBranch(actor: Actor, input: { name: string; copyCata
     const branch = await tx.business.create({
       data: {
         name: input.name,
+        country: source.country,
         currency: source.currency,
         locale: source.locale,
         timezone: source.timezone,
+        showBalboa: source.showBalboa,
+        ruc: source.ruc,
+        dv: source.dv,
+        yappyDirectory: source.yappyDirectory,
+        yappyQr: source.yappyQr,
+        cardFeeRate: source.cardFeeRate,
+        transferFeeRate: source.transferFeeRate,
+        yappyFeeRate: source.yappyFeeRate,
         rfc: source.rfc,
         legalName: source.legalName,
         taxRegime: source.taxRegime,
@@ -140,6 +171,7 @@ export async function createBranch(actor: Actor, input: { name: string; copyCata
             cost: p.cost,
             minStock: p.minStock,
             trackExpiry: p.trackExpiry,
+            packSize: p.packSize,
             taxRate: p.taxRate,
             iepsRate: p.iepsRate,
             satProductKey: p.satProductKey,

@@ -23,7 +23,9 @@ describe("validación de entradas", () => {
 
   it("acepta números en texto y aplica valores por defecto", () => {
     const p = productCreateSchema.parse({ name: " Pan ", price: "12.5" });
-    expect(p).toMatchObject({ name: "Pan", price: 12.5, unit: "PIECE", minStock: 5, taxRate: 0.16 });
+    expect(p).toMatchObject({ name: "Pan", price: 12.5, unit: "PIECE", minStock: 5 });
+    // Sin tasa explícita se usa la del país del negocio al crear el producto.
+    expect(p.taxRate).toBeUndefined();
   });
 });
 

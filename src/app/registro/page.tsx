@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Store } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function RegisterPage() {
     email: "",
     password: "",
     businessName: "",
+    country: "PA",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,9 +61,14 @@ export default function RegisterPage() {
           <p className="text-slate-600 mt-1">Empieza a organizar tu negocio hoy</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4"
+        >
           {error && (
-            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
+            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">
+              {error}
+            </div>
           )}
           <Input
             label="Tu nombre"
@@ -78,6 +84,11 @@ export default function RegisterPage() {
             placeholder="Miscelánea La Esperanza"
             required
           />
+          <Select label="País" value={form.country} onChange={(e) => update("country", e.target.value)}>
+            <option value="PA">Panamá</option>
+            <option value="MX">México</option>
+            <option value="OTHER">Otro país</option>
+          </Select>
           <Input
             label="Correo electrónico"
             type="email"

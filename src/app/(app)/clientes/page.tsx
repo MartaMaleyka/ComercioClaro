@@ -7,6 +7,7 @@ import { api, fetcher, withQuery } from "@/lib/client/api";
 import { useDebounce } from "@/lib/client/hooks";
 import { useFormat } from "@/lib/client/format";
 import { whatsappLink } from "@/lib/client/receipt";
+import { countryConfig } from "@/lib/country";
 import type { Customer } from "@/lib/client/types";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -22,6 +23,19 @@ import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc
 interface Statement {
   customer: Customer;
   entries: { date: string; type: string; description: string; amount: number; balance: number }[];
+  aging: {
+    overdue: number;
+    daysOverdue: number;
+    nextDueDate: string | null;
+    pendingSales: {
+      id: string;
+      folio: number;
+      date: string;
+      dueDate: string | null;
+      pending: number;
+      overdue: boolean;
+    }[];
+  } | null;
 }
 
 const emptyForm = {
@@ -30,6 +44,9 @@ const emptyForm = {
   email: "",
   notes: "",
   creditLimit: "0",
+  creditDays: "15",
+  ruc: "",
+  dv: "",
   rfc: "",
   legalName: "",
   taxRegime: "",
@@ -39,13 +56,19 @@ const emptyForm = {
 export default function CustomersPage() {
   const { role, business } = useSession();
   const isOwner = role === "OWNER";
+  const country = countryConfig(business.country);
   const fmt = useFormat();
   const toast = useToast();
   const [search, setSearch] = useState("");
   const [onlyDebt, setOnlyDebt] = useState(false);
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
   const debounced = useDebounce(search);
   const { data, error, mutate } = useSWR<Customer[]>(
-    withQuery("/api/customers", { search: debounced, withBalance: onlyDebt || undefined }),
+    withQuery("/api/customers", {
+      search: debounced,
+      withBalance: onlyDebt || undefined,
+      overdue: onlyOverdue || undefined,
+    }),
     fetcher,
   );
   const [editing, setEditing] = useState<Customer | null | undefined>(undefined);
@@ -57,6 +80,7 @@ export default function CustomersPage() {
   const [payMethod, setPayMethod] = useState("CASH");
 
   const totalDebt = data?.reduce((acc, c) => acc + c.balance, 0) ?? 0;
+  const totalOverdue = data?.reduce((acc, c) => acc + (c.overdue ?? 0), 0) ?? 0;
 
   function openForm(c: Customer | null) {
     setForm(
@@ -67,6 +91,9 @@ export default function CustomersPage() {
             email: c.email ?? "",
             notes: c.notes ?? "",
             creditLimit: String(c.creditLimit),
+            creditDays: String(c.creditDays),
+            ruc: c.ruc ?? "",
+            dv: c.dv ?? "",
             rfc: c.rfc ?? "",
             legalName: c.legalName ?? "",
             taxRegime: c.taxRegime ?? "",
@@ -83,7 +110,7 @@ export default function CustomersPage() {
     try {
       await api(editing ? `/api/customers/${editing.id}` : "/api/customers", {
         method: editing ? "PUT" : "POST",
-        body: { ...form, creditLimit: Number(form.creditLimit) || 0 },
+        body: { ...form, creditLimit: Number(form.creditLimit) || 0, creditDays: Number(form.creditDays) || 0 },
       });
       toast.success("Cliente guardado");
       setEditing(undefined);
@@ -113,7 +140,11 @@ export default function CustomersPage() {
   }
 
   function reminder(c: Customer) {
-    const text = `Hola ${c.name}, te saluda ${business.name}. Te recordamos que tu saldo pendiente es de ${fmt.money(c.balance)}. ¡Gracias!`;
+    const overdue = c.overdue ?? 0;
+    const text =
+      overdue > 0
+        ? `Hola ${c.name}, te saluda ${business.name}. Tienes ${fmt.money(overdue)} vencido${c.daysOverdue ? ` desde hace ${c.daysOverdue} días` : ""} (saldo total ${fmt.money(c.balance)}). ¿Nos ayudas con tu abono? ¡Gracias!`
+        : `Hola ${c.name}, te saluda ${business.name}. Te recordamos que tu saldo pendiente es de ${fmt.money(c.balance)}. ¡Gracias!`;
     return whatsappLink(text, c.phone, business.locale);
   }
 
@@ -129,8 +160,14 @@ export default function CustomersPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <Stat label="Total por cobrar" value={fmt.money(totalDebt)} tone={totalDebt > 0 ? "warning" : "default"} />
+        <Stat
+          label="Vencido"
+          value={fmt.money(totalOverdue)}
+          tone={totalOverdue > 0 ? "negative" : "default"}
+          hint={`${data?.filter((c) => (c.overdue ?? 0) > 0).length ?? 0} clientes`}
+        />
         <Stat label="Clientes con saldo" value={data?.filter((c) => c.balance > 0).length ?? 0} />
       </div>
 
@@ -139,6 +176,7 @@ export default function CustomersPage() {
           <SearchBar value={search} onChange={setSearch} placeholder="Buscar por nombre o teléfono" />
         </div>
         <Checkbox label="Solo con saldo" checked={onlyDebt} onChange={(e) => setOnlyDebt(e.target.checked)} />
+        <Checkbox label="Solo vencidos" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} />
       </div>
 
       {error ? (
@@ -164,9 +202,9 @@ export default function CustomersPage() {
                       {c.phone ?? "Sin teléfono"}
                       {c.creditLimit > 0 && ` · límite ${fmt.money(c.creditLimit)}`}
                     </p>
-                    {c.rfc && (
+                    {(c.ruc || c.rfc) && (
                       <Badge tone="blue" className="mt-1">
-                        RFC {c.rfc}
+                        {c.ruc ? `RUC ${c.ruc}${c.dv ? ` DV ${c.dv}` : ""}` : `RFC ${c.rfc}`}
                       </Badge>
                     )}
                   </button>
@@ -177,7 +215,17 @@ export default function CustomersPage() {
                       >
                         {fmt.money(c.balance)}
                       </p>
-                      {c.balance > 0 && <p className="text-xs text-slate-500">debe</p>}
+                      {(c.overdue ?? 0) > 0 ? (
+                        <p className="text-xs text-red-600">
+                          {fmt.money(c.overdue)} vencido · {c.daysOverdue} d
+                        </p>
+                      ) : (
+                        c.balance > 0 && (
+                          <p className="text-xs text-slate-500">
+                            debe{c.nextDueDate ? ` · vence ${fmt.date(c.nextDueDate)}` : ""}
+                          </p>
+                        )
+                      )}
                     </div>
                     {c.balance > 0 && c.phone && (
                       <a
@@ -235,13 +283,22 @@ export default function CustomersPage() {
             />
           </div>
           {isOwner && (
-            <Input
-              label="Límite de crédito (fiado)"
-              inputMode="decimal"
-              value={form.creditLimit}
-              onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
-              hint="0 = sin límite"
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Límite de crédito (fiado)"
+                inputMode="decimal"
+                value={form.creditLimit}
+                onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
+                hint="0 = sin límite"
+              />
+              <Input
+                label="Días de crédito"
+                inputMode="numeric"
+                value={form.creditDays}
+                onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
+                hint="Plazo para pagar cada venta fiada"
+              />
+            </div>
           )}
           <Textarea
             label="Notas"
@@ -253,32 +310,56 @@ export default function CustomersPage() {
             <summary className="text-sm font-medium text-slate-700 cursor-pointer">
               Datos fiscales (para facturar)
             </summary>
-            <div className="space-y-3 mt-3">
-              <div className="grid grid-cols-2 gap-3">
+            {country.code === "PA" ? (
+              <div className="space-y-3 mt-3">
+                <div className="grid grid-cols-[1fr_96px] gap-3">
+                  <Input
+                    label="RUC o cédula"
+                    value={form.ruc}
+                    onChange={(e) => setForm({ ...form, ruc: e.target.value.toUpperCase() })}
+                  />
+                  <Input
+                    label="DV"
+                    inputMode="numeric"
+                    maxLength={2}
+                    value={form.dv}
+                    onChange={(e) => setForm({ ...form, dv: e.target.value })}
+                  />
+                </div>
                 <Input
-                  label="RFC"
-                  value={form.rfc}
-                  onChange={(e) => setForm({ ...form, rfc: e.target.value.toUpperCase() })}
-                />
-                <Input
-                  label="C.P. fiscal"
-                  inputMode="numeric"
-                  value={form.postalCode}
-                  onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  label="Razón social"
+                  value={form.legalName}
+                  onChange={(e) => setForm({ ...form, legalName: e.target.value })}
                 />
               </div>
-              <Input
-                label="Razón social (como en su constancia)"
-                value={form.legalName}
-                onChange={(e) => setForm({ ...form, legalName: e.target.value })}
-              />
-              <Input
-                label="Régimen fiscal (clave SAT)"
-                placeholder="Ej. 612, 626, 601"
-                value={form.taxRegime}
-                onChange={(e) => setForm({ ...form, taxRegime: e.target.value })}
-              />
-            </div>
+            ) : (
+              <div className="space-y-3 mt-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="RFC"
+                    value={form.rfc}
+                    onChange={(e) => setForm({ ...form, rfc: e.target.value.toUpperCase() })}
+                  />
+                  <Input
+                    label="C.P. fiscal"
+                    inputMode="numeric"
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  />
+                </div>
+                <Input
+                  label="Razón social (como en su constancia)"
+                  value={form.legalName}
+                  onChange={(e) => setForm({ ...form, legalName: e.target.value })}
+                />
+                <Input
+                  label="Régimen fiscal (clave SAT)"
+                  placeholder="Ej. 612, 626, 601"
+                  value={form.taxRegime}
+                  onChange={(e) => setForm({ ...form, taxRegime: e.target.value })}
+                />
+              </div>
+            )}
           </details>
           <Button type="submit" className="w-full" loading={saving}>
             Guardar
@@ -299,6 +380,27 @@ export default function CustomersPage() {
               <p className="text-sm text-slate-600">Saldo pendiente</p>
               <p className="text-2xl font-bold text-slate-900">{fmt.money(statement.data.customer.balance)}</p>
             </div>
+            {statement.data.aging && statement.data.aging.pendingSales.length > 0 && (
+              <div className="rounded-xl border border-slate-100 p-3 space-y-1 text-sm">
+                <p className="font-medium text-slate-900">
+                  Ventas por pagar
+                  {statement.data.aging.overdue > 0 && (
+                    <span className="text-red-600"> · {fmt.money(statement.data.aging.overdue)} vencido</span>
+                  )}
+                </p>
+                {statement.data.aging.pendingSales.map((p) => (
+                  <div key={p.id} className="flex justify-between">
+                    <span className="text-slate-600">
+                      #{p.folio} · {fmt.date(p.date)}
+                      {p.dueDate && ` · vence ${fmt.date(p.dueDate)}`}
+                    </span>
+                    <span className={p.overdue ? "text-red-600 font-medium" : "text-slate-900"}>
+                      {fmt.money(p.pending)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
             {statement.data.customer.balance > 0 && (
               <form onSubmit={pay} className="flex gap-2 items-end">
                 <div className="flex-1">
@@ -319,6 +421,7 @@ export default function CustomersPage() {
                   <option value="CASH">Efectivo</option>
                   <option value="CARD">Tarjeta</option>
                   <option value="TRANSFER">Transferencia</option>
+                  {business.country === "PA" && <option value="YAPPY">Yappy</option>}
                 </Select>
                 <Button type="submit" loading={saving}>
                   <HandCoins className="w-4 h-4" /> Abonar

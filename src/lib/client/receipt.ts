@@ -1,4 +1,5 @@
 import { formatCurrency, formatDateTime, formatNumber, PAYMENT_METHOD_LABELS, UNIT_LABELS } from "@/lib/utils";
+import { countryConfig } from "@/lib/country";
 import type { Sale } from "./types";
 
 interface ReceiptBusiness {
@@ -8,13 +9,19 @@ interface ReceiptBusiness {
   timezone: string;
   phone: string | null;
   address: string | null;
+  country?: string;
+  showBalboa?: boolean;
+  ruc?: string | null;
+  dv?: string | null;
 }
 
 /** Texto del ticket para compartir por WhatsApp (con formato *negritas*). */
 export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
-  const money = (n: number) => formatCurrency(n, business.currency, business.locale);
+  const money = (n: number) => formatCurrency(n, business.currency, business.locale, business.showBalboa);
+  const country = countryConfig(business.country);
   const lines = [
     `*${business.name}*`,
+    business.ruc ? `${country.taxIdLabel} ${business.ruc}${business.dv ? ` DV ${business.dv}` : ""}` : null,
     business.address,
     business.phone ? `Tel. ${business.phone}` : null,
     `Ticket #${sale.folio} · ${formatDateTime(sale.createdAt, business.locale, business.timezone)}`,
@@ -26,7 +33,7 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
     "",
     sale.discount > 0 ? `Descuento: -${money(sale.discount)}` : null,
     `*Total: ${money(sale.total)}*`,
-    `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}`,
+    `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
     sale.change ? `Cambio: ${money(sale.change)}` : null,
     sale.status === "CANCELLED" ? "VENTA CANCELADA" : null,
     "",

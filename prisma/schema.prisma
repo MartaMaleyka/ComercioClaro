@@ -22,6 +22,7 @@ enum PaymentMethod {
   CARD
   TRANSFER
   CREDIT
+  YAPPY
 }
 
 enum DocStatus {
@@ -82,6 +83,8 @@ model User {
   // Se incrementa al cambiar contraseña o cerrar todas las sesiones para invalidar JWT emitidos.
   tokenVersion       Int       @default(0)
   mustChangePassword Boolean   @default(false)
+  // Idioma de la interfaz: es, zh, en
+  language           String    @default("es")
   resetTokenHash     String?   @unique
   resetExpires       DateTime?
   createdAt          DateTime  @default(now())
@@ -109,10 +112,26 @@ model Business {
   description         String?
   phone               String?
   address             String?
+  // País (ISO 3166-1): define impuestos, facturación y formatos por defecto
+  country             String   @default("MX")
   currency            String   @default("MXN")
+  // Panamá: mostrar montos como B/. (balboa a la par del dólar)
+  showBalboa          Boolean  @default(false)
   locale              String   @default("es-MX")
   timezone            String   @default("America/Mexico_City")
   lowStockEmailAlerts Boolean  @default(false)
+  // Datos fiscales Panamá
+  ruc                 String?
+  dv                  String?
+  // Usa el facturador gratuito de la DGI (se vigilan sus límites)
+  usesFreeInvoicer    Boolean  @default(false)
+  // Yappy: número o nombre en el directorio y QR estático (data URL)
+  yappyDirectory      String?
+  yappyQr             String?
+  // Comisiones por medio de pago (fracción, p. ej. 0.0107 = 1.07%)
+  cardFeeRate         Decimal  @default(0) @db.Decimal(6, 4)
+  transferFeeRate     Decimal  @default(0) @db.Decimal(6, 4)
+  yappyFeeRate        Decimal  @default(0.0107) @db.Decimal(6, 4)
   // Datos fiscales (CFDI 4.0)
   rfc                 String?
   legalName           String?
@@ -167,6 +186,8 @@ model Product {
   stock           Decimal     @default(0) @db.Decimal(12, 3)
   minStock        Decimal     @default(5) @db.Decimal(12, 3)
   trackExpiry     Boolean     @default(false)
+  // Unidades por caja/paquete al comprar (venta suelta)
+  packSize        Int?
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -180,11 +201,11 @@ model Product {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  saleItems       SaleItem[]
-  purchaseItems   PurchaseItem[]
-  returnItems     SaleReturnItem[]
-  batches         ProductBatch[]
-  stockMovements  StockMovement[]
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  returnItems    SaleReturnItem[]
+  batches        ProductBatch[]
+  stockMovements StockMovement[]
 
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
@@ -198,12 +219,16 @@ model Customer {
   email       String?
   notes       String?
   creditLimit Decimal   @default(0) @db.Decimal(12, 2)
+  // Días de crédito para calcular el vencimiento del fiado
+  creditDays  Int       @default(15)
   // Saldo pendiente de fiado (se actualiza en la misma transacción que ventas y abonos)
   balance     Decimal   @default(0) @db.Decimal(12, 2)
   rfc         String?
   legalName   String?
   taxRegime   String?
   postalCode  String?
+  ruc         String?
+  dv          String?
   businessId  String
   business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   archivedAt  DateTime?
@@ -254,33 +279,37 @@ model Supplier {
 }
 
 model Sale {
-  id              String        @id @default(cuid())
-  folio           Int
+  id               String        @id @default(cuid())
+  folio            Int
   // Identificador generado por el cliente para evitar duplicados al sincronizar ventas sin conexión
-  clientRequestId String?
-  status          DocStatus     @default(ACTIVE)
-  paymentMethod   PaymentMethod @default(CASH)
-  subtotal        Decimal       @db.Decimal(12, 2)
-  discount        Decimal       @default(0) @db.Decimal(12, 2)
-  total           Decimal       @db.Decimal(12, 2)
+  clientRequestId  String?
+  status           DocStatus     @default(ACTIVE)
+  paymentMethod    PaymentMethod @default(CASH)
+  subtotal         Decimal       @db.Decimal(12, 2)
+  discount         Decimal       @default(0) @db.Decimal(12, 2)
+  total            Decimal       @db.Decimal(12, 2)
   // Costo de lo vendido (COGS) calculado con el costo promedio al momento de la venta
-  costTotal       Decimal       @default(0) @db.Decimal(12, 2)
-  amountReceived  Decimal?      @db.Decimal(12, 2)
-  change          Decimal?      @db.Decimal(12, 2)
-  notes           String?
-  customerId      String?
-  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  cashSessionId   String?
-  cashSession     CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
-  invoiceId       String?
-  invoice         Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  userId          String?
-  cancelledAt     DateTime?
-  cancelReason    String?
-  businessId      String
-  business        Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  costTotal        Decimal       @default(0) @db.Decimal(12, 2)
+  amountReceived   Decimal?      @db.Decimal(12, 2)
+  change           Decimal?      @db.Decimal(12, 2)
+  // Número de operación (Yappy, transferencia, voucher de tarjeta)
+  paymentReference String?
+  // Vencimiento del fiado
+  dueDate          DateTime?
+  notes            String?
+  customerId       String?
+  customer         Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  cashSessionId    String?
+  cashSession      CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  invoiceId        String?
+  invoice          Invoice?      @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  userId           String?
+  cancelledAt      DateTime?
+  cancelReason     String?
+  businessId       String
+  business         Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   items   SaleItem[]
   returns SaleReturn[]
@@ -295,19 +324,19 @@ model Sale {
 }
 
 model SaleItem {
-  id               String   @id @default(cuid())
-  quantity         Decimal  @db.Decimal(12, 3)
-  returnedQuantity Decimal  @default(0) @db.Decimal(12, 3)
-  unitPrice        Decimal  @db.Decimal(12, 2)
-  discount         Decimal  @default(0) @db.Decimal(12, 2)
-  subtotal         Decimal  @db.Decimal(12, 2)
-  unitCost         Decimal  @default(0) @db.Decimal(12, 4)
-  taxRate          Decimal  @default(0.16) @db.Decimal(5, 4)
-  iepsRate         Decimal  @default(0) @db.Decimal(5, 4)
+  id               String  @id @default(cuid())
+  quantity         Decimal @db.Decimal(12, 3)
+  returnedQuantity Decimal @default(0) @db.Decimal(12, 3)
+  unitPrice        Decimal @db.Decimal(12, 2)
+  discount         Decimal @default(0) @db.Decimal(12, 2)
+  subtotal         Decimal @db.Decimal(12, 2)
+  unitCost         Decimal @default(0) @db.Decimal(12, 4)
+  taxRate          Decimal @default(0.16) @db.Decimal(5, 4)
+  iepsRate         Decimal @default(0) @db.Decimal(5, 4)
   saleId           String
-  sale             Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  sale             Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId        String
-  product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   returnItems SaleReturnItem[]
 

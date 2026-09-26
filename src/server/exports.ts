@@ -50,10 +50,10 @@ export async function exportCsv(
         take: MAX_ROWS,
       });
       return toCsv(
-        ["Folio", "Fecha", "Estado", "Forma de pago", "Cliente", "Subtotal", "Descuento", "Total", "Costo", "Utilidad bruta", "Notas", "Motivo cancelación"],
+        ["Folio", "Fecha", "Estado", "Forma de pago", "Referencia", "Vence", "Cliente", "Subtotal", "Descuento", "Total", "Costo", "Utilidad bruta", "Notas", "Motivo cancelación"],
         sales.map((s) => [
           s.folio, localDate(s.createdAt), s.status === "ACTIVE" ? "Activa" : "Cancelada",
-          PAYMENT_METHOD_LABELS[s.paymentMethod], s.customer?.name, s.subtotal.toFixed(2), s.discount.toFixed(2),
+          PAYMENT_METHOD_LABELS[s.paymentMethod], s.paymentReference, s.dueDate?.toISOString().slice(0, 10), s.customer?.name, s.subtotal.toFixed(2), s.discount.toFixed(2),
           s.total.toFixed(2), s.costTotal.toFixed(2), s.total.minus(s.costTotal).toFixed(2), s.notes, s.cancelReason,
         ])
       );

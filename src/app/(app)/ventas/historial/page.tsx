@@ -8,6 +8,7 @@ import { useFormat, todayKey } from "@/lib/client/format";
 import { withQuery } from "@/lib/client/api";
 import type { Sale } from "@/lib/client/types";
 import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
+import { countryConfig } from "@/lib/country";
 import { useSession } from "@/components/providers/SessionProvider";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -23,8 +24,9 @@ export default function SalesHistoryPage() {
   const [from, setFrom] = useState(todayKey(business.timezone, -30));
   const [to, setTo] = useState(todayKey(business.timezone));
   const [status, setStatus] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const debounced = useDebounce(search);
-  const params = { search: debounced, from, to, status };
+  const params = { search: debounced, from, to, status, paymentMethod };
   const { items, error, isLoading, hasMore, loadMore, loadingMore, mutate } = usePaginated<Sale>("/api/sales", params);
 
   return (
@@ -44,7 +46,7 @@ export default function SalesHistoryPage() {
         }
       />
 
-      <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+      <div className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-end">
         <SearchBar value={search} onChange={setSearch} placeholder="Buscar por producto, cliente o folio" />
         <Input type="date" aria-label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
@@ -52,6 +54,14 @@ export default function SalesHistoryPage() {
           <option value="">Todas</option>
           <option value="ACTIVE">Activas</option>
           <option value="CANCELLED">Canceladas</option>
+        </Select>
+        <Select aria-label="Forma de pago" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+          <option value="">Toda forma de pago</option>
+          {countryConfig(business.country).paymentMethods.map((m) => (
+            <option key={m} value={m}>
+              {PAYMENT_METHOD_LABELS[m]}
+            </option>
+          ))}
         </Select>
       </div>
 
@@ -74,6 +84,7 @@ export default function SalesHistoryPage() {
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {fmt.dateTime(sale.createdAt)} · {PAYMENT_METHOD_LABELS[sale.paymentMethod]}
+                        {sale.paymentReference && ` (ref. ${sale.paymentReference})`}
                         {sale.customer && ` · ${sale.customer.name}`}
                       </p>
                       <div className="flex gap-1 mt-1">
@@ -82,7 +93,9 @@ export default function SalesHistoryPage() {
                         {sale.invoice?.status === "STAMPED" && <Badge tone="blue">Facturada</Badge>}
                       </div>
                     </div>
-                    <p className={`font-semibold tabular-nums ${sale.status === "CANCELLED" ? "line-through text-slate-400" : "text-brand-600"}`}>
+                    <p
+                      className={`font-semibold tabular-nums ${sale.status === "CANCELLED" ? "line-through text-slate-400" : "text-brand-600"}`}
+                    >
                       {fmt.money(sale.total)}
                     </p>
                   </div>

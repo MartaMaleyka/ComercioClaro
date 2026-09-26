@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { productCreateSchema } from "@/lib/validation";
 import { applyStockChange, type Actor } from "./inventory";
+import { countryConfig } from "@/lib/country";
 
 export type ProductInput = z.infer<typeof productCreateSchema>;
 
@@ -16,8 +17,14 @@ async function assertCategory(businessId: string, categoryId: string | null | un
   if (!category) throw new AppError(404, "Categoría no encontrada");
 }
 
+async function defaultTaxRate(businessId: string) {
+  const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId }, select: { country: true } });
+  return countryConfig(business.country).defaultTaxRate;
+}
+
 export async function createProduct(actor: Actor, input: ProductInput) {
   await assertCategory(actor.businessId, input.categoryId);
+  const taxRate = input.taxRate ?? (await defaultTaxRate(actor.businessId));
   return prisma.$transaction(async (tx) => {
     const product = await tx.product.create({
       data: {
@@ -32,7 +39,8 @@ export async function createProduct(actor: Actor, input: ProductInput) {
         cost: unitCost(input.cost),
         minStock: qty(input.minStock),
         trackExpiry: input.trackExpiry,
-        taxRate: D(input.taxRate),
+        packSize: input.packSize ?? null,
+        taxRate: D(taxRate),
         iepsRate: D(input.iepsRate),
         satProductKey: input.satProductKey,
         satUnitKey: input.satUnitKey,
@@ -79,7 +87,8 @@ export async function updateProduct(
   if (input.cost !== undefined) data.cost = unitCost(input.cost);
   if (input.minStock !== undefined) data.minStock = qty(input.minStock);
   if (input.trackExpiry !== undefined) data.trackExpiry = input.trackExpiry;
-  if (input.taxRate !== undefined) data.taxRate = D(input.taxRate);
+  if (input.packSize !== undefined) data.packSize = input.packSize ?? null;
+  if (input.taxRate != null) data.taxRate = D(input.taxRate);
   if (input.iepsRate !== undefined) data.iepsRate = D(input.iepsRate);
   if (input.satProductKey !== undefined) data.satProductKey = input.satProductKey;
   if (input.satUnitKey !== undefined) data.satUnitKey = input.satUnitKey;
@@ -126,6 +135,10 @@ const HEADER_ALIASES: Record<string, keyof ProductInput> = {
   ieps: "iepsRate",
   "clave sat": "satProductKey",
   "clave unidad sat": "satUnitKey",
+  itbms: "taxRate",
+  impuesto: "taxRate",
+  "unidades por caja": "packSize",
+  "por caja": "packSize",
 };
 
 const UNIT_ALIASES: Record<string, string> = {
@@ -169,6 +182,7 @@ export async function importProducts(actor: Actor, csv: string) {
     });
     if (typeof raw.unit === "string") raw.unit = UNIT_ALIASES[raw.unit.toLowerCase()] ?? raw.unit.toUpperCase();
     for (const k of ["taxRate", "iepsRate"] as const) {
+      if (typeof raw[k] === "string" && /^exento$/i.test(String(raw[k]).trim())) raw[k] = "0";
       if (typeof raw[k] === "string") {
         const n = Number(String(raw[k]).replace("%", ""));
         raw[k] = n > 1 ? n / 100 : n;

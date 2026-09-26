@@ -39,6 +39,8 @@ interface Report {
   salesCount: number;
   averageTicket: number;
   byPaymentMethod: { method: string; total: number; count: number }[];
+  fees: { items: { method: string; rate: number; amount: number }[]; total: number };
+  netAfterFees: number;
   trends: {
     date: string;
     sales: number;
@@ -208,7 +210,15 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat label="Compras (salida de dinero)" value={fmt.money(data.purchases)} />
             <Stat label="Devoluciones" value={fmt.money(data.returns)} />
-            <Stat label="Descuentos" value={fmt.money(data.discounts)} />
+            <Stat
+              label="Comisiones estimadas"
+              value={fmt.money(data.fees.total)}
+              hint={
+                data.fees.items.length > 0
+                  ? `${data.fees.items.map((f) => `${PAYMENT_METHOD_LABELS[f.method]} ${Math.round(f.rate * 10000) / 100}%`).join(" · ")} · neto ${fmt.money(data.netAfterFees)}`
+                  : "Configura las comisiones en Configuración"
+              }
+            />
             <Stat
               label="Por forma de pago"
               value={

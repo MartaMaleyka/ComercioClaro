@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
+import { useSession } from "@/components/providers/SessionProvider";
+import { countryConfig } from "@/lib/country";
 
 const UNITS = [
   { value: "PIECE", label: "Pieza", sat: "H87" },
@@ -33,7 +35,8 @@ const empty = {
   stock: "",
   minStock: "5",
   trackExpiry: false,
-  taxRate: "0.16",
+  packSize: "",
+  taxRate: "",
   iepsRate: "0",
   satProductKey: "01010101",
   satUnitKey: "H87",
@@ -57,6 +60,7 @@ function toForm(product: Product | null): FormState {
     stock: String(product.stock),
     minStock: String(product.minStock),
     trackExpiry: product.trackExpiry,
+    packSize: product.packSize != null ? String(product.packSize) : "",
     taxRate: String(product.taxRate),
     iepsRate: String(product.iepsRate),
     satProductKey: product.satProductKey,
@@ -77,15 +81,14 @@ export function ProductForm(props: ProductFormProps) {
   return props.open ? <ProductFormDialog key={props.product?.id ?? "new"} {...props} /> : null;
 }
 
-function ProductFormDialog({
-  open,
-  product,
-  categories,
-  onClose,
-  onSaved,
-}: ProductFormProps) {
+function ProductFormDialog({ open, product, categories, onClose, onSaved }: ProductFormProps) {
   const toast = useToast();
-  const [form, setForm] = useState<FormState>(() => toForm(product));
+  const { business } = useSession();
+  const country = countryConfig(business.country);
+  const [form, setForm] = useState<FormState>(() => {
+    const initial = toForm(product);
+    return initial.taxRate === "" ? { ...initial, taxRate: String(country.defaultTaxRate) } : initial;
+  });
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [advanced, setAdvanced] = useState(false);
@@ -108,6 +111,7 @@ function ProductFormDialog({
       cost: form.cost || 0,
       minStock: form.minStock || 0,
       trackExpiry: form.trackExpiry,
+      packSize: form.packSize === "" ? null : form.packSize,
       taxRate: form.taxRate,
       iepsRate: form.iepsRate,
       satProductKey: form.satProductKey,
@@ -170,57 +174,130 @@ function ProductFormDialog({
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Precio de venta" inputMode="decimal" value={form.price} onChange={(e) => set("price", e.target.value)} required />
+            <Input
+              label="Precio de venta"
+              inputMode="decimal"
+              value={form.price}
+              onChange={(e) => set("price", e.target.value)}
+              required
+            />
             <Input
               label="Costo"
               inputMode="decimal"
               value={form.cost}
               onChange={(e) => set("cost", e.target.value)}
-              hint={margin !== null ? `Margen ${margin}%` : product ? "Se recalcula con cada compra (promedio)" : undefined}
+              hint={
+                margin !== null ? `Margen ${margin}%` : product ? "Se recalcula con cada compra (promedio)" : undefined
+              }
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             {!product && (
-              <Input label="Existencia inicial" inputMode="decimal" value={form.stock} onChange={(e) => set("stock", e.target.value)} />
+              <Input
+                label="Existencia inicial"
+                inputMode="decimal"
+                value={form.stock}
+                onChange={(e) => set("stock", e.target.value)}
+              />
             )}
-            <Input label="Stock mínimo (alerta)" inputMode="decimal" value={form.minStock} onChange={(e) => set("minStock", e.target.value)} />
+            <Input
+              label="Stock mínimo (alerta)"
+              inputMode="decimal"
+              value={form.minStock}
+              onChange={(e) => set("minStock", e.target.value)}
+            />
           </div>
           {product && (
-            <p className="text-xs text-slate-500">Para cambiar la existencia usa &quot;Ajustar existencia&quot; y queda registrado el motivo.</p>
+            <p className="text-xs text-slate-500">
+              Para cambiar la existencia usa &quot;Ajustar existencia&quot; y queda registrado el motivo.
+            </p>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Precio de mayoreo" inputMode="decimal" value={form.wholesalePrice} onChange={(e) => set("wholesalePrice", e.target.value)} placeholder="Opcional" />
-            <Input label="Mayoreo desde (cantidad)" inputMode="decimal" value={form.wholesaleMinQty} onChange={(e) => set("wholesaleMinQty", e.target.value)} placeholder="Ej. 12" />
+            <Input
+              label="Precio de mayoreo"
+              inputMode="decimal"
+              value={form.wholesalePrice}
+              onChange={(e) => set("wholesalePrice", e.target.value)}
+              placeholder="Opcional"
+            />
+            <Input
+              label="Mayoreo desde (cantidad)"
+              inputMode="decimal"
+              value={form.wholesaleMinQty}
+              onChange={(e) => set("wholesaleMinQty", e.target.value)}
+              placeholder="Ej. 12"
+            />
           </div>
-          <Checkbox label="Controlar lotes y fecha de caducidad" checked={form.trackExpiry} onChange={(e) => set("trackExpiry", e.target.checked)} />
+          <Input
+            label="Unidades por caja (opcional)"
+            inputMode="numeric"
+            value={form.packSize}
+            onChange={(e) => set("packSize", e.target.value)}
+            hint="Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)"
+          />
+          <Checkbox
+            label="Controlar lotes y fecha de caducidad"
+            checked={form.trackExpiry}
+            onChange={(e) => set("trackExpiry", e.target.checked)}
+          />
 
-          <button type="button" onClick={() => setAdvanced((v) => !v)} className="text-sm text-brand-700 dark:text-brand-300 underline">
-            {advanced ? "Ocultar" : "Mostrar"} impuestos y datos para factura
+          <button
+            type="button"
+            onClick={() => setAdvanced((v) => !v)}
+            className="text-sm text-brand-700 dark:text-brand-300 underline"
+          >
+            {advanced ? "Ocultar" : "Mostrar"} impuestos y datos adicionales
           </button>
           {advanced && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Select label="IVA" value={form.taxRate} onChange={(e) => set("taxRate", e.target.value)}>
-                  <option value="0.16">16%</option>
-                  <option value="0.08">8% (frontera)</option>
-                  <option value="0">0% (alimentos, medicinas)</option>
+                <Select label={country.taxLabel} value={form.taxRate} onChange={(e) => set("taxRate", e.target.value)}>
+                  {[
+                    ...new Map([
+                      ...country.taxRates.map((r) => [String(r.value), r.label] as const),
+                      [form.taxRate, `${Math.round(Number(form.taxRate) * 1000) / 10}%`] as const,
+                    ]),
+                  ].map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </Select>
-                <Select label="IEPS" value={form.iepsRate} onChange={(e) => set("iepsRate", e.target.value)}>
-                  <option value="0">No aplica</option>
-                  <option value="0.08">8% (botanas, dulces)</option>
-                  <option value="0.265">26.5% (cerveza)</option>
-                  <option value="0.3">30% (vinos y licores)</option>
-                  <option value="0.53">53% (licores más de 20°)</option>
-                  <option value="1.6">160% (cigarros)</option>
-                </Select>
+                {country.hasIeps && (
+                  <Select label="IEPS" value={form.iepsRate} onChange={(e) => set("iepsRate", e.target.value)}>
+                    <option value="0">No aplica</option>
+                    <option value="0.08">8% (botanas, dulces)</option>
+                    <option value="0.265">26.5% (cerveza)</option>
+                    <option value="0.3">30% (vinos y licores)</option>
+                    <option value="0.53">53% (licores más de 20°)</option>
+                    <option value="1.6">160% (cigarros)</option>
+                  </Select>
+                )}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Clave SAT producto" value={form.satProductKey} onChange={(e) => set("satProductKey", e.target.value)} />
-                <Input label="Clave SAT unidad" value={form.satUnitKey} onChange={(e) => set("satUnitKey", e.target.value)} />
-              </div>
+              {country.hasIeps && (
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Clave SAT producto"
+                    value={form.satProductKey}
+                    onChange={(e) => set("satProductKey", e.target.value)}
+                  />
+                  <Input
+                    label="Clave SAT unidad"
+                    value={form.satUnitKey}
+                    onChange={(e) => set("satUnitKey", e.target.value)}
+                  />
+                </div>
+              )}
               <Input label="SKU interno" value={form.sku} onChange={(e) => set("sku", e.target.value)} />
-              <Textarea label="Descripción" rows={2} value={form.description} onChange={(e) => set("description", e.target.value)} />
-              <p className="text-xs text-slate-500">Los precios incluyen impuestos. El desglose se calcula al facturar.</p>
+              <Textarea
+                label="Descripción"
+                rows={2}
+                value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+              />
+              <p className="text-xs text-slate-500">
+                Los precios incluyen impuestos. El desglose se calcula al facturar.
+              </p>
             </div>
           )}
 

@@ -48,7 +48,7 @@ export interface AuthContext {
   userId: string;
   businessId: string;
   role: Role;
-  user: { id: string; email: string; name: string; mustChangePassword: boolean };
+  user: { id: string; email: string; name: string; mustChangePassword: boolean; language: string };
   business: Awaited<ReturnType<typeof prisma.business.findUniqueOrThrow>>;
 }
 
@@ -68,7 +68,13 @@ export async function getAuth(): Promise<AuthContext | null> {
     userId: user.id,
     businessId: business.id,
     role: membership.role,
-    user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.mustChangePassword },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      mustChangePassword: user.mustChangePassword,
+      language: user.language,
+    },
     business,
   };
 }

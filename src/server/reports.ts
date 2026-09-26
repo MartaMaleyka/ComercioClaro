@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { D, money, type Decimal } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
+import { customersAging } from "./customers";
 import { addDays, dayKey, dayKeysBetween, dayRange, startOfDay, startOfMonth } from "@/lib/dates";
 
 interface Range {
@@ -16,7 +17,26 @@ interface Range {
  * - utilidad neta = utilidad bruta − gastos
  * Las compras se reportan aparte como salida de dinero (no son costo hasta que se venden).
  */
-export async function financialSummary(businessId: string, range: Range) {
+export interface FeeRates {
+  cardFeeRate?: Decimal | number | null;
+  transferFeeRate?: Decimal | number | null;
+  yappyFeeRate?: Decimal | number | null;
+}
+
+/** Comisión estimada que cobra cada medio de pago sobre lo vendido. */
+export function estimateFees(byMethod: { method: string; total: Decimal }[], rates: FeeRates) {
+  const rateFor: Record<string, Decimal> = {
+    CARD: D(rates.cardFeeRate ?? 0),
+    TRANSFER: D(rates.transferFeeRate ?? 0),
+    YAPPY: D(rates.yappyFeeRate ?? 0),
+  };
+  const items = byMethod
+    .filter((m) => rateFor[m.method]?.gt(0))
+    .map((m) => ({ method: m.method, rate: rateFor[m.method], amount: money(D(m.total).times(rateFor[m.method])) }));
+  return { items, total: money(items.reduce((acc, i) => acc.plus(i.amount), D(0))) };
+}
+
+export async function financialSummary(businessId: string, range: Range, rates: FeeRates = {}) {
   const saleWhere = { businessId, status: "ACTIVE" as const, createdAt: { gte: range.start, lt: range.end } };
   const [sales, returns, expenses, purchases, byMethod] = await Promise.all([
     prisma.sale.aggregate({ where: saleWhere, _sum: { total: true, costTotal: true, discount: true }, _count: true }),
@@ -46,6 +66,8 @@ export async function financialSummary(businessId: string, range: Range) {
   const grossProfit = revenue.minus(cogs);
   const totalExpenses = D(expenses._sum.amount);
   const netProfit = grossProfit.minus(totalExpenses);
+  const paymentMethods = byMethod.map((m) => ({ method: m.paymentMethod, total: D(m._sum.total), count: m._count }));
+  const fees = estimateFees(paymentMethods, rates);
 
   return {
     revenue: money(revenue),
@@ -60,7 +82,9 @@ export async function financialSummary(businessId: string, range: Range) {
     purchasesCount: purchases._count,
     salesCount: sales._count,
     averageTicket: sales._count > 0 ? money(D(sales._sum.total).div(sales._count)) : D(0),
-    byPaymentMethod: byMethod.map((m) => ({ method: m.paymentMethod, total: D(m._sum.total), count: m._count })),
+    byPaymentMethod: paymentMethods,
+    fees,
+    netAfterFees: money(netProfit.minus(fees.total)),
   };
 }
 
@@ -192,12 +216,12 @@ export function resolveReportRange(timeZone: string, query: { period: number; fr
 }
 
 export async function businessReport(
-  business: { id: string; timezone: string },
+  business: { id: string; timezone: string } & FeeRates,
   query: { period: number; from?: string; to?: string }
 ) {
   const range = resolveReportRange(business.timezone, query);
   const [summary, trends, top, categories, expenseCategories] = await Promise.all([
-    financialSummary(business.id, range),
+    financialSummary(business.id, range, business),
     dailyTrends(business.id, business.timezone, range.fromKey, range.toKey),
     bestSellers(business.id, range),
     salesByCategory(business.id, range),
@@ -224,7 +248,7 @@ export async function consolidatedReport(userId: string, query: { period: number
   const branches = await Promise.all(
     memberships.map(async ({ business }) => {
       const range = resolveReportRange(business.timezone, query);
-      const summary = await financialSummary(business.id, range);
+      const summary = await financialSummary(business.id, range, business);
       return { businessId: business.id, name: business.name, currency: business.currency, from: range.fromKey, to: range.toKey, ...summary };
     })
   );
@@ -236,7 +260,7 @@ export async function consolidatedReport(userId: string, query: { period: number
   return { branches, totals, mixedCurrencies: currencies.length > 1 };
 }
 
-export async function dashboard(business: { id: string; timezone: string }) {
+export async function dashboard(business: { id: string; timezone: string } & FeeRates) {
   const now = new Date();
   const today = { start: startOfDay(now, business.timezone), end: new Date(now.getTime() + 60_000) };
   const month = { start: startOfMonth(now, business.timezone), end: today.end };
@@ -244,8 +268,8 @@ export async function dashboard(business: { id: string; timezone: string }) {
 
   const [todaySummary, monthSummary, lowStock, lowStockCount, inventory, expiring, receivables, openCash, recentSales, totalProducts] =
     await Promise.all([
-      financialSummary(business.id, today),
-      financialSummary(business.id, month),
+      financialSummary(business.id, today, business),
+      financialSummary(business.id, month, business),
       prisma.product.findMany({
         where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
         orderBy: { stock: "asc" },
@@ -287,8 +311,25 @@ export async function dashboard(business: { id: string; timezone: string }) {
     totalProducts,
     totalInventoryValue: money(D(inventory[0]?.value)),
     expiringBatches: expiring,
-    receivables: { total: D(receivables._sum.balance), customers: receivables._count },
+    receivables: {
+      total: D(receivables._sum.balance),
+      customers: receivables._count,
+      ...(await overdueReceivables(business.id)),
+    },
     cashSession: openCash,
     recentSales,
   };
+}
+
+async function overdueReceivables(businessId: string) {
+  const aging = await customersAging(businessId);
+  let overdue = 0;
+  let overdueCustomers = 0;
+  for (const a of aging.values()) {
+    if (a.overdue > 0) {
+      overdue += a.overdue;
+      overdueCustomers++;
+    }
+  }
+  return { overdue: Math.round(overdue * 100) / 100, overdueCustomers };
 }

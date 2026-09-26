@@ -4,11 +4,15 @@ export interface FormatOptions {
   timeZone?: string;
 }
 
-export function formatCurrency(amount: number, currency = "MXN", locale = "es-MX") {
+/**
+ * Formatea un monto. Con `balboa` (Panamá) los dólares se muestran como B/.,
+ * ya que el balboa circula a la par del dólar.
+ */
+export function formatCurrency(amount: number, currency = "MXN", locale = "es-MX", balboa = false) {
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency,
+      currency: balboa && currency === "USD" ? "PAB" : currency,
       minimumFractionDigits: 2,
     }).format(amount);
   } catch {
@@ -58,6 +62,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CARD: "Tarjeta",
   TRANSFER: "Transferencia",
   CREDIT: "Fiado",
+  YAPPY: "Yappy",
 };
 
 export const ADJUSTMENT_REASON_LABELS: Record<string, string> = {

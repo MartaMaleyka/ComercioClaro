@@ -18,7 +18,18 @@ import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader, Stat } from "@/components/ui/Misc";
 
-const DEFAULT_CATEGORIES = ["Renta", "Luz", "Agua", "Gas", "Internet / teléfono", "Sueldos", "Transporte", "Mantenimiento", "Impuestos", "Otros"];
+const DEFAULT_CATEGORIES = [
+  "Renta",
+  "Luz",
+  "Agua",
+  "Gas",
+  "Internet / teléfono",
+  "Sueldos",
+  "Transporte",
+  "Mantenimiento",
+  "Impuestos",
+  "Otros",
+];
 
 export default function ExpensesPage() {
   const { business } = useSession();
@@ -31,7 +42,13 @@ export default function ExpensesPage() {
   const debounced = useDebounce(search);
   const list = usePaginated<Expense>("/api/expenses", { search: debounced, from, to, limit: 50 });
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ category: "Renta", description: "", amount: "", paymentMethod: "CASH", date: todayKey(business.timezone) });
+  const [form, setForm] = useState({
+    category: "Renta",
+    description: "",
+    amount: "",
+    paymentMethod: "CASH",
+    date: todayKey(business.timezone),
+  });
   const [saving, setSaving] = useState(false);
 
   const firstPage = list.data?.[0] as { categories?: string[] } | undefined;
@@ -57,7 +74,15 @@ export default function ExpensesPage() {
   }
 
   async function remove(expense: Expense) {
-    if (!(await confirm({ title: "Eliminar gasto", message: `${expense.category} · ${fmt.money(expense.amount)}`, danger: true, confirmLabel: "Eliminar" }))) return;
+    if (
+      !(await confirm({
+        title: "Eliminar gasto",
+        message: `${expense.category} · ${fmt.money(expense.amount)}`,
+        danger: true,
+        confirmLabel: "Eliminar",
+      }))
+    )
+      return;
     try {
       await api(`/api/expenses/${expense.id}`, { method: "DELETE" });
       list.mutate();
@@ -92,14 +117,22 @@ export default function ExpensesPage() {
         <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
-      <Stat label="Total mostrado" value={fmt.money(total)} hint={list.hasMore ? "Carga más para ver el total completo" : undefined} />
+      <Stat
+        label="Total mostrado"
+        value={fmt.money(total)}
+        hint={list.hasMore ? "Carga más para ver el total completo" : undefined}
+      />
 
       {list.error ? (
         <ErrorState error={list.error} onRetry={() => list.mutate()} />
       ) : list.isLoading ? (
         <ListSkeleton />
       ) : list.items.length === 0 ? (
-        <EmptyState icon={Receipt} title="Sin gastos" description="Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta." />
+        <EmptyState
+          icon={Receipt}
+          title="Sin gastos"
+          description="Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta."
+        />
       ) : (
         <div className="space-y-2">
           {list.items.map((e) => (
@@ -114,7 +147,11 @@ export default function ExpensesPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-red-600 tabular-nums">{fmt.money(e.amount)}</p>
-                  <button aria-label="Eliminar gasto" onClick={() => remove(e)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                  <button
+                    aria-label="Eliminar gasto"
+                    onClick={() => remove(e)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -127,23 +164,49 @@ export default function ExpensesPage() {
 
       <Modal open={open} onClose={() => setOpen(false)} title="Nuevo gasto">
         <form onSubmit={save} className="space-y-3">
-          <Select label="Categoría" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+          <Select
+            label="Categoría"
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+          >
             {categories.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
           </Select>
-          <Input label="Monto" inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required autoFocus />
+          <Input
+            label="Monto"
+            inputMode="decimal"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            required
+            autoFocus
+          />
           <div className="grid grid-cols-2 gap-3">
-            <Select label="Pagado con" value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
+            <Select
+              label="Pagado con"
+              value={form.paymentMethod}
+              onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+            >
               <option value="CASH">Efectivo (sale de caja)</option>
               <option value="CARD">Tarjeta</option>
               <option value="TRANSFER">Transferencia</option>
+              {business.country === "PA" && <option value="YAPPY">Yappy</option>}
             </Select>
-            <Input label="Fecha" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+            <Input
+              label="Fecha"
+              type="date"
+              value={form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+            />
           </div>
-          <Input label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional" />
+          <Input
+            label="Descripción"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Opcional"
+          />
           <Button type="submit" className="w-full" loading={saving}>
             Guardar
           </Button>

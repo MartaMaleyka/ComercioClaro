@@ -17,7 +17,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   return (
     <SessionProvider
       value={{
-        user: { id: auth.user.id, name: auth.user.name, email: auth.user.email },
+        user: { id: auth.user.id, name: auth.user.name, email: auth.user.email, language: auth.user.language },
         role: auth.role,
         business: {
           id: business.id,
@@ -27,6 +27,14 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
           timezone: business.timezone,
           phone: business.phone,
           address: business.address,
+          country: business.country,
+          showBalboa: business.showBalboa,
+          ruc: business.ruc,
+          dv: business.dv,
+          rfc: business.rfc,
+          yappyDirectory: business.yappyDirectory,
+          hasYappyQr: Boolean(business.yappyQr),
+          usesFreeInvoicer: business.usesFreeInvoicer,
         },
         businesses: memberships.map((m) => ({ id: m.business.id, name: m.business.name, role: m.role })),
       }}

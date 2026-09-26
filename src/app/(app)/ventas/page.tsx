@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -15,16 +15,19 @@ import {
   ScanBarcode,
   Share2,
   ShoppingCart,
+  Smartphone,
   Trash2,
   Wallet,
 } from "lucide-react";
 import { api, fetcher, isNetworkError } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
+import { useT } from "@/lib/client/i18n";
 import { useDebounce } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
 import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
 import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types";
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
+import { countryConfig } from "@/lib/country";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -53,6 +56,7 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Bankn
   { value: "CASH", label: "Efectivo", icon: Banknote },
   { value: "CARD", label: "Tarjeta", icon: CreditCard },
   { value: "TRANSFER", label: "Transferencia", icon: Landmark },
+  { value: "YAPPY", label: "Yappy", icon: Smartphone },
   { value: "CREDIT", label: "Fiado", icon: HandCoins },
 ];
 
@@ -65,7 +69,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 function unitPrice(line: CartLine, isOwner: boolean) {
   if (isOwner && line.priceOverride !== "") return num(line.priceOverride);
   const q = num(line.quantity);
-  if (line.wholesalePrice != null && line.wholesaleMinQty != null && q >= line.wholesaleMinQty) return line.wholesalePrice;
+  if (line.wholesalePrice != null && line.wholesaleMinQty != null && q >= line.wholesaleMinQty)
+    return line.wholesalePrice;
   return line.price;
 }
 
@@ -95,10 +100,13 @@ export default function PosPage() {
   const { business, role } = useSession();
   const isOwner = role === "OWNER";
   const fmt = useFormat();
+  const t = useT();
   const toast = useToast();
 
   const catalog = useCachedList<Product>("/api/products?all=true", `catalog:${business.id}`);
   const customers = useCachedList<Customer>("/api/customers", `customers:${business.id}`);
+  const country = countryConfig(business.country);
+  const paymentOptions = PAYMENT_OPTIONS.filter((o) => country.paymentMethods.includes(o.value));
   const { data: cash } = useSWR<{ current: { session: { id: string } } | null }>("/api/cash", fetcher);
 
   const [search, setSearch] = useState("");
@@ -110,10 +118,20 @@ export default function PosPage() {
   const [amountReceived, setAmountReceived] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const { data: yappy } = useSWR<{ directory: string | null; qr: string | null }>(
+    paymentMethod === "YAPPY" ? "/api/business/yappy" : null,
+    fetcher,
+  );
   const [saving, setSaving] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [completed, setCompleted] = useState<{ sale: Sale | null; offline: boolean; total: number; change: number } | null>(null);
+  const [completed, setCompleted] = useState<{
+    sale: Sale | null;
+    offline: boolean;
+    total: number;
+    change: number;
+  } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const products = useMemo(() => catalog.list ?? [], [catalog.list]);
@@ -126,58 +144,54 @@ export default function PosPage() {
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
     return products
-      .filter((p) => (!categoryId || p.categoryId === categoryId) && (!q || p.name.toLowerCase().includes(q) || p.barcode?.startsWith(q) || p.sku?.toLowerCase().startsWith(q)))
+      .filter(
+        (p) =>
+          (!categoryId || p.categoryId === categoryId) &&
+          (!q || p.name.toLowerCase().includes(q) || p.barcode?.startsWith(q) || p.sku?.toLowerCase().startsWith(q)),
+      )
       .slice(0, 60);
   }, [products, debouncedSearch, categoryId]);
 
-  const addProduct = useCallback(
-    (product: Product, quantity?: number) => {
-      const step = quantity ?? 1;
-      setCart((current) => {
-        const existing = current.find((c) => c.productId === product.id);
-        const inCart = existing ? num(existing.quantity) : 0;
-        if (inCart + step > product.stock) {
-          toast.error(`Solo hay ${fmt.qty(product.stock, product.unit)} de ${product.name}`);
-          return current;
-        }
-        if (existing) {
-          return current.map((c) =>
-            c.productId === product.id ? { ...c, quantity: String(round2(inCart + step)) } : c
-          );
-        }
-        return [
-          ...current,
-          {
-            productId: product.id,
-            name: product.name,
-            unit: product.unit,
-            quantity: String(step),
-            stock: product.stock,
-            price: product.price,
-            wholesalePrice: product.wholesalePrice,
-            wholesaleMinQty: product.wholesaleMinQty,
-            priceOverride: "",
-            discount: "",
-          },
-        ];
-      });
-    },
-    [fmt, toast]
-  );
-
-  const addByCode = useCallback(
-    (code: string) => {
-      const trimmed = code.trim();
-      const product = products.find((p) => p.barcode === trimmed || p.sku === trimmed);
-      if (product) {
-        addProduct(product);
-        setSearch("");
-        return true;
+  const addProduct = (product: Product, quantity?: number) => {
+    const step = quantity ?? 1;
+    setCart((current) => {
+      const existing = current.find((c) => c.productId === product.id);
+      const inCart = existing ? num(existing.quantity) : 0;
+      if (inCart + step > product.stock) {
+        toast.error(t("pos.onlyStock", { qty: fmt.qty(product.stock, product.unit), name: product.name }));
+        return current;
       }
-      return false;
-    },
-    [products, addProduct]
-  );
+      if (existing) {
+        return current.map((c) => (c.productId === product.id ? { ...c, quantity: String(round2(inCart + step)) } : c));
+      }
+      return [
+        ...current,
+        {
+          productId: product.id,
+          name: product.name,
+          unit: product.unit,
+          quantity: String(step),
+          stock: product.stock,
+          price: product.price,
+          wholesalePrice: product.wholesalePrice,
+          wholesaleMinQty: product.wholesaleMinQty,
+          priceOverride: "",
+          discount: "",
+        },
+      ];
+    });
+  };
+
+  const addByCode = (code: string) => {
+    const trimmed = code.trim();
+    const product = products.find((p) => p.barcode === trimmed || p.sku === trimmed);
+    if (product) {
+      addProduct(product);
+      setSearch("");
+      return true;
+    }
+    return false;
+  };
 
   function handleEnter() {
     if (addByCode(search)) return;
@@ -194,7 +208,8 @@ export default function PosPage() {
   function stepLine(line: CartLine, delta: number) {
     const next = round2(num(line.quantity) + delta);
     if (next <= 0) return setCart((c) => c.filter((l) => l.productId !== line.productId));
-    if (next > line.stock) return toast.error(`Solo hay ${fmt.qty(line.stock, line.unit)} de ${line.name}`);
+    if (next > line.stock)
+      return toast.error(t("pos.onlyStock", { qty: fmt.qty(line.stock, line.unit), name: line.name }));
     updateLine(line.productId, { quantity: String(next) });
   }
 
@@ -211,7 +226,10 @@ export default function PosPage() {
     return q <= 0 || q > l.stock || (!isFractionalUnit(l.unit) && !Number.isInteger(q));
   });
   const creditExceeded =
-    paymentMethod === "CREDIT" && customer && customer.creditLimit > 0 && customer.balance + total > customer.creditLimit;
+    paymentMethod === "CREDIT" &&
+    customer &&
+    customer.creditLimit > 0 &&
+    customer.balance + total > customer.creditLimit;
   const canCharge =
     cart.length > 0 &&
     !invalidLine &&
@@ -225,6 +243,7 @@ export default function PosPage() {
     setAmountReceived("");
     setCustomerId("");
     setNotes("");
+    setPaymentReference("");
     setPaymentMethod("CASH");
     setCheckoutOpen(false);
     searchRef.current?.focus();
@@ -244,6 +263,7 @@ export default function PosPage() {
       discount,
       paymentMethod,
       amountReceived: paymentMethod === "CASH" && amountReceived ? received : null,
+      paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
       customerId: customerId || null,
       notes: notes || null,
       createdAt: new Date().toISOString(),
@@ -257,7 +277,13 @@ export default function PosPage() {
     } catch (err) {
       if (isNetworkError(err)) {
         try {
-          await queueSale({ clientRequestId: payload.clientRequestId, businessId: business.id, payload, total, createdAt: payload.createdAt });
+          await queueSale({
+            clientRequestId: payload.clientRequestId,
+            businessId: business.id,
+            payload,
+            total,
+            createdAt: payload.createdAt,
+          });
           // Descuenta las existencias en la copia local para no vender lo que ya no hay.
           const updated = products.map((p) => {
             const line = cart.find((l) => l.productId === p.id);
@@ -298,7 +324,7 @@ export default function PosPage() {
       {cart.length === 0 ? (
         <div className="text-center py-8 text-sm text-slate-500">
           <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" aria-hidden="true" />
-          Agrega productos tocándolos o escaneando su código.
+          {t("pos.empty")}
         </div>
       ) : (
         <ul className="divide-y divide-slate-100">
@@ -313,7 +339,11 @@ export default function PosPage() {
                     <p className="text-sm font-medium text-slate-900 truncate">{line.name}</p>
                     <p className="text-xs text-slate-500">
                       {fmt.money(price)} / {UNIT_LABELS[line.unit]}
-                      {wholesale && <Badge tone="blue" className="ml-1">Mayoreo</Badge>}
+                      {wholesale && (
+                        <Badge tone="blue" className="ml-1">
+                          {t("pos.wholesale")}
+                        </Badge>
+                      )}
                     </p>
                   </div>
                   <p className="text-sm font-semibold tabular-nums">{fmt.money(lineTotal(line, isOwner))}</p>
@@ -325,7 +355,11 @@ export default function PosPage() {
                       onClick={() => stepLine(line, fractional ? -0.25 : -1)}
                       className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"
                     >
-                      {num(line.quantity) <= (fractional ? 0.25 : 1) ? <Trash2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                      {num(line.quantity) <= (fractional ? 0.25 : 1) ? (
+                        <Trash2 className="w-4 h-4" />
+                      ) : (
+                        <Minus className="w-4 h-4" />
+                      )}
                     </button>
                     <input
                       aria-label={`Cantidad de ${line.name}`}
@@ -346,7 +380,7 @@ export default function PosPage() {
                   <input
                     aria-label={`Descuento de ${line.name}`}
                     inputMode="decimal"
-                    placeholder="Desc. $"
+                    placeholder={t("pos.lineDiscount")}
                     value={line.discount}
                     onChange={(e) => updateLine(line.productId, { discount: e.target.value })}
                     className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
@@ -355,7 +389,7 @@ export default function PosPage() {
                     <input
                       aria-label={`Precio especial de ${line.name}`}
                       inputMode="decimal"
-                      placeholder="Precio"
+                      placeholder={t("pos.price")}
                       value={line.priceOverride}
                       onChange={(e) => updateLine(line.productId, { priceOverride: e.target.value })}
                       className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
@@ -364,8 +398,8 @@ export default function PosPage() {
                 </div>
                 {invalidLine?.productId === line.productId && (
                   <p className="text-xs text-red-600">
-                    Cantidad inválida (disponible: {fmt.qty(line.stock, line.unit)}
-                    {!fractional && ", solo enteros"})
+                    {t("pos.invalidQty")} ({t("pos.available")}: {fmt.qty(line.stock, line.unit)}
+                    {!fractional && `, ${t("pos.onlyIntegers")}`})
                   </p>
                 )}
               </li>
@@ -375,95 +409,155 @@ export default function PosPage() {
       )}
 
       <div className="space-y-3 border-t border-slate-100 pt-3">
-        <div className="grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Forma de pago">
-          {PAYMENT_OPTIONS.map((o) => (
+        <div
+          className={cn("grid gap-1.5", paymentOptions.length > 4 ? "grid-cols-5" : "grid-cols-4")}
+          role="radiogroup"
+          aria-label={t("pos.paymentMethod")}
+        >
+          {paymentOptions.map((o) => (
             <button
               key={o.value}
               role="radio"
               aria-checked={paymentMethod === o.value}
               onClick={() => setPaymentMethod(o.value)}
               className={cn(
-                "flex flex-col items-center gap-1 py-2 rounded-xl text-xs font-medium border",
+                "flex flex-col items-center gap-1 py-2 px-0.5 rounded-xl font-medium border min-w-0",
+                paymentOptions.length > 4 ? "text-[11px]" : "text-xs",
                 paymentMethod === o.value
                   ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-surface text-slate-600 border-slate-200"
+                  : "bg-surface text-slate-600 border-slate-200",
               )}
             >
               <o.icon className="w-4 h-4" aria-hidden="true" />
-              {o.label}
+              <span className="truncate max-w-full">{t(`pay.${o.value}`)}</span>
             </button>
           ))}
         </div>
 
+        {paymentMethod === "YAPPY" && (
+          <div className="rounded-xl bg-slate-50 p-3 flex gap-3 items-center">
+            {yappy?.qr && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={yappy.qr}
+                alt="QR de Yappy del comercio"
+                className="w-24 h-24 rounded-lg bg-white object-contain"
+              />
+            )}
+            <div className="text-sm space-y-1">
+              <p className="font-medium text-slate-900">{t("pos.yappyCharge", { amount: fmt.money(total) })}</p>
+              {yappy?.directory ? (
+                <p className="text-slate-600">
+                  {t("pos.yappyDirectory")}: {yappy.directory}
+                </p>
+              ) : (
+                !yappy?.qr && <p className="text-xs text-slate-500">{t("pos.yappySetup")}</p>
+              )}
+              <p className="text-xs text-slate-500">{t("pos.yappyConfirm")}</p>
+            </div>
+          </div>
+        )}
+        {(paymentMethod === "YAPPY" || paymentMethod === "CARD" || paymentMethod === "TRANSFER") && (
+          <Input
+            label={paymentMethod === "YAPPY" ? t("pos.yappyRef") : t("pos.reference")}
+            value={paymentReference}
+            onChange={(e) => setPaymentReference(e.target.value)}
+          />
+        )}
+
         {(paymentMethod === "CREDIT" || customerId) && (
           <Select
-            label={paymentMethod === "CREDIT" ? "Cliente (obligatorio para fiado)" : "Cliente"}
+            label={paymentMethod === "CREDIT" ? t("pos.customerRequired") : t("pos.customer")}
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
           >
-            <option value="">Selecciona un cliente</option>
+            <option value="">{t("pos.selectCustomer")}</option>
             {customers.list?.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
-                {c.balance > 0 ? ` · debe ${fmt.money(c.balance)}` : ""}
+                {c.balance > 0 ? ` · ${t("pos.owes")} ${fmt.money(c.balance)}` : ""}
               </option>
             ))}
           </Select>
         )}
         {paymentMethod !== "CREDIT" && !customerId && (
-          <button onClick={() => setCustomerId(customers.list?.[0]?.id ?? "")} className="text-xs text-brand-700 dark:text-brand-300 hover:underline">
-            Asignar cliente a la venta
+          <button
+            onClick={() => setCustomerId(customers.list?.[0]?.id ?? "")}
+            className="text-xs text-brand-700 dark:text-brand-300 hover:underline"
+          >
+            {t("pos.assignCustomer")}
           </button>
         )}
         {creditExceeded && customer && (
           <p className="text-xs text-red-600 flex items-center gap-1">
             <AlertTriangle className="w-4 h-4" aria-hidden="true" />
-            Excede el límite de crédito ({fmt.money(customer.balance)} de {fmt.money(customer.creditLimit)})
+            {t("pos.creditExceeded")} ({fmt.money(customer.balance)} / {fmt.money(customer.creditLimit)})
           </p>
         )}
 
         <div className="grid grid-cols-2 gap-2">
-          <Input label="Descuento general" inputMode="decimal" placeholder="0.00" value={saleDiscount} onChange={(e) => setSaleDiscount(e.target.value)} />
+          <Input
+            label={t("pos.saleDiscount")}
+            inputMode="decimal"
+            placeholder="0.00"
+            value={saleDiscount}
+            onChange={(e) => setSaleDiscount(e.target.value)}
+          />
           {paymentMethod === "CASH" && (
-            <Input label="Paga con" inputMode="decimal" placeholder={total.toFixed(2)} value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} />
+            <Input
+              label={t("pos.paysWith")}
+              inputMode="decimal"
+              placeholder={total.toFixed(2)}
+              value={amountReceived}
+              onChange={(e) => setAmountReceived(e.target.value)}
+            />
           )}
         </div>
         {paymentMethod === "CASH" && total > 0 && (
           <div className="flex gap-1.5 flex-wrap">
             {[...new Set([total, ...[50, 100, 200, 500, 1000].filter((b) => b > total)].slice(0, 4))].map((b) => (
-              <button key={b} onClick={() => setAmountReceived(String(b))} className="px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-medium">
-                {b === total ? "Exacto" : fmt.money(b)}
+              <button
+                key={b}
+                onClick={() => setAmountReceived(String(b))}
+                className="px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-medium"
+              >
+                {b === total ? t("pos.exact") : fmt.money(b)}
               </button>
             ))}
           </div>
         )}
-        <Input label="Notas" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
+        <Input
+          label={t("pos.notes")}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={t("pos.optional")}
+        />
 
         <dl className="space-y-1 text-sm">
           <div className="flex justify-between text-slate-600">
-            <dt>Subtotal</dt>
+            <dt>{t("pos.subtotal")}</dt>
             <dd className="tabular-nums">{fmt.money(subtotal)}</dd>
           </div>
           {discount > 0 && (
             <div className="flex justify-between text-slate-600">
-              <dt>Descuento</dt>
+              <dt>{t("pos.discount")}</dt>
               <dd className="tabular-nums">-{fmt.money(discount)}</dd>
             </div>
           )}
           <div className="flex justify-between text-lg font-bold text-slate-900">
-            <dt>Total</dt>
+            <dt>{t("pos.total")}</dt>
             <dd className="tabular-nums">{fmt.money(total)}</dd>
           </div>
           {paymentMethod === "CASH" && amountReceived !== "" && (
             <div className={cn("flex justify-between font-semibold", change < 0 ? "text-red-600" : "text-brand-600")}>
-              <dt>{change < 0 ? "Falta" : "Cambio"}</dt>
+              <dt>{change < 0 ? t("pos.missing") : t("pos.change")}</dt>
               <dd className="tabular-nums">{fmt.money(Math.abs(change))}</dd>
             </div>
           )}
         </dl>
 
         <Button className="w-full" size="lg" onClick={charge} loading={saving} disabled={!canCharge}>
-          Cobrar {fmt.money(total)}
+          {t("pos.charge")} {fmt.money(total)}
         </Button>
       </div>
     </div>
@@ -474,10 +568,10 @@ export default function PosPage() {
       {!cash?.current && cash !== undefined && (
         <div className="rounded-xl bg-amber-50 text-amber-800 px-4 py-2 text-sm flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
-            <Wallet className="w-4 h-4" aria-hidden="true" /> No hay caja abierta: las ventas no entrarán a un corte.
+            <Wallet className="w-4 h-4" aria-hidden="true" /> {t("pos.noCash")}
           </span>
           <Link href="/caja" className="font-medium underline whitespace-nowrap">
-            Abrir caja
+            {t("pos.openCash")}
           </Link>
         </div>
       )}
@@ -491,25 +585,27 @@ export default function PosPage() {
                 value={search}
                 onChange={setSearch}
                 onEnter={handleEnter}
-                placeholder="Buscar o escanear código (F2)"
+                placeholder={t("pos.search")}
                 autoFocus
               />
             </div>
-            <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label="Escanear con la cámara">
+            <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label={t("pos.scan")}>
               <ScanBarcode className="w-5 h-5" />
             </Button>
           </div>
 
           {categories.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {[{ id: "", name: "Todos" }, ...categories].map((c) => (
+              {[{ id: "", name: t("pos.all") }, ...categories].map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setCategoryId(c.id)}
                   aria-pressed={categoryId === c.id}
                   className={cn(
                     "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border",
-                    categoryId === c.id ? "bg-brand-600 text-white border-brand-600" : "bg-surface text-slate-600 border-slate-200"
+                    categoryId === c.id
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-surface text-slate-600 border-slate-200",
                   )}
                 >
                   {c.name}
@@ -528,15 +624,15 @@ export default function PosPage() {
             <p className="text-sm text-slate-500 py-8 text-center">
               {products.length === 0 ? (
                 <>
-                  Aún no hay productos.{" "}
+                  {t("pos.noProducts")}{" "}
                   {isOwner && (
                     <Link href="/inventario" className="underline">
-                      Agrega tu inventario
+                      {t("pos.addInventory")}
                     </Link>
                   )}
                 </>
               ) : (
-                "Sin resultados"
+                t("pos.noResults")
               )}
             </p>
           ) : (
@@ -551,17 +647,24 @@ export default function PosPage() {
                     disabled={out}
                     className={cn(
                       "text-left p-3 rounded-xl border bg-surface transition-colors disabled:opacity-50",
-                      inCart ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-100 hover:border-slate-300"
+                      inCart ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-100 hover:border-slate-300",
                     )}
                   >
                     <p className="text-sm font-medium text-slate-900 line-clamp-2">{p.name}</p>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mt-1">
                       {fmt.money(p.price)}
-                      {p.unit !== "PIECE" && <span className="text-xs font-normal text-slate-500">/{UNIT_LABELS[p.unit]}</span>}
+                      {p.unit !== "PIECE" && (
+                        <span className="text-xs font-normal text-slate-500">/{UNIT_LABELS[p.unit]}</span>
+                      )}
                     </p>
-                    <p className={cn("text-xs", out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500")}>
-                      {out ? "Agotado" : `${fmt.qty(p.stock, p.unit)} disp.`}
-                      {inCart && ` · ${inCart.quantity} en carrito`}
+                    <p
+                      className={cn(
+                        "text-xs",
+                        out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500",
+                      )}
+                    >
+                      {out ? t("pos.soldOut") : `${fmt.qty(p.stock, p.unit)} ${t("pos.available")}`}
+                      {inCart && ` · ${inCart.quantity} ${t("pos.inCart")}`}
                     </p>
                   </button>
                 );
@@ -571,7 +674,7 @@ export default function PosPage() {
         </div>
 
         <Card className="hidden lg:block p-4 sticky top-4">
-          <h2 className="font-semibold text-slate-900 mb-2">Venta actual</h2>
+          <h2 className="font-semibold text-slate-900 mb-2">{t("pos.currentSale")}</h2>
           {cartPanel}
         </Card>
       </div>
@@ -579,12 +682,12 @@ export default function PosPage() {
       {cart.length > 0 && (
         <div className="lg:hidden fixed bottom-16 inset-x-0 px-4 pb-2 z-30">
           <Button className="w-full shadow-lg" size="lg" onClick={() => setCheckoutOpen(true)}>
-            <ShoppingCart className="w-5 h-5" /> Ver carrito ({itemsCount}) · {fmt.money(total)}
+            <ShoppingCart className="w-5 h-5" /> {t("pos.viewCart")} ({itemsCount}) · {fmt.money(total)}
           </Button>
         </div>
       )}
 
-      <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title="Venta actual">
+      <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title={t("pos.currentSale")}>
         {cartPanel}
       </Modal>
 
@@ -595,31 +698,44 @@ export default function PosPage() {
           setScannerOpen(false);
           if (!addByCode(code)) {
             setSearch(code);
-            toast.error(`No hay producto con el código ${code}`);
+            toast.error(t("pos.notFoundCode", { code }));
           }
         }}
       />
 
-      <Modal open={completed !== null} onClose={() => setCompleted(null)} title={completed?.offline ? "Venta guardada sin conexión" : "¡Venta registrada!"}>
+      <Modal
+        open={completed !== null}
+        onClose={() => setCompleted(null)}
+        title={completed?.offline ? t("pos.saleOffline") : t("pos.saleDone")}
+      >
         {completed && (
           <div className="space-y-4 text-center">
-            {completed.sale && <p className="text-sm text-slate-500">Ticket #{completed.sale.folio}</p>}
+            {completed.sale && (
+              <p className="text-sm text-slate-500">
+                {t("pos.ticket")} #{completed.sale.folio}
+              </p>
+            )}
             <p className="text-3xl font-bold text-slate-900">{fmt.money(completed.total)}</p>
             {completed.change > 0 && (
               <p className="text-lg font-semibold text-brand-600">Cambio: {fmt.money(completed.change)}</p>
             )}
-            {completed.offline && (
-              <p className="text-sm text-slate-500">Se enviará automáticamente cuando vuelva la conexión.</p>
-            )}
+            {completed.offline && <p className="text-sm text-slate-500">{t("pos.offlineNote")}</p>}
             <div className="grid grid-cols-2 gap-2">
               {completed.sale && (
                 <>
-                  <Button variant="secondary" onClick={() => window.open(`/ventas/${completed.sale!.id}/ticket`, "_blank")}>
-                    <Printer className="w-4 h-4" /> Imprimir
+                  <Button
+                    variant="secondary"
+                    onClick={() => window.open(`/ventas/${completed.sale!.id}/ticket`, "_blank")}
+                  >
+                    <Printer className="w-4 h-4" /> {t("pos.print")}
                   </Button>
                   <a
                     className="inline-flex items-center justify-center gap-2 font-medium px-4 py-2.5 text-sm rounded-xl bg-surface text-slate-700 border border-slate-200 hover:bg-slate-50"
-                    href={whatsappLink(buildReceiptText(completed.sale, business), completed.sale.customer?.phone, business.locale)}
+                    href={whatsappLink(
+                      buildReceiptText(completed.sale, business),
+                      completed.sale.customer?.phone,
+                      business.locale,
+                    )}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -629,7 +745,7 @@ export default function PosPage() {
               )}
             </div>
             <Button className="w-full" onClick={() => setCompleted(null)}>
-              Nueva venta
+              {t("pos.newSale")}
             </Button>
           </div>
         )}

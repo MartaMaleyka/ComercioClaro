@@ -7,11 +7,12 @@ import { D, money, qty, sum, type Decimal } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { dayRange } from "@/lib/dates";
+import { formatCurrency, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import type { listQuerySchema, saleReturnSchema, saleSchema } from "@/lib/validation";
 import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 
-export type SaleInput = z.infer<typeof saleSchema>;
+export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference"> & { paymentReference?: string | null };
 export type SaleReturnInput = z.infer<typeof saleReturnSchema>;
 type ListQuery = z.infer<typeof listQuerySchema>;
 
@@ -83,8 +84,10 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         if (!customer) throw notFound("Cliente");
       }
 
+      let dueDate: Date | null = null;
       if (input.paymentMethod === "CREDIT") {
         if (!customer) throw new AppError(400, "Selecciona el cliente para vender fiado");
+        dueDate = new Date(Date.now() + customer.creditDays * 24 * 60 * 60 * 1000);
         const limit = D(customer.creditLimit);
         if (limit.gt(0) && D(customer.balance).plus(total).gt(limit)) {
           throw new AppError(
@@ -146,6 +149,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           costTotal,
           amountReceived,
           change,
+          paymentReference: input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT" ? null : (input.paymentReference ?? null),
+          dueDate,
           notes: input.notes,
           customerId: customer?.id ?? null,
           cashSessionId: cashSession?.id ?? null,
@@ -206,6 +211,7 @@ export async function getSale(businessId: string, id: string) {
 export async function listSales(businessId: string, timeZone: string, query: ListQuery) {
   const where: Prisma.SaleWhereInput = { businessId };
   if (query.status) where.status = query.status;
+  if (query.paymentMethod) where.paymentMethod = query.paymentMethod;
   if (query.from || query.to) {
     const range = dayRange(query.from ?? "2000-01-01", query.to ?? "2999-12-31", timeZone);
     where.createdAt = { gte: range.start, lt: range.end };
@@ -214,6 +220,7 @@ export async function listSales(businessId: string, timeZone: string, query: Lis
     const folio = Number(query.search.replace(/^#/, ""));
     where.OR = [
       { notes: { contains: query.search, mode: "insensitive" } },
+      { paymentReference: { contains: query.search, mode: "insensitive" } },
       { customer: { name: { contains: query.search, mode: "insensitive" } } },
       { items: { some: { product: { name: { contains: query.search, mode: "insensitive" } } } } },
       ...(Number.isInteger(folio) && folio > 0 ? [{ folio }] : []),
@@ -398,10 +405,20 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
 /** Texto del ticket para compartir por WhatsApp. */
 export function receiptText(
   sale: Awaited<ReturnType<typeof getSale>>,
-  business: { name: string; currency: string; locale: string; timezone: string; phone?: string | null; address?: string | null }
+  business: {
+    name: string;
+    currency: string;
+    locale: string;
+    timezone: string;
+    phone?: string | null;
+    address?: string | null;
+    showBalboa?: boolean;
+    ruc?: string | null;
+    dv?: string | null;
+    country?: string;
+  }
 ) {
-  const fmt = (n: Decimal | number) =>
-    new Intl.NumberFormat(business.locale, { style: "currency", currency: business.currency }).format(Number(n));
+  const fmt = (n: Decimal | number) => formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
   const date = new Intl.DateTimeFormat(business.locale, {
     dateStyle: "short",
     timeStyle: "short",
@@ -409,6 +426,7 @@ export function receiptText(
   }).format(sale.createdAt);
   const lines = [
     `*${business.name}*`,
+    business.ruc ? `RUC ${business.ruc}${business.dv ? ` DV ${business.dv}` : ""}` : null,
     business.address,
     business.phone ? `Tel. ${business.phone}` : null,
     `Ticket #${sale.folio} · ${date}`,
@@ -417,6 +435,7 @@ export function receiptText(
     "",
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
     `*Total: ${fmt(sale.total)}*`,
+    `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
     sale.status === "CANCELLED" ? "VENTA CANCELADA" : null,
     "",
     "¡Gracias por su compra!",

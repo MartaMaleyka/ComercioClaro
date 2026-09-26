@@ -271,10 +271,12 @@ export async function downloadInvoice(businessId: string, id: string, format: "p
 export async function cancelInvoice(actor: Actor, id: string, motive = "02") {
   const invoice = await prisma.invoice.findFirst({ where: { id, businessId: actor.businessId } });
   if (!invoice) throw notFound("Factura");
-  if (invoice.status !== "STAMPED" || !invoice.providerId) {
-    throw new AppError(409, "Solo se pueden cancelar facturas timbradas");
+  if (invoice.status !== "STAMPED") throw new AppError(409, "Solo se pueden cancelar facturas timbradas");
+  // Las facturas registradas desde la DGI/PAC externo se anulan allá; aquí solo se libera la venta.
+  if (invoice.provider === PROVIDER) {
+    if (!invoice.providerId) throw new AppError(409, "Solo se pueden cancelar facturas timbradas");
+    await facturamaRequest(`/cfdi/${invoice.providerId}?type=issued&motive=${motive}`, { method: "DELETE" });
   }
-  await facturamaRequest(`/cfdi/${invoice.providerId}?type=issued&motive=${motive}`, { method: "DELETE" });
   return prisma.$transaction(async (tx) => {
     await tx.sale.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
     const updated = await tx.invoice.update({ where: { id }, data: { status: "CANCELLED" } });

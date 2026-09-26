@@ -1,7 +1,7 @@
 // Tipos de las respuestas de la API (Decimal ya convertido a number y fechas a ISO).
 
 export type Unit = "PIECE" | "KG" | "G" | "L" | "ML" | "M";
-export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT";
+export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT" | "YAPPY";
 
 export interface Category {
   id: string;
@@ -23,6 +23,7 @@ export interface Product {
   stock: number;
   minStock: number;
   trackExpiry: boolean;
+  packSize: number | null;
   taxRate: number;
   iepsRate: number;
   satProductKey: string;
@@ -39,11 +40,18 @@ export interface Customer {
   email: string | null;
   notes: string | null;
   creditLimit: number;
+  creditDays: number;
   balance: number;
   rfc: string | null;
   legalName: string | null;
   taxRegime: string | null;
   postalCode: string | null;
+  ruc: string | null;
+  dv: string | null;
+  /** Saldo vencido (antigüedad FIFO) */
+  overdue?: number;
+  daysOverdue?: number;
+  nextDueDate?: string | null;
 }
 
 export interface SaleItem {
@@ -69,6 +77,8 @@ export interface Sale {
   costTotal?: number;
   amountReceived: number | null;
   change: number | null;
+  paymentReference: string | null;
+  dueDate: string | null;
   notes: string | null;
   createdAt: string;
   cancelledAt: string | null;
