@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import {
   AlertTriangle,
@@ -41,6 +42,13 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
+
+interface OnlineOrderData {
+  id: string;
+  number: number;
+  customerName: string;
+  items: { productId: string; name: string; quantity: number }[];
+}
 
 interface CartLine {
   productId: string;
@@ -173,6 +181,52 @@ export default function PosPage() {
       )
       .slice(0, 60);
   }, [products, debouncedSearch, categoryId]);
+
+  // Pedido del catálogo en línea que se cobra en esta venta (llega como /ventas?pedido=ID).
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const orderParam = searchParams.get("pedido");
+  const [onlineOrder, setOnlineOrder] = useState<{ id: string; number: number; customerName: string } | null>(null);
+  useEffect(() => {
+    if (!orderParam || products.length === 0) return;
+    let cancelled = false;
+    api<OnlineOrderData>(`/api/orders/${orderParam}`)
+      .then((order) => {
+        if (cancelled) return;
+        const missing: string[] = [];
+        const lines: CartLine[] = [];
+        for (const item of order.items) {
+          const product = products.find((p) => p.id === item.productId);
+          const quantity = product ? Math.min(item.quantity, product.stock) : 0;
+          if (!product || quantity <= 0) {
+            missing.push(item.name);
+            continue;
+          }
+          lines.push({
+            productId: product.id,
+            categoryId: product.categoryId,
+            name: product.name,
+            unit: product.unit,
+            quantity: String(quantity),
+            stock: product.stock,
+            price: product.price,
+            wholesalePrice: product.wholesalePrice,
+            wholesaleMinQty: product.wholesaleMinQty,
+            priceOverride: "",
+            discount: "",
+          });
+        }
+        setCart(lines);
+        setOnlineOrder({ id: order.id, number: order.number, customerName: order.customerName });
+        setNotes(tr("Pedido en línea #{n} · {name}", { n: order.number, name: order.customerName }));
+        if (missing.length > 0) toast.error(tr("Sin existencias: {items}", { items: missing.join(", ") }));
+        router.replace("/ventas");
+      })
+      .catch((err) => toast.error(err));
+    return () => {
+      cancelled = true;
+    };
+  }, [orderParam, products, router, toast, tr]);
 
   const addProduct = (product: Product, quantity?: number) => {
     const step = quantity ?? 1;
@@ -314,6 +368,7 @@ export default function PosPage() {
     setPaymentReference("");
     setRedeemPoints("");
     setYappyManual(false);
+    setOnlineOrder(null);
     setPaymentMethod("CASH");
     setCheckoutOpen(false);
     searchRef.current?.focus();
@@ -335,6 +390,7 @@ export default function PosPage() {
       amountReceived: paymentMethod === "CASH" && amountReceived ? received : null,
       paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
       yappyChargeId: yappyChargeId ?? null,
+      onlineOrderId: onlineOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
       notes: notes || null,
@@ -683,6 +739,22 @@ export default function PosPage() {
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {cart.length > 0 ? `${t("pos.total")}: ${fmt.money(total)}` : ""}
       </p>
+      {onlineOrder && (
+        <div
+          role="status"
+          className="rounded-xl bg-blue-50 text-blue-700 px-4 py-2 text-sm flex items-center justify-between gap-2"
+        >
+          <span>
+            {tr("Cobrando el pedido en línea #{n} de {name}", {
+              n: onlineOrder.number,
+              name: onlineOrder.customerName,
+            })}
+          </span>
+          <button type="button" className="font-medium underline" onClick={() => setOnlineOrder(null)}>
+            {tr("Desvincular")}
+          </button>
+        </div>
+      )}
       {!cash?.current && cash !== undefined && (
         <div className="rounded-xl bg-amber-50 text-amber-800 px-4 py-2 text-sm flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">

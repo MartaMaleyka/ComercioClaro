@@ -295,6 +295,7 @@ export const saleSchema = z.object({
   amountReceived: moneyInput.nullish(),
   paymentReference: optText(60),
   yappyChargeId: id.nullish(),
+  onlineOrderId: id.nullish(),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
   notes: optText(),
@@ -485,4 +486,20 @@ export const monthQuerySchema = z.object({
     .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes inválido")
     .optional(),
   format: z.enum(["json", "csv"]).default("json"),
+});
+
+export const onlineOrderSchema = z.object({
+  customerName: text(80, "Escribe tu nombre"),
+  phone: optText(30),
+  notes: optText(300),
+  fulfillment: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
+  address: optText(300),
+  items: z
+    .array(z.object({ productId: id, quantity: z.coerce.number().gt(0).max(999) }))
+    .min(1, "Agrega al menos un producto")
+    .max(100, "Demasiados productos en un pedido"),
+});
+
+export const onlineOrderStatusSchema = z.object({
+  status: z.enum(["ACCEPTED", "READY", "DELIVERED", "CANCELLED"]),
 });

@@ -5,6 +5,7 @@ import { cancelSale, createSale, returnSale, type SalesActor } from "@/server/sa
 import { closeCashSession, openCashSession } from "@/server/cash";
 import { cashierReport, monthRange, taxReport } from "@/server/insights";
 import { reconcileStatement } from "@/server/reconciliation";
+import { createOnlineOrder, onlineOrderCounts, setOnlineOrderStatus } from "@/server/online-orders";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -125,5 +126,46 @@ describe.skipIf(!hasDatabase)("conciliación bancaria", () => {
     expect(result.unmatchedSales.map((s) => s.id)).toEqual([missing.id]);
     expect(result.unmatchedLines.map((l) => l.amount)).toEqual([50]);
     await expect(reconcileStatement(b, { csv: "hola,mundo\n1,2", method: "YAPPY" })).rejects.toThrow(/columnas/);
+  });
+});
+
+describe.skipIf(!hasDatabase)("pedidos en línea", () => {
+  beforeEach(resetDatabase);
+
+  it("guarda el pedido del catálogo, lo cobra en el punto de venta y lo reabre si se cancela la venta", async () => {
+    const owner = await panamaOwner({ catalogEnabled: true, catalogSlug: "tienda-prueba" });
+    const soda = await makeProduct(owner, { price: 2.1, taxRate: 0, stock: 5 });
+    const order = await createOnlineOrder("tienda-prueba", {
+      customerName: "Ana",
+      phone: "6123-4567",
+      notes: null,
+      fulfillment: "DELIVERY",
+      address: "Calle 50",
+      items: [{ productId: soda.id, quantity: 2 }],
+    });
+    expect(order).toMatchObject({ number: 1 });
+    expect(Number(order.total)).toBe(4.2);
+    expect(await onlineOrderCounts(owner.businessId)).toEqual({ new: 1, active: 1 });
+
+    await expect(
+      createOnlineOrder("tienda-prueba", { customerName: "Beto", phone: null, notes: null, fulfillment: "PICKUP", address: null, items: [{ productId: soda.id, quantity: 9 }] })
+    ).rejects.toThrow(/No hay suficiente/);
+    await expect(
+      createOnlineOrder("otra", { customerName: "Beto", phone: null, notes: null, fulfillment: "PICKUP", address: null, items: [{ productId: soda.id, quantity: 1 }] })
+    ).rejects.toThrow(/Catálogo/);
+
+    await setOnlineOrderStatus(owner, order.id, "ACCEPTED");
+    await expect(setOnlineOrderStatus(owner, order.id, "ACCEPTED")).rejects.toThrow(/no puede cambiar/);
+
+    const sale = await createSale(owner, saleInput([{ productId: soda.id, quantity: 2 }], { onlineOrderId: order.id }));
+    let saved = await prisma.onlineOrder.findUniqueOrThrow({ where: { id: order.id } });
+    expect(saved).toMatchObject({ status: "DELIVERED", saleId: sale.id });
+    await expect(createSale(owner, saleInput([{ productId: soda.id, quantity: 1 }], { onlineOrderId: order.id }))).rejects.toThrow(
+      /ya fue cobrado/
+    );
+
+    await cancelSale(owner, sale.id, "Se cobró mal");
+    saved = await prisma.onlineOrder.findUniqueOrThrow({ where: { id: order.id } });
+    expect(saved).toMatchObject({ status: "READY", saleId: null });
   });
 });

@@ -12,6 +12,7 @@ import type { listQuerySchema, saleReturnSchema, saleSchema } from "@/lib/valida
 import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
+import { closeOrderWithSale } from "./online-orders";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
 
@@ -23,9 +24,10 @@ export function toPromotionRule(p: Promotion): PromotionRule {
   };
 }
 
-export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference" | "yappyChargeId"> & {
+export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference" | "yappyChargeId" | "onlineOrderId"> & {
   paymentReference?: string | null;
   yappyChargeId?: string | null;
+  onlineOrderId?: string | null;
 };
 export type SaleReturnInput = z.infer<typeof saleReturnSchema>;
 type ListQuery = z.infer<typeof listQuerySchema>;
@@ -243,6 +245,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       if (yappyCharge) {
         await tx.yappyCharge.update({ where: { id: yappyCharge.id }, data: { saleId: sale.id } });
       }
+      if (input.onlineOrderId) await closeOrderWithSale(tx, actor.businessId, input.onlineOrderId, sale.id);
 
       // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
       if (customer && business.loyaltyEnabled) {
@@ -396,6 +399,9 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
         data: { points: { increment: sale.pointsRedeemed - sale.pointsEarned } },
       });
     }
+
+    // Si cobraba un pedido en línea, el pedido vuelve a quedar listo para cobrarse de nuevo.
+    await tx.onlineOrder.updateMany({ where: { saleId: sale.id }, data: { status: "READY", saleId: null } });
 
     await audit(tx, actor, "sale.cancel", "Sale", sale.id, { folio: sale.folio, reason });
     return tx.sale.findUniqueOrThrow({ where: { id }, include: saleInclude });

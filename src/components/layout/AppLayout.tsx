@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Coins,
   FileText,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -26,7 +27,9 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useSession } from "@/components/providers/SessionProvider";
+import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
+import useSWR from "swr";
+import { fetcher } from "@/lib/client/api";
 import { useOnline } from "@/lib/client/hooks";
 import { TranslationFeedbackButton } from "./TranslationFeedbackButton";
 import { OfflineSync } from "@/components/pwa/OfflineSync";
@@ -40,6 +43,10 @@ interface NavItem {
   label: MessageKey;
   icon: typeof Store;
   roles: Role[];
+  /** Solo se muestra si la función del negocio está activa */
+  when?: (business: SessionBusiness) => boolean;
+  /** Contador que se muestra junto al enlace */
+  badge?: "orders";
 }
 
 const navItems: NavItem[] = [
@@ -47,6 +54,14 @@ const navItems: NavItem[] = [
   { href: "/ventas", label: "nav.sell" as MessageKey, icon: ShoppingCart, roles: ["OWNER", "CASHIER"] },
   { href: "/ventas/historial", label: "nav.sales" as MessageKey, icon: Receipt, roles: ["OWNER", "CASHIER"] },
   { href: "/caja", label: "nav.cash" as MessageKey, icon: Wallet, roles: ["OWNER", "CASHIER"] },
+  {
+    href: "/pedidos",
+    label: "nav.orders" as MessageKey,
+    icon: Inbox,
+    roles: ["OWNER", "CASHIER"],
+    when: (b) => b.catalogEnabled,
+    badge: "orders",
+  },
   { href: "/inventario", label: "nav.inventory" as MessageKey, icon: Package, roles: ["OWNER", "CASHIER"] },
   { href: "/clientes", label: "nav.customers" as MessageKey, icon: Users, roles: ["OWNER", "CASHIER"] },
   { href: "/compras", label: "nav.purchases" as MessageKey, icon: ShoppingBag, roles: ["OWNER"] },
@@ -83,7 +98,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = user.language === "zh" ? "zh-Hans" : user.language;
   }, [user.language]);
 
-  const items = navItems.filter((i) => i.roles.includes(role));
+  const items = navItems.filter((i) => i.roles.includes(role) && (!i.when || i.when(business)));
+  const { data: orderCounts } = useSWR<{ new: number }>(
+    business.catalogEnabled ? "/api/orders/summary" : null,
+    fetcher,
+    {
+      refreshInterval: 30_000,
+    }
+  );
+  const badgeFor = (item: NavItem) => (item.badge === "orders" ? (orderCounts?.new ?? 0) : 0);
   const primary = items.filter((i) => mobilePrimary[role].includes(i.href));
 
   async function handleLogout() {
@@ -182,6 +205,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             >
               <item.icon className="w-5 h-5" aria-hidden="true" />
               {t(item.label)}
+              {badgeFor(item) > 0 && (
+                <span className="ml-auto min-w-6 h-6 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
+                  {badgeFor(item)}
+                  <span className="sr-only"> {tr("nuevos")}</span>
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -273,7 +302,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   onClick={() => setMoreOpen(false)}
                   className={cn(
-                    "flex flex-col items-center gap-1 p-3 rounded-xl text-xs font-medium",
+                    "relative flex flex-col items-center gap-1 p-3 rounded-xl text-xs font-medium",
                     isActive(pathname, item.href)
                       ? "bg-brand-50 text-brand-700 dark:text-brand-300"
                       : "text-slate-600 bg-slate-50"
@@ -281,6 +310,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <item.icon className="w-5 h-5" aria-hidden="true" />
                   {t(item.label)}
+                  {badgeFor(item) > 0 && (
+                    <span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {badgeFor(item)}
+                      <span className="sr-only"> {tr("nuevos")}</span>
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

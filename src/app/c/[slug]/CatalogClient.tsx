@@ -25,17 +25,31 @@ interface CatalogBusiness {
   showBalboa: boolean;
 }
 
-export function CatalogClient({ business, products }: { business: CatalogBusiness; products: CatalogProduct[] }) {
+export function CatalogClient({
+  slug,
+  business,
+  products,
+}: {
+  slug: string;
+  business: CatalogBusiness;
+  products: CatalogProduct[];
+}) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
+  const [phone, setPhone] = useState("");
+  const [delivery, setDelivery] = useState(false);
+  const [address, setAddress] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<number | null>(null);
+  const [error, setError] = useState("");
   const money = (n: number) => formatCurrency(n, business.currency, business.locale, business.showBalboa);
 
   const categories = useMemo(() => [...new Set(products.map((p) => p.category))], [products]);
   const filtered = products.filter(
-    (p) => (!category || p.category === category) && (!search || p.name.toLowerCase().includes(search.toLowerCase())),
+    (p) => (!category || p.category === category) && (!search || p.name.toLowerCase().includes(search.toLowerCase()))
   );
   const lines = products.filter((p) => cart[p.id]).map((p) => ({ ...p, qty: cart[p.id] }));
   const total = lines.reduce((acc, l) => acc + l.qty * l.price, 0);
@@ -49,17 +63,61 @@ export function CatalogClient({ business, products }: { business: CatalogBusines
       return copy;
     });
 
-  const message = [
-    `Hola ${business.name}, quiero hacer un pedido:`,
-    "",
-    ...lines.map((l) => `• ${l.qty} ${UNIT_LABELS[l.unit] ?? ""} ${l.name} (${money(l.price)})`),
-    "",
-    `Total aproximado: ${money(total)}`,
-    name ? `Nombre: ${name}` : null,
-    note ? `Nota: ${note}` : null,
-  ]
-    .filter((l) => l !== null)
-    .join("\n");
+  const buildMessage = (orderNumber: number | null) =>
+    [
+      orderNumber
+        ? `Hola ${business.name}, hice el pedido #${orderNumber}:`
+        : `Hola ${business.name}, quiero hacer un pedido:`,
+      "",
+      ...lines.map((l) => `• ${l.qty} ${UNIT_LABELS[l.unit] ?? ""} ${l.name} (${money(l.price)})`),
+      "",
+      `Total aproximado: ${money(total)}`,
+      name ? `Nombre: ${name}` : null,
+      delivery ? `Entrega a domicilio: ${address || "(dirección por confirmar)"}` : "Recojo en la tienda",
+      note ? `Nota: ${note}` : null,
+    ]
+      .filter((l) => l !== null)
+      .join("\n");
+
+  /** Guarda el pedido en la bandeja del negocio y abre WhatsApp con el número de pedido. */
+  async function sendOrder(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    // Se abre la ventana antes de esperar a la red para que el navegador no la bloquee.
+    const whatsappWindow = window.open("", "_blank");
+    setSending(true);
+    let orderNumber: number | null = null;
+    try {
+      const res = await fetch(`/api/catalog/${encodeURIComponent(slug)}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: name,
+          phone: phone || null,
+          notes: note || null,
+          fulfillment: delivery ? "DELIVERY" : "PICKUP",
+          address: delivery ? address || null : null,
+          items: lines.map((l) => ({ productId: l.id, quantity: l.qty })),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        whatsappWindow?.close();
+        setError(data?.error ?? "No se pudo enviar el pedido. Intenta de nuevo.");
+        return;
+      }
+      orderNumber = data.number;
+      setSent(orderNumber);
+      setCart({});
+    } catch {
+      // Sin conexión con el negocio: el pedido se envía solo por WhatsApp.
+    } finally {
+      setSending(false);
+    }
+    const url = whatsappLink(buildMessage(orderNumber), business.whatsapp, business.locale);
+    if (whatsappWindow) whatsappWindow.location.href = url;
+    else window.location.assign(url);
+  }
 
   return (
     <div className="min-h-screen bg-surface-secondary pb-40">
@@ -98,7 +156,7 @@ export function CatalogClient({ business, products }: { business: CatalogBusines
                 "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border",
                 category === c
                   ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-surface text-slate-600 border-slate-200",
+                  : "bg-surface text-slate-600 border-slate-200"
               )}
             >
               {c || "Todo"}
@@ -152,39 +210,101 @@ export function CatalogClient({ business, products }: { business: CatalogBusines
         {filtered.length === 0 && <p className="text-center text-sm text-slate-500 py-8">Sin resultados</p>}
       </main>
 
+      {sent !== null && lines.length === 0 && (
+        <div
+          role="status"
+          className="fixed bottom-0 inset-x-0 bg-brand-600 text-white p-4 text-center safe-area-bottom"
+        >
+          ¡Recibimos tu pedido #{sent}! Te confirmaremos por WhatsApp.
+        </div>
+      )}
+
       {lines.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 bg-surface border-t border-slate-200 p-4 safe-area-bottom">
+        <form
+          onSubmit={sendOrder}
+          className="fixed bottom-0 inset-x-0 bg-surface border-t border-slate-200 p-4 safe-area-bottom"
+        >
           <div className="max-w-3xl mx-auto space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <input
                 aria-label="Tu nombre"
                 placeholder="Tu nombre"
+                required
+                maxLength={80}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="px-3 py-2 bg-surface border border-slate-200 rounded-xl text-sm"
               />
               <input
-                aria-label="Nota (entrega, dirección...)"
-                placeholder="Nota (entrega, dirección...)"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
+                aria-label="Tu celular"
+                placeholder="Tu celular"
+                type="tel"
+                inputMode="tel"
+                maxLength={30}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="px-3 py-2 bg-surface border border-slate-200 rounded-xl text-sm"
               />
             </div>
-            <a
-              href={whatsappLink(message, business.whatsapp, business.locale)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-brand-600 text-white font-semibold"
+            <fieldset className="flex gap-4 text-sm text-slate-700">
+              <legend className="sr-only">Entrega</legend>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="entrega"
+                  checked={!delivery}
+                  onChange={() => setDelivery(false)}
+                  className="w-4 h-4 accent-brand-600"
+                />
+                Recojo en la tienda
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="entrega"
+                  checked={delivery}
+                  onChange={() => setDelivery(true)}
+                  className="w-4 h-4 accent-brand-600"
+                />
+                A domicilio
+              </label>
+            </fieldset>
+            {delivery && (
+              <input
+                aria-label="Dirección de entrega"
+                placeholder="Dirección de entrega"
+                maxLength={300}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-xl text-sm"
+              />
+            )}
+            <input
+              aria-label="Nota (opcional)"
+              placeholder="Nota (opcional)"
+              maxLength={300}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-xl text-sm"
+            />
+            {error && (
+              <p role="alert" className="text-sm text-red-600">
+                {error}
+              </p>
+            )}
+            <button
+              type="submit"
+              disabled={sending}
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-brand-600 text-white font-semibold disabled:opacity-60"
             >
               <ShoppingBag className="w-5 h-5" aria-hidden="true" />
-              Pedir por WhatsApp · {money(total)}
-            </a>
+              Enviar pedido por WhatsApp · {money(total)}
+            </button>
             <p className="text-center text-[11px] text-slate-500">
               Precios sujetos a disponibilidad; las promociones se aplican al cobrar.
             </p>
           </div>
-        </div>
+        </form>
       )}
     </div>
   );
