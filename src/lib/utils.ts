@@ -82,6 +82,8 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   PURCHASE: "Compra",
   PURCHASE_CANCEL: "Compra cancelada",
   ADJUSTMENT: "Ajuste",
+  TRANSFER_OUT: "Traspaso enviado",
+  TRANSFER_IN: "Traspaso recibido",
 };
 
 /** Unidades que admiten cantidades fraccionarias (venta a granel). */

@@ -503,3 +503,40 @@ export const onlineOrderSchema = z.object({
 export const onlineOrderStatusSchema = z.object({
   status: z.enum(["ACCEPTED", "READY", "DELIVERED", "CANCELLED"]),
 });
+
+export const purchaseOrderSchema = z.object({
+  supplierId: id.nullish(),
+  supplierName: optText(150),
+  notes: optText(),
+  expectedAt: z.coerce.date().nullish(),
+  lines: z
+    .array(z.object({ productId: id, quantity: positiveQty, unitCost: moneyInput.nullish() }))
+    .min(1, "Agrega al menos un producto")
+    .max(300),
+});
+
+export const purchaseOrderReceiveSchema = z.object({
+  paidFromCash: z.boolean().default(false),
+  notes: optText(),
+  lines: z
+    .array(
+      z.object({
+        lineId: id,
+        quantity: nonNegativeQty,
+        unitCost: moneyInput.nullish(),
+        lotCode: optText(60),
+        expiresAt: z.coerce.date().nullish(),
+      })
+    )
+    .min(1)
+    .max(300),
+});
+
+export const transferSchema = z.object({
+  toBusinessId: id,
+  notes: optText(),
+  lines: z
+    .array(z.object({ productId: id, quantity: positiveQty }))
+    .min(1, "Agrega al menos un producto")
+    .max(300),
+});

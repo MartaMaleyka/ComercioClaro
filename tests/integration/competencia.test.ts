@@ -6,6 +6,13 @@ import { closeCashSession, openCashSession } from "@/server/cash";
 import { cashierReport, monthRange, taxReport } from "@/server/insights";
 import { reconcileStatement } from "@/server/reconciliation";
 import { createOnlineOrder, onlineOrderCounts, setOnlineOrderStatus } from "@/server/online-orders";
+import {
+  closePurchaseOrder,
+  createPurchaseOrder,
+  markPurchaseOrderSent,
+  receivePurchaseOrder,
+} from "@/server/purchase-orders";
+import { cancelTransfer, createTransfer, receiveTransfer, transferDestinations } from "@/server/transfers";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -65,9 +72,18 @@ describe.skipIf(!hasDatabase)("reporte de ITBMS", () => {
     expect(report.totals).toMatchObject({ total: 23.76, tax: 1.26 });
 
     const sodaItem = sale.items.find((i) => i.productId === soda.id)!;
-    await returnSale(owner, sale.id, { items: [{ saleItemId: sodaItem.id, quantity: 1 }], refundMethod: "CASH", reason: "Dañada" });
+    await returnSale(owner, sale.id, {
+      items: [{ saleItemId: sodaItem.id, quantity: 1 }],
+      refundMethod: "CASH",
+      reason: "Dañada",
+    });
     report = await taxReport(b);
-    expect(report.lines.find((l) => l.taxRate === 0.07)).toMatchObject({ returns: 9.63, total: 9.63, base: 9, tax: 0.63 });
+    expect(report.lines.find((l) => l.taxRate === 0.07)).toMatchObject({
+      returns: 9.63,
+      total: 9.63,
+      base: 9,
+      tax: 0.63,
+    });
 
     // Otro mes: sin ventas.
     const empty = await taxReport(b, "2020-01");
@@ -97,7 +113,15 @@ describe.skipIf(!hasDatabase)("desempeño por cajero", () => {
     const rows = await cashierReport(owner.businessId, { start: range.start, end: new Date(Date.now() + 60_000) });
     const li = rows.find((r) => r.userId === cashier.userId)!;
     const wei = rows.find((r) => r.userId === owner.userId)!;
-    expect(li).toMatchObject({ name: "Li Na", role: "CASHIER", salesCount: 2, salesTotal: 29, discounts: 1, closings: 1, shortages: 5 });
+    expect(li).toMatchObject({
+      name: "Li Na",
+      role: "CASHIER",
+      salesCount: 2,
+      salesTotal: 29,
+      discounts: 1,
+      closings: 1,
+      shortages: 5,
+    });
     expect(li.averageTicket).toBe(14.5);
     // La venta cancelada no cuenta como venta ni su descuento; sí la cancelación.
     expect(wei).toMatchObject({ salesCount: 1, salesTotal: 10, discounts: 0, cancellations: 1 });
@@ -110,7 +134,10 @@ describe.skipIf(!hasDatabase)("conciliación bancaria", () => {
   it("cruza el estado de cuenta con las ventas de Yappy", async () => {
     const owner = await panamaOwner();
     const p = await makeProduct(owner, { price: 2.1, taxRate: 0, stock: 50 });
-    const paid = await createSale(owner, saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "YAPPY", paymentReference: "998877" }));
+    const paid = await createSale(
+      owner,
+      saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "YAPPY", paymentReference: "998877" })
+    );
     const byAmount = await createSale(owner, saleInput([{ productId: p.id, quantity: 2 }], { paymentMethod: "YAPPY" }));
     const missing = await createSale(owner, saleInput([{ productId: p.id, quantity: 3 }], { paymentMethod: "YAPPY" }));
     await createSale(owner, saleInput([{ productId: p.id, quantity: 1 }])); // efectivo: no entra
@@ -148,10 +175,24 @@ describe.skipIf(!hasDatabase)("pedidos en línea", () => {
     expect(await onlineOrderCounts(owner.businessId)).toEqual({ new: 1, active: 1 });
 
     await expect(
-      createOnlineOrder("tienda-prueba", { customerName: "Beto", phone: null, notes: null, fulfillment: "PICKUP", address: null, items: [{ productId: soda.id, quantity: 9 }] })
+      createOnlineOrder("tienda-prueba", {
+        customerName: "Beto",
+        phone: null,
+        notes: null,
+        fulfillment: "PICKUP",
+        address: null,
+        items: [{ productId: soda.id, quantity: 9 }],
+      })
     ).rejects.toThrow(/No hay suficiente/);
     await expect(
-      createOnlineOrder("otra", { customerName: "Beto", phone: null, notes: null, fulfillment: "PICKUP", address: null, items: [{ productId: soda.id, quantity: 1 }] })
+      createOnlineOrder("otra", {
+        customerName: "Beto",
+        phone: null,
+        notes: null,
+        fulfillment: "PICKUP",
+        address: null,
+        items: [{ productId: soda.id, quantity: 1 }],
+      })
     ).rejects.toThrow(/Catálogo/);
 
     await setOnlineOrderStatus(owner, order.id, "ACCEPTED");
@@ -160,12 +201,152 @@ describe.skipIf(!hasDatabase)("pedidos en línea", () => {
     const sale = await createSale(owner, saleInput([{ productId: soda.id, quantity: 2 }], { onlineOrderId: order.id }));
     let saved = await prisma.onlineOrder.findUniqueOrThrow({ where: { id: order.id } });
     expect(saved).toMatchObject({ status: "DELIVERED", saleId: sale.id });
-    await expect(createSale(owner, saleInput([{ productId: soda.id, quantity: 1 }], { onlineOrderId: order.id }))).rejects.toThrow(
-      /ya fue cobrado/
-    );
+    await expect(
+      createSale(owner, saleInput([{ productId: soda.id, quantity: 1 }], { onlineOrderId: order.id }))
+    ).rejects.toThrow(/ya fue cobrado/);
 
     await cancelSale(owner, sale.id, "Se cobró mal");
     saved = await prisma.onlineOrder.findUniqueOrThrow({ where: { id: order.id } });
     expect(saved).toMatchObject({ status: "READY", saleId: null });
+  });
+});
+
+describe.skipIf(!hasDatabase)("órdenes de compra", () => {
+  beforeEach(resetDatabase);
+
+  it("recibe en partes, registra compras con costo promedio y cierra con faltantes", async () => {
+    const owner = await panamaOwner();
+    const beer = await makeProduct(owner, { price: 1, cost: 0.6, stock: 24, taxRate: 0.1 });
+    const rice = await makeProduct(owner, { price: 4, cost: 3, stock: 10, taxRate: 0 });
+    const order = await createPurchaseOrder(owner, {
+      supplierId: null,
+      supplierName: "Cervecería Nacional",
+      notes: null,
+      expectedAt: null,
+      lines: [
+        { productId: beer.id, quantity: 48, unitCost: 0.7 },
+        { productId: rice.id, quantity: 10, unitCost: null },
+      ],
+    });
+    expect(order).toMatchObject({ folio: 1, status: "DRAFT" });
+    expect(Number(order.total)).toBe(63.6);
+
+    await markPurchaseOrderSent(owner, order.id);
+    const beerLine = order.lines.find((l) => l.productId === beer.id)!;
+    const riceLine = order.lines.find((l) => l.productId === rice.id)!;
+    await expect(
+      receivePurchaseOrder(owner, order.id, {
+        paidFromCash: false,
+        notes: null,
+        lines: [{ lineId: beerLine.id, quantity: 50, lotCode: null }],
+      })
+    ).rejects.toThrow(/más de lo pendiente/);
+
+    const partial = await receivePurchaseOrder(owner, order.id, {
+      paidFromCash: false,
+      notes: "Factura 123",
+      lines: [
+        { lineId: beerLine.id, quantity: 24, lotCode: null },
+        { lineId: riceLine.id, quantity: 0, lotCode: null },
+      ],
+    });
+    expect(partial.status).toBe("PARTIAL");
+    expect(partial.purchases).toHaveLength(1);
+    const updatedBeer = await prisma.product.findUniqueOrThrow({ where: { id: beer.id } });
+    expect(Number(updatedBeer.stock)).toBe(48);
+    expect(Number(updatedBeer.cost)).toBe(0.65);
+    const purchase = await prisma.purchase.findUniqueOrThrow({ where: { id: partial.purchases[0].id } });
+    expect(purchase).toMatchObject({ purchaseOrderId: order.id, supplierName: "Cervecería Nacional" });
+    expect(purchase.notes).toContain("Orden de compra #1");
+
+    const closed = await closePurchaseOrder(owner, order.id);
+    expect(closed.status).toBe("RECEIVED");
+    await expect(
+      receivePurchaseOrder(owner, order.id, {
+        paidFromCash: false,
+        notes: null,
+        lines: [{ lineId: riceLine.id, quantity: 1, lotCode: null }],
+      })
+    ).rejects.toThrow(/cerrada/);
+
+    const empty = await createPurchaseOrder(owner, {
+      supplierId: null,
+      supplierName: null,
+      notes: null,
+      expectedAt: null,
+      lines: [{ productId: rice.id, quantity: 1, unitCost: null }],
+    });
+    expect((await closePurchaseOrder(owner, empty.id)).status).toBe("CANCELLED");
+  });
+});
+
+describe.skipIf(!hasDatabase)("traspasos entre sucursales", () => {
+  beforeEach(resetDatabase);
+
+  it("envía, recibe (encontrando o creando el producto) y cancela", async () => {
+    const owner = await panamaOwner();
+    const branch = await prisma.business.create({
+      data: {
+        name: "Sucursal Centro",
+        country: "PA",
+        memberships: { create: { userId: owner.userId, role: "OWNER" } },
+      },
+    });
+    const dest: SalesActor = { userId: owner.userId, businessId: branch.id, role: "OWNER" };
+    const soda = await makeProduct(owner, {
+      name: "Coca-Cola 2 L",
+      barcode: "7451001000042",
+      price: 2.1,
+      cost: 1.5,
+      stock: 20,
+      taxRate: 0.07,
+    });
+    const eggs = await makeProduct(owner, { name: "Huevo", price: 0.2, cost: 0.14, stock: 100, taxRate: 0 });
+    // En destino ya existe la soda (mismo código) con otro costo; el huevo no existe.
+    const destSoda = await makeProduct(dest, {
+      name: "Coca Cola 2L",
+      barcode: "7451001000042",
+      price: 2.2,
+      cost: 1.7,
+      stock: 5,
+      taxRate: 0.07,
+    });
+
+    expect(await transferDestinations(owner.userId, owner.businessId)).toEqual([
+      { id: branch.id, name: "Sucursal Centro" },
+    ]);
+    await expect(
+      createTransfer(owner, { toBusinessId: branch.id, notes: null, lines: [{ productId: soda.id, quantity: 25 }] })
+    ).rejects.toThrow(/Stock insuficiente/);
+
+    const transfer = await createTransfer(owner, {
+      toBusinessId: branch.id,
+      notes: null,
+      lines: [
+        { productId: soda.id, quantity: 5 },
+        { productId: eggs.id, quantity: 30 },
+      ],
+    });
+    expect(transfer.status).toBe("IN_TRANSIT");
+    expect(Number((await prisma.product.findUniqueOrThrow({ where: { id: soda.id } })).stock)).toBe(15);
+    await expect(receiveTransfer(owner, transfer.id)).rejects.toThrow(/no está en tránsito hacia esta sucursal/);
+
+    const received = await receiveTransfer(dest, transfer.id);
+    expect(received.status).toBe("RECEIVED");
+    const soda2 = await prisma.product.findUniqueOrThrow({ where: { id: destSoda.id } });
+    expect(Number(soda2.stock)).toBe(10);
+    expect(Number(soda2.cost)).toBe(1.6);
+    const newEggs = await prisma.product.findFirstOrThrow({ where: { businessId: branch.id, name: "Huevo" } });
+    expect(Number(newEggs.stock)).toBe(30);
+    expect(Number(newEggs.price)).toBe(0.2);
+
+    const second = await createTransfer(owner, {
+      toBusinessId: branch.id,
+      notes: null,
+      lines: [{ productId: soda.id, quantity: 3 }],
+    });
+    await cancelTransfer(owner, second.id);
+    expect(Number((await prisma.product.findUniqueOrThrow({ where: { id: soda.id } })).stock)).toBe(15);
+    await expect(receiveTransfer(dest, second.id)).rejects.toThrow(/no está en tránsito/);
   });
 });

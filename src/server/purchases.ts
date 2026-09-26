@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
 import { AppError, notFound } from "@/lib/errors";
 import { D, money, qty, reverseWeightedAverageCost, sum, unitCost, type Decimal } from "@/lib/decimal";
-import { prisma } from "@/lib/prisma";
+import { prisma, type Tx } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { dayRange } from "@/lib/dates";
 import type { listQuerySchema, purchaseSchema } from "@/lib/validation";
@@ -19,103 +19,107 @@ export const purchaseInclude = {
 } satisfies Prisma.PurchaseInclude;
 
 export async function createPurchase(actor: Actor, input: PurchaseInput) {
-  return prisma.$transaction(async (tx) => {
-    const productIds = [...new Set(input.items.map((i) => i.productId))];
-    const products = await tx.product.findMany({
-      where: { id: { in: productIds }, businessId: actor.businessId },
-    });
-    const productMap = new Map(products.map((p) => [p.id, p]));
+  return prisma.$transaction((tx) => createPurchaseInTx(tx, actor, input));
+}
 
-    let supplierName = input.supplierName;
-    if (input.supplierId) {
-      const supplier = await tx.supplier.findFirst({ where: { id: input.supplierId, businessId: actor.businessId } });
-      if (!supplier) throw notFound("Proveedor");
-      supplierName = supplier.name;
+/** Registra la compra dentro de una transacción existente (también la usa la recepción de órdenes de compra). */
+export async function createPurchaseInTx(tx: Tx, actor: Actor, input: PurchaseInput, purchaseOrderId?: string) {
+  const productIds = [...new Set(input.items.map((i) => i.productId))];
+  const products = await tx.product.findMany({
+    where: { id: { in: productIds }, businessId: actor.businessId },
+  });
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  let supplierName = input.supplierName;
+  if (input.supplierId) {
+    const supplier = await tx.supplier.findFirst({ where: { id: input.supplierId, businessId: actor.businessId } });
+    if (!supplier) throw notFound("Proveedor");
+    supplierName = supplier.name;
+  }
+
+  const lines = input.items.map((item) => {
+    const product = productMap.get(item.productId);
+    if (!product) throw notFound("Producto");
+    const quantity = qty(item.quantity);
+    if (product.unit === "PIECE" && !quantity.isInteger()) {
+      throw new AppError(400, `${product.name} se compra por pieza; usa cantidades enteras`);
     }
+    const cost = item.unitCost != null ? unitCost(item.unitCost) : D(product.cost);
+    return { item, product, quantity, cost, subtotal: money(quantity.times(cost)) };
+  });
+  const total = sum(lines.map((l) => l.subtotal));
 
-    const lines = input.items.map((item) => {
-      const product = productMap.get(item.productId);
-      if (!product) throw notFound("Producto");
-      const quantity = qty(item.quantity);
-      if (product.unit === "PIECE" && !quantity.isInteger()) {
-        throw new AppError(400, `${product.name} se compra por pieza; usa cantidades enteras`);
-      }
-      const cost = item.unitCost != null ? unitCost(item.unitCost) : D(product.cost);
-      return { item, product, quantity, cost, subtotal: money(quantity.times(cost)) };
+  const cashSession = input.paidFromCash ? await getOpenSession(tx, actor.businessId) : null;
+  if (input.paidFromCash && !cashSession) {
+    throw new AppError(409, "No hay una caja abierta para pagar la compra en efectivo");
+  }
+
+  const { purchaseCounter } = await tx.business.update({
+    where: { id: actor.businessId },
+    data: { purchaseCounter: { increment: 1 } },
+    select: { purchaseCounter: true },
+  });
+
+  const purchaseId = crypto.randomUUID();
+  for (const line of [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id))) {
+    await receiveStock(tx, actor, {
+      productId: line.product.id,
+      quantity: line.quantity,
+      unitCost: line.cost,
+      referenceId: purchaseId,
     });
-    const total = sum(lines.map((l) => l.subtotal));
+  }
 
-    const cashSession = input.paidFromCash ? await getOpenSession(tx, actor.businessId) : null;
-    if (input.paidFromCash && !cashSession) {
-      throw new AppError(409, "No hay una caja abierta para pagar la compra en efectivo");
-    }
+  const purchase = await tx.purchase.create({
+    data: {
+      id: purchaseId,
+      folio: purchaseCounter,
+      total,
+      supplierId: input.supplierId ?? null,
+      supplierName,
+      notes: input.notes,
+      paidFromCash: input.paidFromCash,
+      purchaseOrderId: purchaseOrderId ?? null,
+      cashSessionId: cashSession?.id ?? null,
+      userId: actor.userId,
+      businessId: actor.businessId,
+      items: {
+        create: lines.map((l) => ({
+          productId: l.product.id,
+          quantity: l.quantity,
+          unitCost: l.cost,
+          subtotal: l.subtotal,
+          lotCode: l.item.lotCode,
+          expiresAt: l.item.expiresAt ?? null,
+        })),
+      },
+    },
+    include: { items: true },
+  });
 
-    const { purchaseCounter } = await tx.business.update({
-      where: { id: actor.businessId },
-      data: { purchaseCounter: { increment: 1 } },
-      select: { purchaseCounter: true },
-    });
-
-    const purchaseId = crypto.randomUUID();
-    for (const line of [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id))) {
-      await receiveStock(tx, actor, {
-        productId: line.product.id,
-        quantity: line.quantity,
-        unitCost: line.cost,
-        referenceId: purchaseId,
+  // Lotes con caducidad para productos que la controlan o cuando se indicó fecha.
+  for (const item of purchase.items) {
+    const product = productMap.get(item.productId)!;
+    if (product.trackExpiry || item.expiresAt) {
+      await tx.productBatch.create({
+        data: {
+          lotCode: item.lotCode,
+          expiresAt: item.expiresAt,
+          quantity: item.quantity,
+          remaining: item.quantity,
+          productId: item.productId,
+          purchaseItemId: item.id,
+          businessId: actor.businessId,
+        },
       });
     }
+  }
 
-    const purchase = await tx.purchase.create({
-      data: {
-        id: purchaseId,
-        folio: purchaseCounter,
-        total,
-        supplierId: input.supplierId ?? null,
-        supplierName,
-        notes: input.notes,
-        paidFromCash: input.paidFromCash,
-        cashSessionId: cashSession?.id ?? null,
-        userId: actor.userId,
-        businessId: actor.businessId,
-        items: {
-          create: lines.map((l) => ({
-            productId: l.product.id,
-            quantity: l.quantity,
-            unitCost: l.cost,
-            subtotal: l.subtotal,
-            lotCode: l.item.lotCode,
-            expiresAt: l.item.expiresAt ?? null,
-          })),
-        },
-      },
-      include: { items: true },
-    });
-
-    // Lotes con caducidad para productos que la controlan o cuando se indicó fecha.
-    for (const item of purchase.items) {
-      const product = productMap.get(item.productId)!;
-      if (product.trackExpiry || item.expiresAt) {
-        await tx.productBatch.create({
-          data: {
-            lotCode: item.lotCode,
-            expiresAt: item.expiresAt,
-            quantity: item.quantity,
-            remaining: item.quantity,
-            productId: item.productId,
-            purchaseItemId: item.id,
-            businessId: actor.businessId,
-          },
-        });
-      }
-    }
-
-    await audit(tx, actor, "purchase.create", "Purchase", purchase.id, {
-      folio: purchase.folio,
-      total: total.toNumber(),
-    });
-    return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id }, include: purchaseInclude });
+  await audit(tx, actor, "purchase.create", "Purchase", purchase.id, {
+    folio: purchase.folio,
+    total: total.toNumber(),
   });
+  return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id }, include: purchaseInclude });
 }
 
 export async function listPurchases(businessId: string, timeZone: string, query: ListQuery) {

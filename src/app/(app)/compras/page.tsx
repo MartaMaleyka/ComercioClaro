@@ -21,6 +21,8 @@ import { Checkbox, Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
+import { Tabs } from "@/components/ui/Tabs";
+import { PurchaseOrdersTab } from "@/components/purchases/PurchaseOrdersTab";
 
 interface Line {
   productId: string;
@@ -57,6 +59,9 @@ function Purchases() {
   const debounced = useDebounce(search);
   const list = usePaginated<Purchase>("/api/purchases", { search: debounced, from, to });
   const [open, setOpen] = useState(() => params.get("nueva") === "1");
+  const [tab, setTab] = useState<"purchases" | "orders">(() =>
+    params.get("tab") === "ordenes" ? "orders" : "purchases"
+  );
 
   async function cancel(p: Purchase) {
     const reason = await confirm({
@@ -96,79 +101,95 @@ function Purchases() {
         }
       />
 
-      <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
-        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por proveedor o producto")} />
-        <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
-      </div>
+      <Tabs
+        label={tr("Compras")}
+        tabs={[
+          { value: "purchases", label: tr("Compras") },
+          { value: "orders", label: tr("Órdenes de compra") },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
-      {list.error ? (
-        <ErrorState error={list.error} onRetry={() => list.mutate()} />
-      ) : list.isLoading ? (
-        <ListSkeleton />
-      ) : list.items.length === 0 ? (
-        <EmptyState
-          icon={ShoppingBag}
-          title={tr("Sin compras")}
-          description={tr("Registra la mercancía que compras para actualizar existencias y costos.")}
-        />
+      {tab === "orders" ? (
+        <PurchaseOrdersTab />
       ) : (
-        <div className="space-y-3">
-          {list.items.map((p) => (
-            <Card key={p.id}>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      #{p.folio} · {p.supplier?.name ?? p.supplierName ?? "Sin proveedor"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {fmt.dateTime(p.createdAt)}
-                      {p.paidFromCash && " · pagada de caja"}
-                    </p>
-                    {p.status === "CANCELLED" && (
-                      <Badge tone="red" className="mt-1">
-                        {tr("Cancelada:")} {p.cancelReason}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={`font-semibold tabular-nums ${p.status === "CANCELLED" ? "line-through text-slate-400" : "text-slate-900"}`}
-                    >
-                      {fmt.money(p.total)}
-                    </p>
-                    {p.status === "ACTIVE" && (
-                      <button
-                        onClick={() => cancel(p)}
-                        className="text-xs text-red-600 hover:underline inline-flex items-center gap-1"
-                      >
-                        <XCircle className="w-3 h-3" /> {tr("Cancelar")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <ul className="text-sm text-slate-600 space-y-0.5">
-                  {p.items.map((i) => (
-                    <li key={i.id} className="flex justify-between">
-                      <span>
-                        {fmt.qty(i.quantity, i.product.unit)} {i.product.name} × {fmt.money(i.unitCost)}
-                        {i.expiresAt && (
-                          <span className="text-xs text-slate-500">
-                            {" "}
-                            {tr("· cad.")} {fmt.date(i.expiresAt)}
-                          </span>
+        <>
+          <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
+            <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por proveedor o producto")} />
+            <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+
+          {list.error ? (
+            <ErrorState error={list.error} onRetry={() => list.mutate()} />
+          ) : list.isLoading ? (
+            <ListSkeleton />
+          ) : list.items.length === 0 ? (
+            <EmptyState
+              icon={ShoppingBag}
+              title={tr("Sin compras")}
+              description={tr("Registra la mercancía que compras para actualizar existencias y costos.")}
+            />
+          ) : (
+            <div className="space-y-3">
+              {list.items.map((p) => (
+                <Card key={p.id}>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-slate-900">
+                          #{p.folio} · {p.supplier?.name ?? p.supplierName ?? tr("Sin proveedor")}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {fmt.dateTime(p.createdAt)}
+                          {p.paidFromCash && ` · ${tr("pagada de caja")}`}
+                        </p>
+                        {p.status === "CANCELLED" && (
+                          <Badge tone="red" className="mt-1">
+                            {tr("Cancelada:")} {p.cancelReason}
+                          </Badge>
                         )}
-                      </span>
-                      <span className="tabular-nums">{fmt.money(i.subtotal)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-          <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
-        </div>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`font-semibold tabular-nums ${p.status === "CANCELLED" ? "line-through text-slate-400" : "text-slate-900"}`}
+                        >
+                          {fmt.money(p.total)}
+                        </p>
+                        {p.status === "ACTIVE" && (
+                          <button
+                            onClick={() => cancel(p)}
+                            className="text-xs text-red-600 hover:underline inline-flex items-center gap-1"
+                          >
+                            <XCircle className="w-3 h-3" /> {tr("Cancelar")}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <ul className="text-sm text-slate-600 space-y-0.5">
+                      {p.items.map((i) => (
+                        <li key={i.id} className="flex justify-between">
+                          <span>
+                            {fmt.qty(i.quantity, i.product.unit)} {i.product.name} × {fmt.money(i.unitCost)}
+                            {i.expiresAt && (
+                              <span className="text-xs text-slate-500">
+                                {" "}
+                                {tr("· cad.")} {fmt.date(i.expiresAt)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="tabular-nums">{fmt.money(i.subtotal)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+              <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
+            </div>
+          )}
+        </>
       )}
 
       {open && (

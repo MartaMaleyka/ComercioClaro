@@ -3,7 +3,12 @@
 import { useText } from "@/lib/client/i18n";
 import Link from "next/link";
 import useSWR from "swr";
-import { MessageCircle, ShoppingBag, ThumbsUp } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ClipboardList, MessageCircle, ShoppingBag, ThumbsUp } from "lucide-react";
+import { api } from "@/lib/client/api";
+import { useToast } from "@/components/providers/ToastProvider";
+import { Button } from "@/components/ui/Button";
 import { whatsappLink } from "@/lib/client/receipt";
 import { UNIT_LABELS } from "@/lib/utils";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -44,8 +49,40 @@ function orderLine(s: Suggestion, unitLabel: string) {
 export function ReorderTab() {
   const tr = useText();
   const fmt = useFormat();
+  const toast = useToast();
+  const router = useRouter();
   const { business } = useSession();
   const { data, error, mutate } = useSWR<Suggestion[]>("/api/inventory/reorder", fetcher);
+  const [creating, setCreating] = useState<string | null>(null);
+
+  /** Crea una orden de compra con las sugerencias del proveedor, redondeadas a cajas completas. */
+  async function createOrder(supplier: string | null, items: Suggestion[]) {
+    setCreating(supplier ?? "");
+    try {
+      await api("/api/purchase-orders", {
+        body: {
+          supplierId: null,
+          supplierName: supplier,
+          notes: null,
+          expectedAt: null,
+          lines: items.map((s) => ({
+            productId: s.productId,
+            quantity:
+              s.packSize && s.packSize > 1
+                ? Math.ceil(s.suggestedQuantity / s.packSize) * s.packSize
+                : s.suggestedQuantity,
+            unitCost: s.lastCost > 0 ? s.lastCost : null,
+          })),
+        },
+      });
+      toast.success(tr("Orden de compra creada"));
+      router.push("/compras?tab=ordenes");
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setCreating(null);
+    }
+  }
 
   if (error) return <ErrorState error={error} onRetry={() => mutate()} />;
   if (!data) return <ListSkeleton />;
@@ -61,7 +98,7 @@ export function ReorderTab() {
 
   const total = data.reduce((acc, s) => acc + s.suggestedQuantity * s.lastCost, 0);
   const bySupplier = data.reduce<Record<string, Suggestion[]>>((acc, s) => {
-    const key = s.lastSupplier ?? "Sin proveedor";
+    const key = s.lastSupplier ?? "";
     (acc[key] ??= []).push(s);
     return acc;
   }, {});
@@ -83,25 +120,35 @@ export function ReorderTab() {
       {Object.entries(bySupplier).map(([supplier, items]) => (
         <div key={supplier} className="space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-500">{supplier}</h2>
-            <a
-              href={whatsappLink(
-                [
-                  `Hola${items[0].supplierContact ? ` ${items[0].supplierContact}` : ""}, le escribe ${business.name}. Quisiera hacer el siguiente pedido:`,
-                  "",
-                  ...items.map((s) => `• ${orderLine(s, UNIT_LABELS[s.unit] ?? s.unit)}`),
-                  "",
-                  "¿Me confirma disponibilidad y precio? Gracias.",
-                ].join("\n"),
-                items[0].supplierPhone,
-                business.locale
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-brand-700 dark:text-brand-300 hover:underline"
-            >
-              <MessageCircle className="w-4 h-4" aria-hidden="true" /> {tr("Pedir por WhatsApp")}
-            </a>
+            <h2 className="text-sm font-semibold text-slate-500">{supplier || tr("Sin proveedor")}</h2>
+            <div className="flex items-center gap-3">
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={creating === supplier}
+                onClick={() => createOrder(supplier || null, items)}
+              >
+                <ClipboardList className="w-4 h-4" aria-hidden="true" /> {tr("Crear orden de compra")}
+              </Button>
+              <a
+                href={whatsappLink(
+                  [
+                    `Hola${items[0].supplierContact ? ` ${items[0].supplierContact}` : ""}, le escribe ${business.name}. Quisiera hacer el siguiente pedido:`,
+                    "",
+                    ...items.map((s) => `• ${orderLine(s, UNIT_LABELS[s.unit] ?? s.unit)}`),
+                    "",
+                    "¿Me confirma disponibilidad y precio? Gracias.",
+                  ].join("\n"),
+                  items[0].supplierPhone,
+                  business.locale
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-700 dark:text-brand-300 hover:underline"
+              >
+                <MessageCircle className="w-4 h-4" aria-hidden="true" /> {tr("Pedir por WhatsApp")}
+              </a>
+            </div>
           </div>
           {items.map((s) => (
             <Card key={s.productId}>
