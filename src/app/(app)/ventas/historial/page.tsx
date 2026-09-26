@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import Link from "next/link";
 import { Download, Receipt } from "lucide-react";
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 
 export default function SalesHistoryPage() {
+  const tr = useText();
   const { business, role } = useSession();
   const fmt = useFormat();
   const [search, setSearch] = useState("");
@@ -32,31 +34,35 @@ export default function SalesHistoryPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Ventas"
-        description="Historial, devoluciones y tickets"
+        title={tr("Ventas")}
+        description={tr("Historial, devoluciones y tickets")}
         actions={
           role === "OWNER" && (
             <a
               href={withQuery("/api/export/sales", { from, to })}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              <Download className="w-4 h-4" /> CSV
+              <Download className="w-4 h-4" /> {tr("CSV")}
             </a>
           )
         }
       />
 
       <div className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-end">
-        <SearchBar value={search} onChange={setSearch} placeholder="Buscar por producto, cliente o folio" />
-        <Input type="date" aria-label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
-        <Select aria-label="Estado" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">Todas</option>
-          <option value="ACTIVE">Activas</option>
-          <option value="CANCELLED">Canceladas</option>
+        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por producto, cliente o folio")} />
+        <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+        <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
+        <Select aria-label={tr("Estado")} value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="">{tr("Todas")}</option>
+          <option value="ACTIVE">{tr("Activas")}</option>
+          <option value="CANCELLED">{tr("Canceladas")}</option>
         </Select>
-        <Select aria-label="Forma de pago" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-          <option value="">Toda forma de pago</option>
+        <Select
+          aria-label={tr("Forma de pago")}
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+        >
+          <option value="">{tr("Toda forma de pago")}</option>
           {countryConfig(business.country).paymentMethods.map((m) => (
             <option key={m} value={m}>
               {PAYMENT_METHOD_LABELS[m]}
@@ -70,7 +76,7 @@ export default function SalesHistoryPage() {
       ) : isLoading ? (
         <ListSkeleton />
       ) : items.length === 0 ? (
-        <EmptyState icon={Receipt} title="Sin ventas" description="No hay ventas en este periodo." />
+        <EmptyState icon={Receipt} title={tr("Sin ventas")} description={tr("No hay ventas en este periodo.")} />
       ) : (
         <div className="space-y-3">
           {items.map((sale) => (
@@ -88,9 +94,9 @@ export default function SalesHistoryPage() {
                         {sale.customer && ` · ${sale.customer.name}`}
                       </p>
                       <div className="flex gap-1 mt-1">
-                        {sale.status === "CANCELLED" && <Badge tone="red">Cancelada</Badge>}
-                        {sale.returns.length > 0 && <Badge tone="amber">Con devolución</Badge>}
-                        {sale.invoice?.status === "STAMPED" && <Badge tone="blue">Facturada</Badge>}
+                        {sale.status === "CANCELLED" && <Badge tone="red">{tr("Cancelada")}</Badge>}
+                        {sale.returns.length > 0 && <Badge tone="amber">{tr("Con devolución")}</Badge>}
+                        {sale.invoice?.status === "STAMPED" && <Badge tone="blue">{tr("Facturada")}</Badge>}
                       </div>
                     </div>
                     <p

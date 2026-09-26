@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { createContext, useCallback, useContext, useState } from "react";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ interface ToastApi {
 const ToastContext = createContext<ToastApi | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const tr = useText();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const push = useCallback((kind: ToastKind, message: string) => {
@@ -31,7 +33,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const api: ToastApi = {
     success: (m) => push("success", m),
     info: (m) => push("info", m),
-    error: (m) => push("error", m instanceof Error ? m.message : typeof m === "string" ? m : "Ocurrió un error"),
+    error: (m) => push("error", m instanceof Error ? m.message : typeof m === "string" ? m : tr("Ocurrió un error")),
   };
 
   const icons = { success: CheckCircle2, error: AlertCircle, info: Info };
@@ -59,7 +61,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               <Icon className="w-5 h-5 shrink-0" />
               <p className="flex-1">{t.message}</p>
               <button
-                aria-label="Cerrar"
+                aria-label={tr("Cerrar")}
                 onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}
                 className="opacity-80 hover:opacity-100"
               >

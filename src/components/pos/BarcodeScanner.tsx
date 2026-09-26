@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 
@@ -27,6 +28,7 @@ export function BarcodeScanner(props: ScannerProps) {
 }
 
 function Scanner({ open, onClose, onDetected }: ScannerProps) {
+  const tr = useText();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   // Ref para no reiniciar la cámara cada vez que el padre vuelve a renderizar.
@@ -102,7 +104,7 @@ function Scanner({ open, onClose, onDetected }: ScannerProps) {
   }, [open]);
 
   return (
-    <Modal open={open} onClose={onClose} title="Escanear código">
+    <Modal open={open} onClose={onClose} title={tr("Escanear código")}>
       <div className="space-y-3">
         {error ? (
           <p role="alert" className="text-sm text-red-600">
@@ -115,8 +117,9 @@ function Scanner({ open, onClose, onDetected }: ScannerProps) {
           </div>
         )}
         <p className="text-xs text-slate-500">
-          Apunta la cámara al código de barras. También puedes usar un lector USB o Bluetooth: escanea directamente en
-          el buscador.
+          {tr(
+            "Apunta la cámara al código de barras. También puedes usar un lector USB o Bluetooth: escanea directamente en el buscador."
+          )}
         </p>
       </div>
     </Modal>

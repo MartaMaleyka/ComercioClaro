@@ -351,11 +351,27 @@ async function seedPanama() {
     });
   }
 
+  // Funciones de la ronda 5: promoción de cerveza, puntos de lealtad y catálogo por WhatsApp.
+  const beer = products.find((p) => p.name === "Cerveza Panamá lata")!;
+  await prisma.promotion.create({
+    data: { name: "6 Cerveza Panamá por B/.5.00", type: "BUNDLE_PRICE", bundleQty: 6, bundlePrice: 5, productId: beer.id, businessId },
+  });
+  await prisma.business.update({
+    where: { id: businessId },
+    data: {
+      loyaltyEnabled: true,
+      catalogEnabled: true,
+      catalogSlug: "minisuper-el-dorado",
+      catalogWhatsapp: "61234567",
+    },
+  });
+
   await openCashSession(actor, { openingAmount: 50, notes: "Fondo inicial" });
 
   console.log("✅ Demostración de Panamá creada");
   console.log(`   Dueño:  ${PA_EMAIL} / ${DEMO_PASSWORD}`);
   console.log(`   Cajero: ${PA_CASHIER_EMAIL} / ${DEMO_PASSWORD} (interfaz en chino)`);
+  console.log("   Catálogo público: /c/minisuper-el-dorado");
 }
 
 async function main() {

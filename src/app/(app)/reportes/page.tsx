@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import {
@@ -88,6 +89,7 @@ const tooltipStyle = {
 };
 
 export default function ReportsPage() {
+  const tr = useText();
   const { business, businesses } = useSession();
   const fmt = useFormat();
   const [period, setPeriod] = useState("30");
@@ -99,17 +101,17 @@ export default function ReportsPage() {
   const query = period === "custom" ? { from, to } : { period };
   const { data, error, mutate } = useSWR<Report>(
     scope === "business" ? withQuery("/api/reports", query) : null,
-    fetcher,
+    fetcher
   );
   const consolidated = useSWR<Consolidated>(
     scope === "all" ? withQuery("/api/reports", { ...query, scope: "all" }) : null,
-    fetcher,
+    fetcher
   );
   const ownedBranches = businesses.filter((b) => b.role === "OWNER").length;
 
   const dayLabel = (d: string) =>
     new Intl.DateTimeFormat(fmt.locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(
-      new Date(`${d}T00:00:00Z`),
+      new Date(`${d}T00:00:00Z`)
     );
   const compactMoney = (n: number) =>
     new Intl.NumberFormat(fmt.locale, {
@@ -122,15 +124,15 @@ export default function ReportsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Reportes"
-        description="Ventas, utilidad real y lo que más se vende"
+        title={tr("Reportes")}
+        description={tr("Ventas, utilidad real y lo que más se vende")}
         actions={
           data && (
             <a
               href={withQuery("/api/export/sale-items", { from: data.from, to: data.to })}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              <Download className="w-4 h-4" /> Detalle CSV
+              <Download className="w-4 h-4" /> {tr("Detalle CSV")}
             </a>
           )
         }
@@ -140,7 +142,7 @@ export default function ReportsPage() {
         <div
           className="inline-flex rounded-xl border border-slate-200 p-1 bg-surface"
           role="radiogroup"
-          aria-label="Periodo"
+          aria-label={tr("Periodo")}
         >
           {PERIODS.map((p) => (
             <button
@@ -150,14 +152,14 @@ export default function ReportsPage() {
               onClick={() => setPeriod(p.value)}
               className={`px-3 py-1.5 rounded-lg text-sm ${period === p.value ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
             >
-              {p.label}
+              {tr(p.label)}
             </button>
           ))}
         </div>
         {period === "custom" && (
           <>
-            <Input type="date" aria-label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
-            <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
+            <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
           </>
         )}
       </div>
@@ -166,7 +168,7 @@ export default function ReportsPage() {
         <Tabs
           tabs={[
             { value: "business", label: business.name },
-            { value: "all", label: "Todas las sucursales" },
+            { value: "all", label: tr("Todas las sucursales") },
           ]}
           value={scope}
           onChange={setScope}
@@ -189,43 +191,43 @@ export default function ReportsPage() {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <Stat
-              label="Ventas netas"
+              label={tr("Ventas netas")}
               value={fmt.money(data.revenue)}
-              hint={`${data.salesCount} ventas · ticket ${fmt.money(data.averageTicket)}`}
+              hint={tr("{n} ventas · ticket {amount}", { n: data.salesCount, amount: fmt.money(data.averageTicket) })}
             />
-            <Stat label="Costo de lo vendido" value={fmt.money(data.cogs)} />
+            <Stat label={tr("Costo de lo vendido")} value={fmt.money(data.cogs)} />
             <Stat
-              label="Utilidad bruta"
+              label={tr("Utilidad bruta")}
               value={fmt.money(data.grossProfit)}
               hint={`Margen ${data.grossMargin}%`}
               tone="positive"
             />
             <Stat
-              label="Ganancia neta"
+              label={tr("Ganancia neta")}
               value={fmt.money(data.netProfit)}
               hint={`Gastos ${fmt.money(data.expenses)}`}
               tone={data.netProfit >= 0 ? "positive" : "negative"}
             />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <Stat label="Compras (salida de dinero)" value={fmt.money(data.purchases)} />
-            <Stat label="Devoluciones" value={fmt.money(data.returns)} />
+            <Stat label={tr("Compras (salida de dinero)")} value={fmt.money(data.purchases)} />
+            <Stat label={tr("Devoluciones")} value={fmt.money(data.returns)} />
             <Stat
-              label="Comisiones estimadas"
+              label={tr("Comisiones estimadas")}
               value={fmt.money(data.fees.total)}
               hint={
                 data.fees.items.length > 0
-                  ? `${data.fees.items.map((f) => `${PAYMENT_METHOD_LABELS[f.method]} ${Math.round(f.rate * 10000) / 100}%`).join(" · ")} · neto ${fmt.money(data.netAfterFees)}`
-                  : "Configura las comisiones en Configuración"
+                  ? `${data.fees.items.map((f) => `${tr(PAYMENT_METHOD_LABELS[f.method])} ${Math.round(f.rate * 10000) / 100}%`).join(" · ")} · ${tr("neto")} ${fmt.money(data.netAfterFees)}`
+                  : tr("Configura las comisiones en Configuración")
               }
             />
             <Stat
-              label="Por forma de pago"
+              label={tr("Por forma de pago")}
               value={
                 <span className="text-sm font-medium block space-y-0.5">
                   {data.byPaymentMethod.map((m) => (
                     <span key={m.method} className="flex justify-between gap-2">
-                      <span className="text-slate-500">{PAYMENT_METHOD_LABELS[m.method]}</span>
+                      <span className="text-slate-500">{tr(PAYMENT_METHOD_LABELS[m.method])}</span>
                       {fmt.money(m.total)}
                     </span>
                   ))}
@@ -236,12 +238,12 @@ export default function ReportsPage() {
 
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-900">Ventas y ganancia neta por día</h2>
+              <h2 className="font-semibold text-slate-900">{tr("Ventas y ganancia neta por día")}</h2>
               <button
                 onClick={() => setShowTable((v) => !v)}
                 className="text-sm text-brand-700 dark:text-brand-300 underline"
               >
-                {showTable ? "Ver gráfica" : "Ver tabla"}
+                {showTable ? tr("Ver gráfica") : tr("Ver tabla")}
               </button>
             </CardHeader>
             <CardContent>
@@ -251,11 +253,11 @@ export default function ReportsPage() {
                     <table className="w-full text-sm min-w-[420px]">
                       <thead className="sticky top-0 bg-surface">
                         <tr className="text-left text-xs text-slate-500">
-                          <th className="py-1 font-medium">Día</th>
-                          <th className="py-1 font-medium text-right">Ventas</th>
-                          <th className="py-1 font-medium text-right">Utilidad bruta</th>
-                          <th className="py-1 font-medium text-right">Gastos</th>
-                          <th className="py-1 font-medium text-right">Ganancia neta</th>
+                          <th className="py-1 font-medium">{tr("Día")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Ventas")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Utilidad bruta")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Gastos")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Ganancia neta")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -273,7 +275,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="h-64" role="img" aria-label="Gráfica de ventas y ganancia neta por día">
+                <div className="h-64" role="img" aria-label={tr("Gráfica de ventas y ganancia neta por día")}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={data.trends} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -326,20 +328,20 @@ export default function ReportsPage() {
           <div className="grid lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <h2 className="font-semibold text-slate-900">Más vendidos</h2>
+                <h2 className="font-semibold text-slate-900">{tr("Más vendidos")}</h2>
               </CardHeader>
               <CardContent>
                 {data.bestSellers.length === 0 ? (
-                  <p className="text-sm text-slate-500">Sin ventas en el periodo.</p>
+                  <p className="text-sm text-slate-500">{tr("Sin ventas en el periodo.")}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm min-w-[420px]">
                       <thead>
                         <tr className="text-left text-xs text-slate-500">
-                          <th className="py-1 font-medium">Producto</th>
-                          <th className="py-1 font-medium text-right">Vendido</th>
-                          <th className="py-1 font-medium text-right">Ventas</th>
-                          <th className="py-1 font-medium text-right">Utilidad</th>
+                          <th className="py-1 font-medium">{tr("Producto")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Vendido")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Ventas")}</th>
+                          <th className="py-1 font-medium text-right">{tr("Utilidad")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -366,16 +368,16 @@ export default function ReportsPage() {
 
             <Card>
               <CardHeader>
-                <h2 className="font-semibold text-slate-900">Utilidad por categoría</h2>
+                <h2 className="font-semibold text-slate-900">{tr("Utilidad por categoría")}</h2>
               </CardHeader>
               <CardContent>
                 {data.byCategory.length === 0 ? (
-                  <p className="text-sm text-slate-500">Sin ventas en el periodo.</p>
+                  <p className="text-sm text-slate-500">{tr("Sin ventas en el periodo.")}</p>
                 ) : (
                   <div
                     style={{ height: Math.max(120, data.byCategory.length * 36) }}
                     role="img"
-                    aria-label="Utilidad bruta por categoría"
+                    aria-label={tr("Utilidad bruta por categoría")}
                   >
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
@@ -420,11 +422,11 @@ export default function ReportsPage() {
 
             <Card className="lg:col-span-2">
               <CardHeader>
-                <h2 className="font-semibold text-slate-900">Gastos por categoría</h2>
+                <h2 className="font-semibold text-slate-900">{tr("Gastos por categoría")}</h2>
               </CardHeader>
               <CardContent>
                 {data.expensesByCategory.length === 0 ? (
-                  <p className="text-sm text-slate-500">Sin gastos registrados en el periodo.</p>
+                  <p className="text-sm text-slate-500">{tr("Sin gastos registrados en el periodo.")}</p>
                 ) : (
                   <div className="space-y-2">
                     {data.expensesByCategory.map((e) => (
@@ -453,24 +455,25 @@ export default function ReportsPage() {
 }
 
 function ConsolidatedView({ data }: { data: Consolidated }) {
+  const tr = useText();
   const fmt = useFormat();
   return (
     <Card>
       <CardContent>
         {data.mixedCurrencies && (
           <p className="text-sm text-amber-700 mb-3">
-            Las sucursales usan monedas distintas; los totales suman importes sin convertir.
+            {tr("Las sucursales usan monedas distintas; los totales suman importes sin convertir.")}
           </p>
         )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[420px]">
             <thead>
               <tr className="text-left text-xs text-slate-500">
-                <th className="py-1 font-medium">Sucursal</th>
-                <th className="py-1 font-medium text-right">Ventas</th>
-                <th className="py-1 font-medium text-right">Utilidad bruta</th>
-                <th className="py-1 font-medium text-right">Gastos</th>
-                <th className="py-1 font-medium text-right">Ganancia neta</th>
+                <th className="py-1 font-medium">{tr("Sucursal")}</th>
+                <th className="py-1 font-medium text-right">{tr("Ventas")}</th>
+                <th className="py-1 font-medium text-right">{tr("Utilidad bruta")}</th>
+                <th className="py-1 font-medium text-right">{tr("Gastos")}</th>
+                <th className="py-1 font-medium text-right">{tr("Ganancia neta")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -486,7 +489,7 @@ function ConsolidatedView({ data }: { data: Consolidated }) {
                 </tr>
               ))}
               <tr className="font-semibold">
-                <td className="py-2">Total</td>
+                <td className="py-2">{tr("Total")}</td>
                 <td className="py-2 text-right tabular-nums">{fmt.money(data.totals.revenue)}</td>
                 <td className="py-2 text-right tabular-nums">{fmt.money(data.totals.grossProfit)}</td>
                 <td className="py-2 text-right tabular-nums">{fmt.money(data.totals.expenses)}</td>

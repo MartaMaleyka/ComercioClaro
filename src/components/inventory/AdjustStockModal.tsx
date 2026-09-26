@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
@@ -21,6 +22,7 @@ export function AdjustStockModal({ product, ...rest }: AdjustProps) {
 }
 
 function AdjustDialog({ product, onClose, onSaved }: AdjustProps & { product: Product }) {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const [mode, setMode] = useState<"set" | "delta">("set");
@@ -39,7 +41,7 @@ function AdjustDialog({ product, onClose, onSaved }: AdjustProps & { product: Pr
       await api(`/api/products/${product.id}/adjust`, {
         body: { mode, quantity: mode === "set" ? q : delta, reason, notes: notes || null },
       });
-      toast.success("Existencia ajustada");
+      toast.success(tr("Existencia ajustada"));
       onSaved();
     } catch (err) {
       toast.error(err);
@@ -51,9 +53,11 @@ function AdjustDialog({ product, onClose, onSaved }: AdjustProps & { product: Pr
   return (
     <Modal open onClose={onClose} title={`Ajustar: ${product.name}`}>
       <form onSubmit={save} className="space-y-4">
-        <p className="text-sm text-slate-600">Existencia actual: {fmt.qty(product.stock, product.unit)}</p>
+        <p className="text-sm text-slate-600">
+          {tr("Existencia actual:")} {fmt.qty(product.stock, product.unit)}
+        </p>
         <Select
-          label="Motivo"
+          label={tr("Motivo")}
           value={reason}
           onChange={(e) => {
             setReason(e.target.value);
@@ -68,27 +72,32 @@ function AdjustDialog({ product, onClose, onSaved }: AdjustProps & { product: Pr
         >
           {Object.entries(ADJUSTMENT_REASON_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
-              {label}
+              {tr(label)}
             </option>
           ))}
         </Select>
         <Input
-          label={mode === "set" ? "Existencia contada" : "Cantidad que se da de baja"}
+          label={mode === "set" ? tr("Existencia contada") : tr("Cantidad que se da de baja")}
           inputMode="decimal"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           required
           autoFocus
         />
-        <Input label="Notas" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional" />
+        <Input
+          label={tr("Notas")}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={tr("Opcional")}
+        />
         {Number.isFinite(delta) && delta !== 0 && (
           <p className={`text-sm font-medium ${delta < 0 ? "text-red-600" : "text-brand-600"}`}>
             {delta > 0 ? "+" : ""}
-            {fmt.number(delta)} → quedará en {fmt.qty(product.stock + delta, product.unit)}
+            {fmt.number(delta)} {tr("→ quedará en")} {fmt.qty(product.stock + delta, product.unit)}
           </p>
         )}
         <Button type="submit" className="w-full" loading={saving} disabled={!Number.isFinite(delta) || delta === 0}>
-          Guardar ajuste
+          {tr("Guardar ajuste")}
         </Button>
       </form>
     </Modal>

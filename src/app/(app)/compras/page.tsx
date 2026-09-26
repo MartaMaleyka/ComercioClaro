@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
@@ -44,6 +45,7 @@ export default function PurchasesPage() {
 }
 
 function Purchases() {
+  const tr = useText();
   const { business } = useSession();
   const fmt = useFormat();
   const toast = useToast();
@@ -58,16 +60,16 @@ function Purchases() {
 
   async function cancel(p: Purchase) {
     const reason = await confirm({
-      title: `Cancelar compra #${p.folio}`,
-      message: "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.",
-      inputLabel: "Motivo",
+      title: tr("Cancelar compra #{folio}", { folio: p.folio }),
+      message: tr("Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar."),
+      inputLabel: tr("Motivo"),
       danger: true,
-      confirmLabel: "Cancelar compra",
+      confirmLabel: tr("Cancelar compra"),
     });
     if (typeof reason !== "string") return;
     try {
       await api(`/api/purchases/${p.id}/cancel`, { body: { reason } });
-      toast.success("Compra cancelada");
+      toast.success(tr("Compra cancelada"));
       list.mutate();
     } catch (err) {
       toast.error(err);
@@ -77,27 +79,27 @@ function Purchases() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Compras"
-        description="Mercancía que entra al inventario"
+        title={tr("Compras")}
+        description={tr("Mercancía que entra al inventario")}
         actions={
           <>
             <a
               href={withQuery("/api/export/purchases", { from, to })}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              <Download className="w-4 h-4" /> CSV
+              <Download className="w-4 h-4" /> {tr("CSV")}
             </a>
             <Button onClick={() => setOpen(true)}>
-              <Plus className="w-4 h-4" /> Nueva compra
+              <Plus className="w-4 h-4" /> {tr("Nueva compra")}
             </Button>
           </>
         }
       />
 
       <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
-        <SearchBar value={search} onChange={setSearch} placeholder="Buscar por proveedor o producto" />
-        <Input type="date" aria-label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
+        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por proveedor o producto")} />
+        <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+        <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
       {list.error ? (
@@ -107,8 +109,8 @@ function Purchases() {
       ) : list.items.length === 0 ? (
         <EmptyState
           icon={ShoppingBag}
-          title="Sin compras"
-          description="Registra la mercancía que compras para actualizar existencias y costos."
+          title={tr("Sin compras")}
+          description={tr("Registra la mercancía que compras para actualizar existencias y costos.")}
         />
       ) : (
         <div className="space-y-3">
@@ -126,7 +128,7 @@ function Purchases() {
                     </p>
                     {p.status === "CANCELLED" && (
                       <Badge tone="red" className="mt-1">
-                        Cancelada: {p.cancelReason}
+                        {tr("Cancelada:")} {p.cancelReason}
                       </Badge>
                     )}
                   </div>
@@ -141,7 +143,7 @@ function Purchases() {
                         onClick={() => cancel(p)}
                         className="text-xs text-red-600 hover:underline inline-flex items-center gap-1"
                       >
-                        <XCircle className="w-3 h-3" /> Cancelar
+                        <XCircle className="w-3 h-3" /> {tr("Cancelar")}
                       </button>
                     )}
                   </div>
@@ -151,7 +153,12 @@ function Purchases() {
                     <li key={i.id} className="flex justify-between">
                       <span>
                         {fmt.qty(i.quantity, i.product.unit)} {i.product.name} × {fmt.money(i.unitCost)}
-                        {i.expiresAt && <span className="text-xs text-slate-500"> · cad. {fmt.date(i.expiresAt)}</span>}
+                        {i.expiresAt && (
+                          <span className="text-xs text-slate-500">
+                            {" "}
+                            {tr("· cad.")} {fmt.date(i.expiresAt)}
+                          </span>
+                        )}
                       </span>
                       <span className="tabular-nums">{fmt.money(i.subtotal)}</span>
                     </li>
@@ -179,13 +186,14 @@ function Purchases() {
 }
 
 function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const { data: catalog } = useSWR<{ items: Product[] }>(open ? "/api/products?all=true" : null, fetcher);
   const { data: suppliers } = useSWR<Supplier[]>(open ? "/api/suppliers" : null, fetcher);
   const { data: reorder } = useSWR<{ productId: string; suggestedQuantity: number }[]>(
     open ? "/api/inventory/reorder" : null,
-    fetcher,
+    fetcher
   );
   const [lines, setLines] = useState<Line[]>([]);
   const [supplierId, setSupplierId] = useState("");
@@ -236,7 +244,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
       l.productId,
       l.byPack
         ? { byPack: false, quantity: round(q * l.packSize, 3), unitCost: round(c / l.packSize, 4) }
-        : { byPack: true, quantity: round(q / l.packSize, 3), unitCost: round(c * l.packSize, 2) },
+        : { byPack: true, quantity: round(q / l.packSize, 3), unitCost: round(c * l.packSize, 2) }
     );
   }
 
@@ -266,7 +274,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           }),
         },
       });
-      toast.success("Compra registrada; inventario y costos actualizados");
+      toast.success(tr("Compra registrada; inventario y costos actualizados"));
       onSaved();
     } catch (err) {
       toast.error(err);
@@ -276,11 +284,11 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nueva compra" size="lg">
+    <Modal open={open} onClose={onClose} title={tr("Nueva compra")} size="lg">
       <div className="space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
-          <Select label="Proveedor" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-            <option value="">Otro / sin registrar</option>
+          <Select label={tr("Proveedor")} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+            <option value="">{tr("Otro / sin registrar")}</option>
             {suppliers?.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -289,10 +297,10 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           </Select>
           {!supplierId && (
             <Input
-              label="Nombre del proveedor"
+              label={tr("Nombre del proveedor")}
               value={supplierName}
               onChange={(e) => setSupplierName(e.target.value)}
-              placeholder="Opcional"
+              placeholder={tr("Opcional")}
             />
           )}
         </div>
@@ -301,7 +309,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           <SearchBar
             value={search}
             onChange={setSearch}
-            placeholder="Agregar producto (nombre o código)"
+            placeholder={tr("Agregar producto (nombre o código)")}
             onEnter={() => matches[0] && add(matches[0])}
           />
           {matches.length > 0 && (
@@ -321,7 +329,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
         </div>
         {reorder && reorder.length > 0 && lines.length === 0 && (
           <button onClick={addSuggestions} className="text-sm text-brand-700 dark:text-brand-300 underline">
-            Agregar las {reorder.length} sugerencias de reabastecimiento
+            {tr("Agregar las {n} sugerencias de reabastecimiento", { n: reorder.length })}
           </button>
         )}
 
@@ -340,7 +348,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
                           onChange={() => togglePack(l)}
                           className="accent-brand-600"
                         />
-                        Comprar por caja de {l.packSize}
+                        {tr("Comprar por caja de")} {l.packSize}
                         {l.byPack &&
                           Number(l.quantity) > 0 &&
                           ` (= ${Number(l.quantity) * l.packSize} ${UNIT_LABELS[l.unit]})`}
@@ -357,25 +365,25 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <Input
-                    label={l.byPack ? "Cajas" : `Cantidad (${UNIT_LABELS[l.unit]})`}
+                    label={l.byPack ? tr("Cajas") : `Cantidad (${UNIT_LABELS[l.unit]})`}
                     inputMode="decimal"
                     value={l.quantity}
                     onChange={(e) => update(l.productId, { quantity: e.target.value })}
                   />
                   <Input
-                    label={l.byPack ? "Costo por caja" : "Costo unitario"}
+                    label={l.byPack ? tr("Costo por caja") : tr("Costo unitario")}
                     inputMode="decimal"
                     value={l.unitCost}
                     onChange={(e) => update(l.productId, { unitCost: e.target.value })}
                   />
                   <Input
-                    label="Lote"
+                    label={tr("Lote")}
                     value={l.lotCode}
                     onChange={(e) => update(l.productId, { lotCode: e.target.value })}
-                    placeholder="Opcional"
+                    placeholder={tr("Opcional")}
                   />
                   <Input
-                    label={l.trackExpiry ? "Caducidad" : "Caducidad (opc.)"}
+                    label={l.trackExpiry ? tr("Caducidad") : tr("Caducidad (opc.)")}
                     type="date"
                     value={l.expiresAt}
                     onChange={(e) => update(l.productId, { expiresAt: e.target.value })}
@@ -387,25 +395,27 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
         )}
 
         <Input
-          label="Notas"
+          label={tr("Notas")}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Número de factura, condiciones..."
+          placeholder={tr("Número de factura, condiciones...")}
         />
         <Checkbox
-          label="Se pagó con dinero de la caja"
+          label={tr("Se pagó con dinero de la caja")}
           checked={paidFromCash}
           onChange={(e) => setPaidFromCash(e.target.checked)}
         />
 
         <div className="flex items-center justify-between">
-          <p className="text-lg font-bold text-slate-900">Total: {fmt.money(total)}</p>
+          <p className="text-lg font-bold text-slate-900">
+            {tr("Total:")} {fmt.money(total)}
+          </p>
           <Button onClick={save} loading={saving} disabled={lines.length === 0}>
-            Registrar compra
+            {tr("Registrar compra")}
           </Button>
         </div>
         <p className="text-xs text-slate-500">
-          El costo de cada producto se actualiza con el promedio ponderado de lo que ya tenías y lo que entra.
+          {tr("El costo de cada producto se actualiza con el promedio ponderado de lo que ya tenías y lo que entra.")}
         </p>
       </div>
     </Modal>

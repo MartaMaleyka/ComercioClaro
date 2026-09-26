@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { Barcode, Printer } from "lucide-react";
@@ -15,6 +16,7 @@ import { ListSkeleton } from "@/components/ui/Misc";
 
 /** Selección de productos para imprimir etiquetas de precio con código de barras. */
 export function LabelsTab() {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const { data, mutate } = useSWR<{ items: Product[] }>("/api/products?all=true", fetcher);
@@ -26,7 +28,7 @@ export function LabelsTab() {
 
   const products = useMemo(
     () => (data?.items ?? []).filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase())),
-    [data, search],
+    [data, search]
   );
   const withoutCode = products.filter((p) => selected.has(p.id) && !p.barcode && !p.sku);
 
@@ -45,7 +47,7 @@ export function LabelsTab() {
       const res = await api<{ assigned: number }>("/api/products/assign-barcodes", {
         body: { ids: withoutCode.map((p) => p.id) },
       });
-      toast.success(`${res.assigned} códigos internos asignados`);
+      toast.success(tr("{n} códigos internos asignados", { n: res.assigned }));
       mutate();
     } catch (err) {
       toast.error(err);
@@ -64,21 +66,21 @@ export function LabelsTab() {
   return (
     <div className="space-y-4">
       <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
-        <SearchBar value={search} onChange={setSearch} placeholder="Buscar producto" />
-        <Select aria-label="Tamaño" value={size} onChange={(e) => setSize(e.target.value)}>
-          <option value="small">Chica 50×25 mm</option>
-          <option value="medium">Mediana 62×35 mm</option>
-          <option value="shelf">Anaquel 90×40 mm</option>
+        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar producto")} />
+        <Select aria-label={tr("Tamaño")} value={size} onChange={(e) => setSize(e.target.value)}>
+          <option value="small">{tr("Chica 50×25 mm")}</option>
+          <option value="medium">{tr("Mediana 62×35 mm")}</option>
+          <option value="shelf">{tr("Anaquel 90×40 mm")}</option>
         </Select>
         <Input
-          aria-label="Copias"
+          aria-label={tr("Copias")}
           inputMode="numeric"
           value={copies}
           onChange={(e) => setCopies(e.target.value)}
           className="w-20"
         />
         <Button onClick={print} disabled={selected.size === 0}>
-          <Printer className="w-4 h-4" /> Imprimir ({selected.size})
+          <Printer className="w-4 h-4" /> {tr("Imprimir ({n})", { n: selected.size })}
         </Button>
       </div>
       <div className="flex gap-3 items-center flex-wrap text-sm">
@@ -86,14 +88,14 @@ export function LabelsTab() {
           className="underline text-brand-700 dark:text-brand-300"
           onClick={() => setSelected(new Set(products.map((p) => p.id)))}
         >
-          Seleccionar todos
+          {tr("Seleccionar todos")}
         </button>
         <button className="underline text-slate-500" onClick={() => setSelected(new Set())}>
-          Quitar selección
+          {tr("Quitar selección")}
         </button>
         {withoutCode.length > 0 && (
           <Button size="sm" variant="secondary" onClick={assignCodes} loading={busy}>
-            <Barcode className="w-4 h-4" /> Asignar código interno a {withoutCode.length} sin código
+            <Barcode className="w-4 h-4" /> {tr("Asignar código interno a {n} sin código", { n: withoutCode.length })}
           </Button>
         )}
       </div>

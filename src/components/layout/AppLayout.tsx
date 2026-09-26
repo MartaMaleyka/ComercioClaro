@@ -28,9 +28,10 @@ import {
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useOnline } from "@/lib/client/hooks";
+import { TranslationFeedbackButton } from "./TranslationFeedbackButton";
 import { OfflineSync } from "@/components/pwa/OfflineSync";
 import { clearOfflineData } from "@/lib/client/offline-db";
-import { useT } from "@/lib/client/i18n";
+import { useT, useText } from "@/lib/client/i18n";
 import type { MessageKey } from "@/lib/i18n";
 
 type Role = "OWNER" | "CASHIER";
@@ -68,6 +69,7 @@ function isActive(pathname: string, href: string) {
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const tr = useText();
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, business, businesses } = useSession();
@@ -106,7 +108,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="relative">
       <button
         onClick={() => businesses.length > 1 && setSwitcherOpen((v) => !v)}
-        className={cn("flex items-center gap-1 text-xs text-slate-500 max-w-[180px]", businesses.length > 1 && "hover:text-slate-700")}
+        className={cn(
+          "flex items-center gap-1 text-xs text-slate-500 max-w-[180px]",
+          businesses.length > 1 && "hover:text-slate-700"
+        )}
         aria-haspopup={businesses.length > 1 ? "listbox" : undefined}
         aria-expanded={switcherOpen}
       >
@@ -114,7 +119,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {businesses.length > 1 && <ChevronDown className="w-3 h-3 shrink-0" />}
       </button>
       {switcherOpen && (
-        <div role="listbox" className="absolute left-0 top-6 z-50 w-56 bg-surface border border-slate-200 rounded-xl shadow-lg p-1">
+        <div
+          role="listbox"
+          className="absolute left-0 top-6 z-50 w-56 bg-surface border border-slate-200 rounded-xl shadow-lg p-1"
+        >
           {businesses.map((b) => (
             <button
               key={b.id}
@@ -150,11 +158,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-0 md:flex-row">
       <a href="#contenido" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-surface">
-        Ir al contenido
+        {tr("Ir al contenido")}
       </a>
       <aside className="hidden md:flex md:w-64 md:flex-col bg-surface border-r border-slate-100 fixed inset-y-0 left-0">
         <div className="p-5 border-b border-slate-100">{logo}</div>
-        <nav aria-label="Principal" className="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav aria-label={tr("Principal")} className="flex-1 p-3 space-y-1 overflow-y-auto">
           {items.map((item) => (
             <Link
               key={item.href}
@@ -176,6 +184,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <p className="px-3 pb-2 text-xs text-slate-500 truncate">
             {user.name} · {t(`role.${role}`)}
           </p>
+          <TranslationFeedbackButton className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 w-full transition-colors" />
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 w-full transition-colors"
@@ -210,7 +219,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav
-        aria-label="Principal"
+        aria-label={tr("Principal")}
         className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-slate-100 z-40 safe-area-bottom"
       >
         <div className="flex justify-around items-center px-1 py-1">
@@ -244,7 +253,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="absolute bottom-0 inset-x-0 bg-surface rounded-t-2xl p-4 animate-in safe-area-bottom">
             <div className="flex items-center justify-between mb-3">
               <p className="font-semibold text-slate-900">{t("nav.menu")}</p>
-              <button onClick={() => setMoreOpen(false)} aria-label="Cerrar" className="p-2 rounded-xl hover:bg-slate-100">
+              <button
+                onClick={() => setMoreOpen(false)}
+                aria-label={tr("Cerrar")}
+                className="p-2 rounded-xl hover:bg-slate-100"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
@@ -256,7 +269,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => setMoreOpen(false)}
                   className={cn(
                     "flex flex-col items-center gap-1 p-3 rounded-xl text-xs font-medium",
-                    isActive(pathname, item.href) ? "bg-brand-50 text-brand-700 dark:text-brand-300" : "text-slate-600 bg-slate-50"
+                    isActive(pathname, item.href)
+                      ? "bg-brand-50 text-brand-700 dark:text-brand-300"
+                      : "text-slate-600 bg-slate-50"
                   )}
                 >
                   <item.icon className="w-5 h-5" aria-hidden="true" />

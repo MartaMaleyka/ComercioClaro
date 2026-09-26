@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useRef, useState } from "react";
 import useSWR from "swr";
 import { ClipboardCheck, ScanBarcode, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ interface Count {
 
 /** Conteo físico con escáner: cada lectura suma 1; al aplicar se ajustan las diferencias. */
 export function CountTab() {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const confirm = useConfirm();
@@ -70,14 +72,17 @@ export function CountTab() {
     if (!count) return;
     const diffs = count.lines.filter((l) => l.counted !== l.product.stock).length;
     const ok = await confirm({
-      title: "Aplicar conteo",
-      message: `Se ajustarán ${diffs} productos para que su existencia sea igual a lo contado. Los productos no contados no cambian.`,
-      confirmLabel: "Aplicar ajustes",
+      title: tr("Aplicar conteo"),
+      message: tr(
+        "Se ajustarán {n} productos para que su existencia sea igual a lo contado. Los productos no contados no cambian.",
+        { n: diffs }
+      ),
+      confirmLabel: tr("Aplicar ajustes"),
     });
     if (!ok) return;
     try {
       const res = await api<{ adjusted: number }>(`/api/inventory/counts/${count.id}/apply`, { body: {} });
-      toast.success(`Conteo aplicado: ${res.adjusted} productos ajustados`);
+      toast.success(tr("Conteo aplicado: {n} productos ajustados", { n: res.adjusted }));
       mutate();
     } catch (err) {
       toast.error(err);
@@ -85,7 +90,8 @@ export function CountTab() {
   }
 
   async function discard() {
-    if (!count || !(await confirm({ title: "Descartar conteo", danger: true, confirmLabel: "Descartar" }))) return;
+    if (!count || !(await confirm({ title: tr("Descartar conteo"), danger: true, confirmLabel: tr("Descartar") })))
+      return;
     await api(`/api/inventory/counts/${count.id}/cancel`, { body: {} }).catch(toast.error);
     mutate();
   }
@@ -95,11 +101,13 @@ export function CountTab() {
     return (
       <EmptyState
         icon={ClipboardCheck}
-        title="Conteo físico"
-        description="Escanea o busca cada producto del anaquel. Al terminar, las existencias se ajustan a lo contado y queda registrado el motivo."
+        title={tr("Conteo físico")}
+        description={tr(
+          "Escanea o busca cada producto del anaquel. Al terminar, las existencias se ajustan a lo contado y queda registrado el motivo."
+        )}
         action={
           <Button onClick={start} loading={busy}>
-            Iniciar conteo
+            {tr("Iniciar conteo")}
           </Button>
         }
       />
@@ -117,23 +125,25 @@ export function CountTab() {
             value={code}
             onChange={setCode}
             onEnter={() => scan(code)}
-            placeholder="Escanea o escribe el código y Enter"
+            placeholder={tr("Escanea o escribe el código y Enter")}
             autoFocus
           />
         </div>
-        <Button variant="secondary" onClick={() => setScanning(true)} aria-label="Escanear con la cámara">
+        <Button variant="secondary" onClick={() => setScanning(true)} aria-label={tr("Escanear con la cámara")}>
           <ScanBarcode className="w-5 h-5" />
         </Button>
       </div>
       <p className="text-sm text-slate-600">
-        {count.lines.length} productos contados · diferencia estimada a costo:{" "}
+        {tr("{n} productos contados · diferencia estimada a costo:", { n: count.lines.length })}{" "}
         <span className={valueDiff < 0 ? "text-red-600 font-medium" : "text-brand-600 font-medium"}>
           {fmt.money(valueDiff)}
         </span>
       </p>
       <Card>
         <CardContent className="divide-y divide-slate-100 py-0">
-          {count.lines.length === 0 && <p className="py-4 text-sm text-slate-500">Aún no hay productos contados.</p>}
+          {count.lines.length === 0 && (
+            <p className="py-4 text-sm text-slate-500">{tr("Aún no hay productos contados.")}</p>
+          )}
           {count.lines.map((l) => {
             const diff = Math.round((l.counted - l.product.stock) * 1000) / 1000;
             return (
@@ -141,7 +151,7 @@ export function CountTab() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900 truncate">{l.product.name}</p>
                   <p className="text-xs text-slate-500">
-                    Sistema {fmt.qty(l.product.stock, l.product.unit)} ·{" "}
+                    {tr("Sistema")} {fmt.qty(l.product.stock, l.product.unit)} ·{" "}
                     <span className={diff === 0 ? "" : diff < 0 ? "text-red-600" : "text-amber-600"}>
                       {diff > 0 ? "+" : ""}
                       {fmt.number(diff)}
@@ -179,10 +189,10 @@ export function CountTab() {
       </Card>
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={discard}>
-          Descartar
+          {tr("Descartar")}
         </Button>
         <Button onClick={apply} disabled={count.lines.length === 0}>
-          Aplicar conteo
+          {tr("Aplicar conteo")}
         </Button>
       </div>
       <BarcodeScanner

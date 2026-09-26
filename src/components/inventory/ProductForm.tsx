@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import { ScanBarcode } from "lucide-react";
 import { api } from "@/lib/client/api";
@@ -82,6 +83,7 @@ export function ProductForm(props: ProductFormProps) {
 }
 
 function ProductFormDialog({ open, product, categories, onClose, onSaved }: ProductFormProps) {
+  const tr = useText();
   const toast = useToast();
   const { business } = useSession();
   const country = countryConfig(business.country);
@@ -138,20 +140,35 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title={product ? "Editar producto" : "Nuevo producto"}>
+      <Modal open={open} onClose={onClose} title={product ? tr("Editar producto") : tr("Nuevo producto")}>
         <form onSubmit={save} className="space-y-4">
-          <Input label="Nombre" value={form.name} onChange={(e) => set("name", e.target.value)} required autoFocus />
+          <Input
+            label={tr("Nombre")}
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+            required
+            autoFocus
+          />
           <div className="flex gap-2 items-end">
             <div className="flex-1">
-              <Input label="Código de barras" value={form.barcode} onChange={(e) => set("barcode", e.target.value)} />
+              <Input
+                label={tr("Código de barras")}
+                value={form.barcode}
+                onChange={(e) => set("barcode", e.target.value)}
+              />
             </div>
-            <Button type="button" variant="secondary" onClick={() => setScanning(true)} aria-label="Escanear código">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setScanning(true)}
+              aria-label={tr("Escanear código")}
+            >
               <ScanBarcode className="w-5 h-5" />
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Select label="Categoría" value={form.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
-              <option value="">Sin categoría</option>
+            <Select label={tr("Categoría")} value={form.categoryId} onChange={(e) => set("categoryId", e.target.value)}>
+              <option value="">{tr("Sin categoría")}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -159,7 +176,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
               ))}
             </Select>
             <Select
-              label="Se vende por"
+              label={tr("Se vende por")}
               value={form.unit}
               onChange={(e) => {
                 const unit = UNITS.find((u) => u.value === e.target.value)!;
@@ -168,21 +185,21 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
             >
               {UNITS.map((u) => (
                 <option key={u.value} value={u.value}>
-                  {u.label}
+                  {tr(u.label)}
                 </option>
               ))}
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Precio de venta"
+              label={tr("Precio de venta")}
               inputMode="decimal"
               value={form.price}
               onChange={(e) => set("price", e.target.value)}
               required
             />
             <Input
-              label="Costo"
+              label={tr("Costo")}
               inputMode="decimal"
               value={form.cost}
               onChange={(e) => set("cost", e.target.value)}
@@ -194,14 +211,14 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
           <div className="grid grid-cols-2 gap-3">
             {!product && (
               <Input
-                label="Existencia inicial"
+                label={tr("Existencia inicial")}
                 inputMode="decimal"
                 value={form.stock}
                 onChange={(e) => set("stock", e.target.value)}
               />
             )}
             <Input
-              label="Stock mínimo (alerta)"
+              label={tr("Stock mínimo (alerta)")}
               inputMode="decimal"
               value={form.minStock}
               onChange={(e) => set("minStock", e.target.value)}
@@ -209,34 +226,34 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
           </div>
           {product && (
             <p className="text-xs text-slate-500">
-              Para cambiar la existencia usa &quot;Ajustar existencia&quot; y queda registrado el motivo.
+              {tr('Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.')}
             </p>
           )}
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Precio de mayoreo"
+              label={tr("Precio de mayoreo")}
               inputMode="decimal"
               value={form.wholesalePrice}
               onChange={(e) => set("wholesalePrice", e.target.value)}
-              placeholder="Opcional"
+              placeholder={tr("Opcional")}
             />
             <Input
-              label="Mayoreo desde (cantidad)"
+              label={tr("Mayoreo desde (cantidad)")}
               inputMode="decimal"
               value={form.wholesaleMinQty}
               onChange={(e) => set("wholesaleMinQty", e.target.value)}
-              placeholder="Ej. 12"
+              placeholder={tr("Ej. 12")}
             />
           </div>
           <Input
-            label="Unidades por caja (opcional)"
+            label={tr("Unidades por caja (opcional)")}
             inputMode="numeric"
             value={form.packSize}
             onChange={(e) => set("packSize", e.target.value)}
-            hint="Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)"
+            hint={tr("Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)")}
           />
           <Checkbox
-            label="Controlar lotes y fecha de caducidad"
+            label={tr("Controlar lotes y fecha de caducidad")}
             checked={form.trackExpiry}
             onChange={(e) => set("trackExpiry", e.target.checked)}
           />
@@ -246,7 +263,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
             onClick={() => setAdvanced((v) => !v)}
             className="text-sm text-brand-700 dark:text-brand-300 underline"
           >
-            {advanced ? "Ocultar" : "Mostrar"} impuestos y datos adicionales
+            {advanced ? tr("Ocultar") : tr("Mostrar")} {tr("impuestos y datos adicionales")}
           </button>
           {advanced && (
             <div className="space-y-3">
@@ -264,45 +281,45 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
                   ))}
                 </Select>
                 {country.hasIeps && (
-                  <Select label="IEPS" value={form.iepsRate} onChange={(e) => set("iepsRate", e.target.value)}>
-                    <option value="0">No aplica</option>
-                    <option value="0.08">8% (botanas, dulces)</option>
-                    <option value="0.265">26.5% (cerveza)</option>
-                    <option value="0.3">30% (vinos y licores)</option>
-                    <option value="0.53">53% (licores más de 20°)</option>
-                    <option value="1.6">160% (cigarros)</option>
+                  <Select label={tr("IEPS")} value={form.iepsRate} onChange={(e) => set("iepsRate", e.target.value)}>
+                    <option value="0">{tr("No aplica")}</option>
+                    <option value="0.08">{tr("8% (botanas, dulces)")}</option>
+                    <option value="0.265">{tr("26.5% (cerveza)")}</option>
+                    <option value="0.3">{tr("30% (vinos y licores)")}</option>
+                    <option value="0.53">{tr("53% (licores más de 20°)")}</option>
+                    <option value="1.6">{tr("160% (cigarros)")}</option>
                   </Select>
                 )}
               </div>
               {country.hasIeps && (
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="Clave SAT producto"
+                    label={tr("Clave SAT producto")}
                     value={form.satProductKey}
                     onChange={(e) => set("satProductKey", e.target.value)}
                   />
                   <Input
-                    label="Clave SAT unidad"
+                    label={tr("Clave SAT unidad")}
                     value={form.satUnitKey}
                     onChange={(e) => set("satUnitKey", e.target.value)}
                   />
                 </div>
               )}
-              <Input label="SKU interno" value={form.sku} onChange={(e) => set("sku", e.target.value)} />
+              <Input label={tr("SKU interno")} value={form.sku} onChange={(e) => set("sku", e.target.value)} />
               <Textarea
-                label="Descripción"
+                label={tr("Descripción")}
                 rows={2}
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
               />
               <p className="text-xs text-slate-500">
-                Los precios incluyen impuestos. El desglose se calcula al facturar.
+                {tr("Los precios incluyen impuestos. El desglose se calcula al facturar.")}
               </p>
             </div>
           )}
 
           <Button type="submit" className="w-full" loading={saving}>
-            Guardar
+            {tr("Guardar")}
           </Button>
         </form>
       </Modal>

@@ -26,12 +26,20 @@ Plataforma web para pequeños negocios (kioscos, misceláneas, tiendas de abarro
 Plan y alcance en [`docs/plan-panama.md`](docs/plan-panama.md).
 
 - **País del negocio** (Panamá, México u otro) al registrarse: ITBMS 7/10/15% y exento, montos en **B/.**, zona horaria `America/Panama`, RUC y DV en el ticket con el ITBMS incluido desglosado.
-- **Yappy** como forma de pago: QR o directorio del comercio en el punto de venta, número de operación para conciliar, filtro en el historial y separación en el corte de caja.
+- **Yappy** como forma de pago: QR o directorio del comercio en el punto de venta, número de operación para conciliar, filtro en el historial y separación en el corte de caja. Con Yappy Comercial, **cobro automático**: el cajero escribe el celular del cliente y la venta se registra sola al confirmarse el pago (notificación IPN firmada con HMAC). Incluye un simulador para probar sin credenciales.
 - **Comisiones por medio de pago** (Yappy 1.07%, tarjeta y transferencia configurables) y ganancia después de comisiones en los reportes.
 - **Fiado con plazo**: días de crédito por cliente (15 por defecto), vencimientos, saldo vencido con días de atraso (los abonos se aplican FIFO) y recordatorio por WhatsApp.
-- **Factura electrónica DGI**: monitor de los límites del facturador gratuito (B/.36,000 al año y 100 documentos al mes, Resolución 201-6299) con aviso al 80% y registro del **CUFE** de las facturas emitidas en la DGI o un PAC.
+- **Factura electrónica DGI**: monitor de los límites del facturador gratuito (B/.36,000 al año y 100 documentos al mes, Resolución 201-6299) con aviso al 80% y registro del **CUFE** de las facturas emitidas en la DGI o un PAC. Con un PAC (Alanube o el simulado), **emisión automática** de cada venta con CUFE y QR en el ticket, notas de crédito y **contingencia** con reintentos. El conteo mensual es exacto cuando se factura cada venta o se usa el PAC.
 - **Compra por caja, venta suelta** (unidades por empaque) y **pedido al distribuidor por WhatsApp** desde "Qué comprar".
-- **Interfaz en chino simplificado e inglés** (piloto: menú, punto de venta y caja), elegible por usuario.
+- **Interfaz en chino simplificado e inglés en todas las pantallas**, elegible por usuario, con botón **Reportar traducción** (el dueño ve los reportes en Configuración → Bitácora). ([captura](docs/screenshots/clientes-zh.png))
+
+### Más ventas y control
+
+- **Promociones**: porcentaje, lleva X paga Y (2x1) y precio por cantidad (3 por B/.1.00), por producto o categoría, con vigencia. El punto de venta las aplica solo.
+- **Puntos de lealtad**: los clientes registrados acumulan puntos y los canjean como descuento.
+- **Catálogo en línea** (`/c/tu-negocio`): tus clientes arman el pedido y te lo envían por WhatsApp.
+- **Etiquetas de precio** con código de barras (se asigna un EAN-13 interno a los productos sin código).
+- **Conteo físico** de inventario: se escanea el anaquel y se ajustan las diferencias con su motivo.
 
 ## Requisitos
 
@@ -60,6 +68,8 @@ Abre [http://localhost:3000](http://localhost:3000).
 | Dueño (Panamá)  | `demo.pa@comercioclaro.com`   | `demo1234` |
 | Cajero (Panamá, interfaz en chino) | `cajero.pa@comercioclaro.com` | `demo1234` |
 
+La demo de Panamá incluye una promoción de cerveza, puntos de lealtad y el catálogo público en `/c/minisuper-el-dorado`.
+
 ## Scripts
 
 | Script               | Descripción                                                 |
@@ -79,9 +89,9 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 ## Producción
 
 1. Base de datos PostgreSQL administrada (Neon, Supabase, RDS...).
-2. Variables de entorno: `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; sin ella la app no inicia ni valida sesiones) y `APP_URL`. Opcionales: `RESEND_API_KEY` y `EMAIL_FROM` (correos), `CRON_SECRET` (alertas), `FACTURAMA_USER`, `FACTURAMA_PASSWORD` y `FACTURAMA_SANDBOX` (facturación).
+2. Variables de entorno: `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; sin ella la app no inicia ni valida sesiones) y `APP_URL`. Opcionales: `RESEND_API_KEY` y `EMAIL_FROM` (correos), `CRON_SECRET` (alertas), `FACTURAMA_USER`, `FACTURAMA_PASSWORD` y `FACTURAMA_SANDBOX` (CFDI México), `ALANUBE_API_URL` y `ALANUBE_TOKEN` (PAC Panamá), `YAPPY_PROVIDER=bg`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_DOMAIN` y `YAPPY_API_URL` (Yappy Comercial). Ver `.env.example`.
 3. `npm run db:deploy && npm run build && npm start`.
-4. Alertas diarias: `vercel.json` ya programa `GET /api/cron/low-stock`. En otro hosting, llama esa ruta una vez al día con `Authorization: Bearer $CRON_SECRET`.
+4. Tareas programadas (`vercel.json`): `GET /api/cron/low-stock` una vez al día y `GET /api/cron/einvoice` cada 15 minutos para reintentar las facturas en contingencia (en Vercel, un cron más frecuente que diario requiere el plan Pro). En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
 
 ## Tecnologías
 

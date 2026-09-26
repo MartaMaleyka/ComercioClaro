@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import { Pencil, Phone, Plus, Trash2, Truck } from "lucide-react";
@@ -19,13 +20,19 @@ import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 
 interface SupplierDetail {
   supplier: Supplier;
-  priceHistory: { productId: string; name: string; unit: string; prices: { date: string; unitCost: number; folio: number }[] }[];
+  priceHistory: {
+    productId: string;
+    name: string;
+    unit: string;
+    prices: { date: string; unitCost: number; folio: number }[];
+  }[];
   purchases: { id: string; folio: number; total: number; createdAt: string; status: string }[];
 }
 
 const emptyForm = { name: "", contact: "", phone: "", email: "", notes: "" };
 
 export default function SuppliersPage() {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const confirm = useConfirm();
@@ -39,7 +46,11 @@ export default function SuppliersPage() {
   const { data: detail } = useSWR<SupplierDetail>(detailId ? `/api/suppliers/${detailId}` : null, fetcher);
 
   function openForm(s: Supplier | null) {
-    setForm(s ? { name: s.name, contact: s.contact ?? "", phone: s.phone ?? "", email: s.email ?? "", notes: s.notes ?? "" } : emptyForm);
+    setForm(
+      s
+        ? { name: s.name, contact: s.contact ?? "", phone: s.phone ?? "", email: s.email ?? "", notes: s.notes ?? "" }
+        : emptyForm
+    );
     setEditing(s);
   }
 
@@ -47,8 +58,11 @@ export default function SuppliersPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api(editing ? `/api/suppliers/${editing.id}` : "/api/suppliers", { method: editing ? "PUT" : "POST", body: form });
-      toast.success("Proveedor guardado");
+      await api(editing ? `/api/suppliers/${editing.id}` : "/api/suppliers", {
+        method: editing ? "PUT" : "POST",
+        body: form,
+      });
+      toast.success(tr("Proveedor guardado"));
       setEditing(undefined);
       mutate();
     } catch (err) {
@@ -59,7 +73,15 @@ export default function SuppliersPage() {
   }
 
   async function archive(s: Supplier) {
-    if (!(await confirm({ title: `Eliminar ${s.name}`, message: "Sus compras anteriores se conservan.", danger: true, confirmLabel: "Eliminar" }))) return;
+    if (
+      !(await confirm({
+        title: `Eliminar ${s.name}`,
+        message: tr("Sus compras anteriores se conservan."),
+        danger: true,
+        confirmLabel: tr("Eliminar"),
+      }))
+    )
+      return;
     try {
       await api(`/api/suppliers/${s.id}`, { method: "DELETE" });
       mutate();
@@ -71,22 +93,26 @@ export default function SuppliersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Proveedores"
-        description="Contactos e historial de precios"
+        title={tr("Proveedores")}
+        description={tr("Contactos e historial de precios")}
         actions={
           <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> Proveedor
+            <Plus className="w-4 h-4" /> {tr("Proveedor")}
           </Button>
         }
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Buscar proveedor" />
+      <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar proveedor")} />
 
       {error ? (
         <ErrorState error={error} onRetry={() => mutate()} />
       ) : !data ? (
         <ListSkeleton />
       ) : data.length === 0 ? (
-        <EmptyState icon={Truck} title="Sin proveedores" description="Registra a quién le compras para comparar precios y saber a quién pedir." />
+        <EmptyState
+          icon={Truck}
+          title={tr("Sin proveedores")}
+          description={tr("Registra a quién le compras para comparar precios y saber a quién pedir.")}
+        />
       ) : (
         <div className="space-y-2">
           {data.map((s) => (
@@ -101,14 +127,26 @@ export default function SuppliersPage() {
                 </button>
                 <span className="flex gap-1 shrink-0">
                   {s.phone && (
-                    <a href={`tel:${s.phone}`} aria-label={`Llamar a ${s.name}`} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+                    <a
+                      href={`tel:${s.phone}`}
+                      aria-label={`Llamar a ${s.name}`}
+                      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    >
                       <Phone className="w-4 h-4" />
                     </a>
                   )}
-                  <button aria-label="Editar" onClick={() => openForm(s)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+                  <button
+                    aria-label={tr("Editar")}
+                    onClick={() => openForm(s)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                  >
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button aria-label="Eliminar" onClick={() => archive(s)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+                  <button
+                    aria-label={tr("Eliminar")}
+                    onClick={() => archive(s)}
+                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                  >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </span>
@@ -118,17 +156,47 @@ export default function SuppliersPage() {
         </div>
       )}
 
-      <Modal open={editing !== undefined} onClose={() => setEditing(undefined)} title={editing ? "Editar proveedor" : "Nuevo proveedor"}>
+      <Modal
+        open={editing !== undefined}
+        onClose={() => setEditing(undefined)}
+        title={editing ? tr("Editar proveedor") : tr("Nuevo proveedor")}
+      >
         <form onSubmit={save} className="space-y-3">
-          <Input label="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required autoFocus />
-          <Input label="Contacto" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+          <Input
+            label={tr("Nombre")}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            autoFocus
+          />
+          <Input
+            label={tr("Contacto")}
+            value={form.contact}
+            onChange={(e) => setForm({ ...form, contact: e.target.value })}
+          />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Teléfono" type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Correo" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <Input
+              label={tr("Teléfono")}
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+            <Input
+              label={tr("Correo")}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+            />
           </div>
-          <Textarea label="Notas" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Días de visita, condiciones de pago..." />
+          <Textarea
+            label={tr("Notas")}
+            rows={2}
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            placeholder={tr("Días de visita, condiciones de pago...")}
+          />
           <Button type="submit" className="w-full" loading={saving}>
-            Guardar
+            {tr("Guardar")}
           </Button>
         </form>
       </Modal>
@@ -138,8 +206,10 @@ export default function SuppliersPage() {
           <ListSkeleton rows={3} />
         ) : (
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-500">Historial de precios</h3>
-            {detail.priceHistory.length === 0 && <p className="text-sm text-slate-500">Sin compras registradas.</p>}
+            <h3 className="text-sm font-semibold text-slate-500">{tr("Historial de precios")}</h3>
+            {detail.priceHistory.length === 0 && (
+              <p className="text-sm text-slate-500">{tr("Sin compras registradas.")}</p>
+            )}
             {detail.priceHistory.map((h) => {
               const [last, prev] = h.prices;
               const change = prev ? ((last.unitCost - prev.unitCost) / prev.unitCost) * 100 : 0;
@@ -158,7 +228,10 @@ export default function SuppliersPage() {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500">
-                    {h.prices.slice(0, 5).map((p) => `${fmt.date(p.date)}: ${fmt.money(p.unitCost)}`).join(" · ")}
+                    {h.prices
+                      .slice(0, 5)
+                      .map((p) => `${fmt.date(p.date)}: ${fmt.money(p.unitCost)}`)
+                      .join(" · ")}
                   </p>
                 </div>
               );

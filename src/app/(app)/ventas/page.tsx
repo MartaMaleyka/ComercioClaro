@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { api, fetcher, isNetworkError } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
-import { useT } from "@/lib/client/i18n";
+import { useT, useText } from "@/lib/client/i18n";
 import { useDebounce } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
 import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
@@ -111,6 +111,7 @@ function useCachedList<T>(url: string, cacheKey: string) {
 }
 
 export default function PosPage() {
+  const tr = useText();
   const { business, role } = useSession();
   const isOwner = role === "OWNER";
   const fmt = useFormat();
@@ -140,7 +141,7 @@ export default function PosPage() {
   const yappyApi = business.yappyMode === "API" && !yappyManual;
   const { data: yappy } = useSWR<{ directory: string | null; qr: string | null }>(
     paymentMethod === "YAPPY" ? "/api/business/yappy" : null,
-    fetcher,
+    fetcher
   );
   const [saving, setSaving] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -166,7 +167,7 @@ export default function PosPage() {
       .filter(
         (p) =>
           (!categoryId || p.categoryId === categoryId) &&
-          (!q || p.name.toLowerCase().includes(q) || p.barcode?.startsWith(q) || p.sku?.toLowerCase().startsWith(q)),
+          (!q || p.name.toLowerCase().includes(q) || p.barcode?.startsWith(q) || p.sku?.toLowerCase().startsWith(q))
       )
       .slice(0, 60);
   }, [products, debouncedSearch, categoryId]);
@@ -327,7 +328,7 @@ export default function PosPage() {
           setCompleted({ sale: null, offline: true, total, change: Math.max(0, change) });
           resetSale();
         } catch {
-          toast.error("Sin conexión y no se pudo guardar la venta en este dispositivo");
+          toast.error(tr("Sin conexión y no se pudo guardar la venta en este dispositivo"));
         }
       } else {
         toast.error(err);
@@ -466,7 +467,7 @@ export default function PosPage() {
                 paymentOptions.length > 4 ? "text-[11px]" : "text-xs",
                 paymentMethod === o.value
                   ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-surface text-slate-600 border-slate-200",
+                  : "bg-surface text-slate-600 border-slate-200"
               )}
             >
               <o.icon className="w-4 h-4" aria-hidden="true" />
@@ -489,7 +490,7 @@ export default function PosPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={yappy.qr}
-                alt="QR de Yappy del comercio"
+                alt={tr("QR de Yappy del comercio")}
                 className="w-24 h-24 rounded-lg bg-white object-contain"
               />
             )}
@@ -679,7 +680,7 @@ export default function PosPage() {
                     "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border",
                     categoryId === c.id
                       ? "bg-brand-600 text-white border-brand-600"
-                      : "bg-surface text-slate-600 border-slate-200",
+                      : "bg-surface text-slate-600 border-slate-200"
                   )}
                 >
                   {c.name}
@@ -721,7 +722,7 @@ export default function PosPage() {
                     disabled={out}
                     className={cn(
                       "text-left p-3 rounded-xl border bg-surface transition-colors disabled:opacity-50",
-                      inCart ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-100 hover:border-slate-300",
+                      inCart ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-100 hover:border-slate-300"
                     )}
                   >
                     <p className="text-sm font-medium text-slate-900 line-clamp-2">{p.name}</p>
@@ -734,7 +735,7 @@ export default function PosPage() {
                     <p
                       className={cn(
                         "text-xs",
-                        out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500",
+                        out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
                       )}
                     >
                       {out ? t("pos.soldOut") : `${fmt.qty(p.stock, p.unit)} ${t("pos.available")}`}
@@ -791,7 +792,9 @@ export default function PosPage() {
             )}
             <p className="text-3xl font-bold text-slate-900">{fmt.money(completed.total)}</p>
             {completed.change > 0 && (
-              <p className="text-lg font-semibold text-brand-600">Cambio: {fmt.money(completed.change)}</p>
+              <p className="text-lg font-semibold text-brand-600">
+                {tr("Cambio:")} {fmt.money(completed.change)}
+              </p>
             )}
             {completed.offline && <p className="text-sm text-slate-500">{t("pos.offlineNote")}</p>}
             <div className="grid grid-cols-2 gap-2">
@@ -808,12 +811,12 @@ export default function PosPage() {
                     href={whatsappLink(
                       buildReceiptText(completed.sale, business),
                       completed.sale.customer?.phone,
-                      business.locale,
+                      business.locale
                     )}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Share2 className="w-4 h-4" /> WhatsApp
+                    <Share2 className="w-4 h-4" /> {tr("WhatsApp")}
                   </a>
                 </>
               )}

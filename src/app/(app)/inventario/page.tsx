@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, History, Package, Pencil, Plus, RotateCcw, SlidersHorizontal, Archive, Upload } from "lucide-react";
@@ -39,6 +40,7 @@ export default function InventoryPage() {
 }
 
 function Inventory() {
+  const tr = useText();
   const { role } = useSession();
   const isOwner = role === "OWNER";
   const router = useRouter();
@@ -47,22 +49,22 @@ function Inventory() {
   const setTab = (t: Tab) => router.replace(t === "productos" ? "/inventario" : `/inventario?tab=${t}`);
 
   const tabs: { value: Tab; label: string }[] = [
-    { value: "productos", label: "Productos" },
-    ...(isOwner ? [{ value: "reabastecer" as Tab, label: "Qué comprar" }] : []),
-    { value: "caducidad", label: "Caducidad" },
+    { value: "productos", label: tr("Productos") },
+    ...(isOwner ? [{ value: "reabastecer" as Tab, label: tr("Qué comprar") }] : []),
+    { value: "caducidad", label: tr("Caducidad") },
     ...(isOwner
       ? [
-          { value: "conteo" as Tab, label: "Conteo físico" },
-          { value: "etiquetas" as Tab, label: "Etiquetas" },
-          { value: "categorias" as Tab, label: "Categorías" },
-          { value: "importar" as Tab, label: "Importar / exportar" },
+          { value: "conteo" as Tab, label: tr("Conteo físico") },
+          { value: "etiquetas" as Tab, label: tr("Etiquetas") },
+          { value: "categorias" as Tab, label: tr("Categorías") },
+          { value: "importar" as Tab, label: tr("Importar / exportar") },
         ]
       : []),
   ];
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Inventario" description="Productos, existencias y alertas" />
+      <PageHeader title={tr("Inventario")} description={tr("Productos, existencias y alertas")} />
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === "productos" && <ProductsTab />}
       {tab === "reabastecer" && isOwner && <ReorderTab />}
@@ -76,6 +78,7 @@ function Inventory() {
 }
 
 function ProductsTab() {
+  const tr = useText();
   const { role } = useSession();
   const isOwner = role === "OWNER";
   const fmt = useFormat();
@@ -101,14 +104,14 @@ function ProductsTab() {
   async function archive(p: Product) {
     const ok = await confirm({
       title: `Archivar ${p.name}`,
-      message: "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.",
-      confirmLabel: "Archivar",
+      message: tr("Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras."),
+      confirmLabel: tr("Archivar"),
       danger: true,
     });
     if (!ok) return;
     try {
       await api(`/api/products/${p.id}`, { method: "DELETE" });
-      toast.success("Producto archivado");
+      toast.success(tr("Producto archivado"));
       list.mutate();
     } catch (err) {
       toast.error(err);
@@ -118,7 +121,7 @@ function ProductsTab() {
   async function restore(p: Product) {
     try {
       await api(`/api/products/${p.id}`, { method: "PUT", body: { archived: false } });
-      toast.success("Producto restaurado");
+      toast.success(tr("Producto restaurado"));
       list.mutate();
     } catch (err) {
       toast.error(err);
@@ -129,10 +132,15 @@ function ProductsTab() {
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap items-center">
         <div className="flex-1 min-w-[200px]">
-          <SearchBar value={search} onChange={setSearch} placeholder="Buscar por nombre, código o SKU" />
+          <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por nombre, código o SKU")} />
         </div>
-        <Select aria-label="Categoría" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-auto">
-          <option value="">Todas las categorías</option>
+        <Select
+          aria-label={tr("Categoría")}
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="w-auto"
+        >
+          <option value="">{tr("Todas las categorías")}</option>
           {categories?.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -141,13 +149,19 @@ function ProductsTab() {
         </Select>
         {isOwner && (
           <Button onClick={() => setEditing(null)}>
-            <Plus className="w-4 h-4" /> Producto
+            <Plus className="w-4 h-4" /> {tr("Producto")}
           </Button>
         )}
       </div>
       <div className="flex gap-4">
-        <Checkbox label="Solo bajo inventario" checked={lowStock} onChange={(e) => setLowStock(e.target.checked)} />
-        {isOwner && <Checkbox label="Ver archivados" checked={archived} onChange={(e) => setArchived(e.target.checked)} />}
+        <Checkbox
+          label={tr("Solo bajo inventario")}
+          checked={lowStock}
+          onChange={(e) => setLowStock(e.target.checked)}
+        />
+        {isOwner && (
+          <Checkbox label={tr("Ver archivados")} checked={archived} onChange={(e) => setArchived(e.target.checked)} />
+        )}
       </div>
 
       {list.error ? (
@@ -157,9 +171,13 @@ function ProductsTab() {
       ) : list.items.length === 0 ? (
         <EmptyState
           icon={Package}
-          title="Sin productos"
-          description={search || lowStock ? "Ningún producto coincide con los filtros." : "Agrega tu primer producto o importa tu catálogo desde Excel."}
-          action={isOwner && !search && <Button onClick={() => setEditing(null)}>Agregar producto</Button>}
+          title={tr("Sin productos")}
+          description={
+            search || lowStock
+              ? tr("Ningún producto coincide con los filtros.")
+              : tr("Agrega tu primer producto o importa tu catálogo desde Excel.")
+          }
+          action={isOwner && !search && <Button onClick={() => setEditing(null)}>{tr("Agregar producto")}</Button>}
         />
       ) : (
         <div className="space-y-2">
@@ -178,24 +196,34 @@ function ProductsTab() {
                     </p>
                     <div className="flex gap-1 mt-1 flex-wrap">
                       {p.category && <Badge>{p.category.name}</Badge>}
-                      {low && <Badge tone={p.stock <= 0 ? "red" : "amber"}>{p.stock <= 0 ? "Agotado" : "Bajo"}</Badge>}
-                      {p.wholesalePrice != null && <Badge tone="blue">Mayoreo</Badge>}
-                      {p.trackExpiry && <Badge tone="purple">Caducidad</Badge>}
+                      {low && (
+                        <Badge tone={p.stock <= 0 ? "red" : "amber"}>{p.stock <= 0 ? tr("Agotado") : tr("Bajo")}</Badge>
+                      )}
+                      {p.wholesalePrice != null && <Badge tone="blue">{tr("Mayoreo")}</Badge>}
+                      {p.trackExpiry && <Badge tone="purple">{tr("Caducidad")}</Badge>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`font-semibold tabular-nums ${low ? "text-amber-600" : "text-slate-900"}`}>{fmt.qty(p.stock, p.unit)}</p>
-                    <p className="text-xs text-slate-500">mín. {fmt.number(p.minStock)}</p>
+                    <p className={`font-semibold tabular-nums ${low ? "text-amber-600" : "text-slate-900"}`}>
+                      {fmt.qty(p.stock, p.unit)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {tr("mín.")} {fmt.number(p.minStock)}
+                    </p>
                     {isOwner && (
                       <div className="flex gap-0.5 justify-end mt-1">
                         {archived ? (
-                          <IconButton label="Restaurar" onClick={() => restore(p)} icon={RotateCcw} />
+                          <IconButton label={tr("Restaurar")} onClick={() => restore(p)} icon={RotateCcw} />
                         ) : (
                           <>
-                            <IconButton label="Ajustar existencia" onClick={() => setAdjusting(p)} icon={SlidersHorizontal} />
-                            <IconButton label="Movimientos" onClick={() => setKardex(p)} icon={History} />
-                            <IconButton label="Editar" onClick={() => setEditing(p)} icon={Pencil} />
-                            <IconButton label="Archivar" onClick={() => archive(p)} icon={Archive} />
+                            <IconButton
+                              label={tr("Ajustar existencia")}
+                              onClick={() => setAdjusting(p)}
+                              icon={SlidersHorizontal}
+                            />
+                            <IconButton label={tr("Movimientos")} onClick={() => setKardex(p)} icon={History} />
+                            <IconButton label={tr("Editar")} onClick={() => setEditing(p)} icon={Pencil} />
+                            <IconButton label={tr("Archivar")} onClick={() => archive(p)} icon={Archive} />
                           </>
                         )}
                       </div>
@@ -234,17 +262,27 @@ function ProductsTab() {
 
 function IconButton({ label, onClick, icon: Icon }: { label: string; onClick: () => void; icon: typeof Pencil }) {
   return (
-    <button onClick={onClick} aria-label={label} title={label} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+    >
       <Icon className="w-4 h-4" />
     </button>
   );
 }
 
 function ImportExportTab() {
+  const tr = useText();
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ created: number; updated: number; errors: { row: number; error: string }[] } | null>(null);
+  const [result, setResult] = useState<{
+    created: number;
+    updated: number;
+    errors: { row: number; error: string }[];
+  } | null>(null);
 
   async function upload() {
     if (!file) return;
@@ -254,7 +292,7 @@ function ImportExportTab() {
       form.append("file", file);
       const res = await api<typeof result>("/api/products/import", { body: form });
       setResult(res);
-      toast.success("Importación terminada");
+      toast.success(tr("Importación terminada"));
     } catch (err) {
       toast.error(err);
     } finally {
@@ -269,12 +307,12 @@ function ImportExportTab() {
     );
 
   const exports = [
-    { type: "products", label: "Productos" },
-    { type: "sales", label: "Ventas" },
-    { type: "sale-items", label: "Detalle de ventas" },
-    { type: "purchases", label: "Compras" },
-    { type: "expenses", label: "Gastos" },
-    { type: "customers", label: "Clientes" },
+    { type: "products", label: tr("Productos") },
+    { type: "sales", label: tr("Ventas") },
+    { type: "sale-items", label: tr("Detalle de ventas") },
+    { type: "purchases", label: tr("Compras") },
+    { type: "expenses", label: tr("Gastos") },
+    { type: "customers", label: tr("Clientes") },
   ];
 
   return (
@@ -282,36 +320,40 @@ function ImportExportTab() {
       <Card>
         <CardContent className="space-y-3">
           <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-            <Upload className="w-4 h-4" aria-hidden="true" /> Importar productos (CSV / Excel)
+            <Upload className="w-4 h-4" aria-hidden="true" /> {tr("Importar productos (CSV / Excel)")}
           </h2>
           <p className="text-sm text-slate-600">
-            Guarda tu hoja de Excel como CSV. Columnas reconocidas: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l),
-            Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. Si el código de barras (o el nombre)
-            ya existe se actualiza el producto.
+            {tr(
+              "Guarda tu hoja de Excel como CSV. Columnas reconocidas: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. Si el código de barras (o el nombre) ya existe se actualiza el producto."
+            )}
           </p>
-          <a href={template} download="plantilla-productos.csv" className="text-sm text-brand-700 dark:text-brand-300 underline">
-            Descargar plantilla
+          <a
+            href={template}
+            download="plantilla-productos.csv"
+            className="text-sm text-brand-700 dark:text-brand-300 underline"
+          >
+            {tr("Descargar plantilla")}
           </a>
           <input
             type="file"
             accept=".csv,text/csv"
-            aria-label="Archivo CSV"
+            aria-label={tr("Archivo CSV")}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700"
           />
           <Button onClick={upload} loading={busy} disabled={!file}>
-            Importar
+            {tr("Importar")}
           </Button>
           {result && (
             <div className="text-sm space-y-1">
               <p className="text-brand-700 dark:text-brand-300">
-                {result.created} creados · {result.updated} actualizados
+                {tr("{created} creados · {updated} actualizados", { created: result.created, updated: result.updated })}
               </p>
               {result.errors.length > 0 && (
                 <ul className="text-red-600 text-xs space-y-0.5 max-h-40 overflow-y-auto">
                   {result.errors.map((e) => (
                     <li key={e.row}>
-                      Fila {e.row}: {e.error}
+                      {tr("Fila")} {e.row}: {e.error}
                     </li>
                   ))}
                 </ul>
@@ -323,9 +365,11 @@ function ImportExportTab() {
       <Card>
         <CardContent className="space-y-3">
           <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-            <Download className="w-4 h-4" aria-hidden="true" /> Exportar y respaldar
+            <Download className="w-4 h-4" aria-hidden="true" /> {tr("Exportar y respaldar")}
           </h2>
-          <p className="text-sm text-slate-600">Descarga tu información en CSV (se abre en Excel) o un respaldo completo.</p>
+          <p className="text-sm text-slate-600">
+            {tr("Descarga tu información en CSV (se abre en Excel) o un respaldo completo.")}
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {exports.map((e) => (
               <a
@@ -337,8 +381,12 @@ function ImportExportTab() {
               </a>
             ))}
           </div>
-          <a href="/api/export/backup" download className="block text-center px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">
-            Descargar respaldo completo (JSON)
+          <a
+            href="/api/export/backup"
+            download
+            className="block text-center px-3 py-2 rounded-xl bg-brand-600 text-white text-sm font-medium hover:bg-brand-700"
+          >
+            {tr("Descargar respaldo completo (JSON)")}
           </a>
         </CardContent>
       </Card>

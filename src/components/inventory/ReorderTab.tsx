@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import Link from "next/link";
 import useSWR from "swr";
 import { MessageCircle, ShoppingBag, ThumbsUp } from "lucide-react";
@@ -41,6 +42,7 @@ function orderLine(s: Suggestion, unitLabel: string) {
 }
 
 export function ReorderTab() {
+  const tr = useText();
   const fmt = useFormat();
   const { business } = useSession();
   const { data, error, mutate } = useSWR<Suggestion[]>("/api/inventory/reorder", fetcher);
@@ -49,7 +51,11 @@ export function ReorderTab() {
   if (!data) return <ListSkeleton />;
   if (data.length === 0) {
     return (
-      <EmptyState icon={ThumbsUp} title="Todo en orden" description="Ningún producto necesita resurtirse por ahora." />
+      <EmptyState
+        icon={ThumbsUp}
+        title={tr("Todo en orden")}
+        description={tr("Ningún producto necesita resurtirse por ahora.")}
+      />
     );
   }
 
@@ -64,14 +70,14 @@ export function ReorderTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-slate-600">
-          Sugerencia para cubrir ~14 días según tus ventas de los últimos 30. Inversión estimada:{" "}
+          {tr("Sugerencia para cubrir ~14 días según tus ventas de los últimos 30. Inversión estimada:")}{" "}
           <span className="font-semibold text-slate-900">{fmt.money(total)}</span>
         </p>
         <Link
           href="/compras?nueva=1"
           className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white"
         >
-          <ShoppingBag className="w-4 h-4" /> Registrar compra
+          <ShoppingBag className="w-4 h-4" /> {tr("Registrar compra")}
         </Link>
       </div>
       {Object.entries(bySupplier).map(([supplier, items]) => (
@@ -88,13 +94,13 @@ export function ReorderTab() {
                   "¿Me confirma disponibilidad y precio? Gracias.",
                 ].join("\n"),
                 items[0].supplierPhone,
-                business.locale,
+                business.locale
               )}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm text-brand-700 dark:text-brand-300 hover:underline"
             >
-              <MessageCircle className="w-4 h-4" aria-hidden="true" /> Pedir por WhatsApp
+              <MessageCircle className="w-4 h-4" aria-hidden="true" /> {tr("Pedir por WhatsApp")}
             </a>
           </div>
           {items.map((s) => (
@@ -103,19 +109,24 @@ export function ReorderTab() {
                 <div className="min-w-0">
                   <p className="font-medium text-slate-900">{s.name}</p>
                   <p className="text-xs text-slate-500">
-                    Hay {fmt.qty(s.stock, s.unit)} · vendes {fmt.number(s.avgDailySales, 2)}/día
-                    {s.daysOfCover !== null && ` · alcanza ${fmt.number(s.daysOfCover, 1)} días`}
+                    {tr("Hay {stock} · vendes {avg}/día", {
+                      stock: fmt.qty(s.stock, s.unit),
+                      avg: fmt.number(s.avgDailySales, 2),
+                    })}
+                    {s.daysOfCover !== null && tr(" · alcanza {n} días", { n: fmt.number(s.daysOfCover, 1) })}
                   </p>
                   {s.low && (
                     <Badge tone="red" className="mt-1">
-                      Bajo el mínimo
+                      {tr("Bajo el mínimo")}
                     </Badge>
                   )}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="font-semibold text-brand-600">{fmt.qty(s.suggestedQuantity, s.unit)}</p>
                   {s.packSize && s.packSize > 1 && (
-                    <p className="text-xs text-slate-500">≈ {Math.ceil(s.suggestedQuantity / s.packSize)} caja(s)</p>
+                    <p className="text-xs text-slate-500">
+                      ≈ {Math.ceil(s.suggestedQuantity / s.packSize)} {tr("caja(s)")}
+                    </p>
                   )}
                   <p className="text-xs text-slate-500">≈ {fmt.money(s.suggestedQuantity * s.lastCost)}</p>
                 </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import { CalendarCheck } from "lucide-react";
@@ -20,6 +21,7 @@ interface Batch {
 }
 
 export function ExpiringTab() {
+  const tr = useText();
   const fmt = useFormat();
   const [days, setDays] = useState("30");
   const { data, error, mutate } = useSWR<Batch[]>(`/api/inventory/expiring?days=${days}`, fetcher);
@@ -27,10 +29,10 @@ export function ExpiringTab() {
 
   return (
     <div className="space-y-4">
-      <Select aria-label="Periodo" value={days} onChange={(e) => setDays(e.target.value)} className="w-auto">
-        <option value="7">Próximos 7 días</option>
-        <option value="30">Próximos 30 días</option>
-        <option value="90">Próximos 90 días</option>
+      <Select aria-label={tr("Periodo")} value={days} onChange={(e) => setDays(e.target.value)} className="w-auto">
+        <option value="7">{tr("Próximos 7 días")}</option>
+        <option value="30">{tr("Próximos 30 días")}</option>
+        <option value="90">{tr("Próximos 90 días")}</option>
       </Select>
       {error ? (
         <ErrorState error={error} onRetry={() => mutate()} />
@@ -39,8 +41,10 @@ export function ExpiringTab() {
       ) : data.length === 0 ? (
         <EmptyState
           icon={CalendarCheck}
-          title="Nada por caducar"
-          description="Activa “Controlar lotes y caducidad” en los productos y captura la fecha al registrar compras."
+          title={tr("Nada por caducar")}
+          description={tr(
+            "Activa “Controlar lotes y caducidad” en los productos y captura la fecha al registrar compras."
+          )}
         />
       ) : (
         <div className="space-y-2">
@@ -59,9 +63,11 @@ export function ExpiringTab() {
                   <div className="text-right">
                     <p className="text-sm">{fmt.date(b.expiresAt)}</p>
                     {daysLeft < 0 ? (
-                      <Badge tone="red">Caducado</Badge>
+                      <Badge tone="red">{tr("Caducado")}</Badge>
                     ) : (
-                      <Badge tone={daysLeft <= 7 ? "red" : "amber"}>{daysLeft === 0 ? "Hoy" : `${daysLeft} días`}</Badge>
+                      <Badge tone={daysLeft <= 7 ? "red" : "amber"}>
+                        {daysLeft === 0 ? tr("Hoy") : `${daysLeft} días`}
+                      </Badge>
                     )}
                   </div>
                 </CardContent>
@@ -69,7 +75,7 @@ export function ExpiringTab() {
             );
           })}
           <p className="text-xs text-slate-500">
-            Para dar de baja producto caducado usa &quot;Ajustar existencia&quot; con motivo Caducidad.
+            {tr('Para dar de baja producto caducado usa "Ajustar existencia" con motivo Caducidad.')}
           </p>
         </div>
       )}

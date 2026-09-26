@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -51,6 +52,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const tr = useText();
   const { user, business } = useSession();
   const fmt = useFormat();
   const { data, error, mutate } = useSWR<DashboardData>("/api/dashboard", fetcher, { refreshInterval: 60_000 });
@@ -64,11 +66,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title={`Hola, ${user.name.split(" ")[0]}`}
-        description="Así va tu negocio"
+        description={tr("Así va tu negocio")}
         actions={
           <Link href="/ventas">
             <Button>
-              <ShoppingCart className="w-4 h-4" /> Vender
+              <ShoppingCart className="w-4 h-4" /> {tr("Vender")}
             </Button>
           </Link>
         }
@@ -78,23 +80,23 @@ export default function DashboardPage() {
 
       <section aria-labelledby="hoy">
         <h2 id="hoy" className="text-sm font-semibold text-slate-500 mb-2">
-          Hoy
+          {tr("Hoy")}
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Stat label="Ventas" value={fmt.money(data.today.revenue)} hint={`${data.today.salesCount} ventas`} />
+          <Stat label={tr("Ventas")} value={fmt.money(data.today.revenue)} hint={`${data.today.salesCount} ventas`} />
           <Stat
-            label="Utilidad bruta"
+            label={tr("Utilidad bruta")}
             value={fmt.money(data.today.grossProfit)}
             tone={data.today.grossProfit >= 0 ? "positive" : "negative"}
           />
-          <Stat label="Ticket promedio" value={fmt.money(data.today.averageTicket)} />
+          <Stat label={tr("Ticket promedio")} value={fmt.money(data.today.averageTicket)} />
           <Stat
-            label="Caja"
-            value={data.cashSession ? "Abierta" : "Cerrada"}
+            label={tr("Caja")}
+            value={data.cashSession ? tr("Abierta") : tr("Cerrada")}
             tone={data.cashSession ? "positive" : "warning"}
             hint={
               <Link href="/caja" className="underline">
-                {data.cashSession ? "Ver corte" : "Abrir caja"}
+                {data.cashSession ? tr("Ver corte") : tr("Abrir caja")}
               </Link>
             }
           />
@@ -103,68 +105,71 @@ export default function DashboardPage() {
 
       <section aria-labelledby="mes">
         <h2 id="mes" className="text-sm font-semibold text-slate-500 mb-2">
-          Este mes
+          {tr("Este mes")}
         </h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Stat label="Ventas" value={fmt.money(data.month.revenue)} hint={`${data.month.salesCount} ventas`} />
+          <Stat label={tr("Ventas")} value={fmt.money(data.month.revenue)} hint={`${data.month.salesCount} ventas`} />
           <Stat
-            label="Utilidad bruta"
+            label={tr("Utilidad bruta")}
             value={fmt.money(data.month.grossProfit)}
             hint={`Margen ${data.month.grossMargin}%`}
             tone="positive"
           />
           <Stat
-            label="Gastos"
+            label={tr("Gastos")}
             value={fmt.money(data.month.expenses)}
             hint={
               <Link href="/gastos" className="underline">
-                Registrar gasto
+                {tr("Registrar gasto")}
               </Link>
             }
           />
           <Stat
-            label="Ganancia neta"
+            label={tr("Ganancia neta")}
             value={fmt.money(data.month.netProfit)}
             tone={data.month.netProfit >= 0 ? "positive" : "negative"}
-            hint="Utilidad bruta − gastos"
+            hint={tr("Utilidad bruta − gastos")}
           />
         </div>
       </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat
-          label="Valor del inventario"
+          label={tr("Valor del inventario")}
           value={fmt.money(data.totalInventoryValue)}
-          hint={`${data.totalProducts} productos`}
+          hint={tr("{n} productos", { n: data.totalProducts })}
           icon={<Package className="w-4 h-4 text-slate-400" />}
         />
         <Stat
-          label="Compras del mes"
+          label={tr("Compras del mes")}
           value={fmt.money(data.month.purchases)}
           icon={<Wallet className="w-4 h-4 text-slate-400" />}
         />
         <Stat
-          label="Fiado por cobrar"
+          label={tr("Fiado por cobrar")}
           value={fmt.money(data.receivables.total)}
           hint={
             data.receivables.overdue > 0 ? (
               <Link href="/clientes" className="underline text-red-600">
-                {fmt.money(data.receivables.overdue)} vencido ({data.receivables.overdueCustomers})
+                {tr("{amount} vencido ({n})", {
+                  amount: fmt.money(data.receivables.overdue),
+                  n: data.receivables.overdueCustomers,
+                })}
               </Link>
             ) : (
-              `${data.receivables.customers} clientes`
+              tr("{n} clientes", { n: data.receivables.customers })
             )
           }
           tone={data.receivables.total > 0 ? "warning" : "default"}
           icon={<HandCoins className="w-4 h-4 text-slate-400" />}
         />
         <Stat
-          label="Bajo inventario"
+          label={tr("Bajo inventario")}
           value={data.lowStockCount}
           tone={data.lowStockCount > 0 ? "negative" : "default"}
           hint={
             <Link href="/inventario?tab=reabastecer" className="underline">
-              Qué comprar
+              {tr("Qué comprar")}
             </Link>
           }
           icon={<AlertTriangle className="w-4 h-4 text-slate-400" />}
@@ -176,10 +181,10 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex items-center justify-between">
               <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" /> Por agotarse
+                <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" /> {tr("Por agotarse")}
               </h2>
               <Link href="/inventario?tab=reabastecer" className="text-sm text-brand-700 dark:text-brand-300">
-                Ver todo
+                {tr("Ver todo")}
               </Link>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -187,7 +192,7 @@ export default function DashboardPage() {
                 <div key={p.id} className="flex justify-between text-sm">
                   <span className="text-slate-700">{p.name}</span>
                   <span className={p.stock <= 0 ? "text-red-600 font-medium" : "text-amber-600 font-medium"}>
-                    {fmt.qty(p.stock, p.unit)} / mín. {fmt.number(p.minStock)}
+                    {fmt.qty(p.stock, p.unit)} {tr("/ mín.")} {fmt.number(p.minStock)}
                   </span>
                 </div>
               ))}
@@ -199,10 +204,10 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex items-center justify-between">
               <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-                <CalendarClock className="w-4 h-4 text-red-500" aria-hidden="true" /> Próximos a caducar
+                <CalendarClock className="w-4 h-4 text-red-500" aria-hidden="true" /> {tr("Próximos a caducar")}
               </h2>
               <Link href="/inventario?tab=caducidad" className="text-sm text-brand-700 dark:text-brand-300">
-                Ver todo
+                {tr("Ver todo")}
               </Link>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -214,7 +219,7 @@ export default function DashboardPage() {
                       {b.product.name} · {fmt.qty(b.remaining, b.product.unit)}
                     </span>
                     <span className={expired ? "text-red-600 font-medium" : "text-amber-600"}>
-                      {expired ? "Caducado" : fmt.date(b.expiresAt)}
+                      {expired ? tr("Caducado") : fmt.date(b.expiresAt)}
                     </span>
                   </div>
                 );
@@ -225,13 +230,13 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">Ventas recientes</h2>
+            <h2 className="font-semibold text-slate-900">{tr("Ventas recientes")}</h2>
             <Link href="/ventas/historial" className="text-sm text-brand-700 dark:text-brand-300">
-              Ver todas
+              {tr("Ver todas")}
             </Link>
           </CardHeader>
           <CardContent className="divide-y divide-slate-100 py-0">
-            {data.recentSales.length === 0 && <p className="py-4 text-sm text-slate-500">Aún no hay ventas.</p>}
+            {data.recentSales.length === 0 && <p className="py-4 text-sm text-slate-500">{tr("Aún no hay ventas.")}</p>}
             {data.recentSales.map((s) => (
               <Link
                 key={s.id}

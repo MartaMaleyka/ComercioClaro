@@ -32,7 +32,7 @@ export interface SessionData {
   businesses: { id: string; name: string; role: "OWNER" | "CASHIER" }[];
 }
 
-const SessionContext = createContext<SessionData | null>(null);
+export const SessionContext = createContext<SessionData | null>(null);
 
 export function SessionProvider({ value, children }: { value: SessionData; children: React.ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

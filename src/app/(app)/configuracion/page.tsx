@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import { Building2, KeyRound, LogOut, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
@@ -11,6 +12,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
+import { TranslationFeedbackButton } from "@/components/layout/TranslationFeedbackButton";
 import { COUNTRIES, countryConfig } from "@/lib/country";
 import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
@@ -24,22 +26,23 @@ import { ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 type Tab = "perfil" | "negocio" | "usuarios" | "sucursales" | "bitacora";
 
 export default function SettingsPage() {
+  const tr = useText();
   const { role } = useSession();
   const isOwner = role === "OWNER";
   const [tab, setTab] = useState<Tab>(isOwner ? "negocio" : "perfil");
   const tabs: { value: Tab; label: string }[] = isOwner
     ? [
-        { value: "negocio", label: "Negocio" },
-        { value: "perfil", label: "Mi cuenta" },
-        { value: "usuarios", label: "Usuarios" },
-        { value: "sucursales", label: "Sucursales" },
-        { value: "bitacora", label: "Bitácora" },
+        { value: "negocio", label: tr("Negocio") },
+        { value: "perfil", label: tr("Mi cuenta") },
+        { value: "usuarios", label: tr("Usuarios") },
+        { value: "sucursales", label: tr("Sucursales") },
+        { value: "bitacora", label: tr("Bitácora") },
       ]
-    : [{ value: "perfil", label: "Mi cuenta" }];
+    : [{ value: "perfil", label: tr("Mi cuenta") }];
 
   return (
     <div className="space-y-5 max-w-3xl">
-      <PageHeader title="Configuración" />
+      <PageHeader title={tr("Configuración")} />
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === "negocio" && isOwner && <BusinessSettings />}
       {tab === "perfil" && <ProfileSettings />}
@@ -135,6 +138,7 @@ function BusinessSettings() {
 const MAX_QR_BYTES = 300 * 1024;
 
 function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: () => Promise<unknown> | void }) {
+  const tr = useText();
   const toast = useToast();
   const [form, setForm] = useState<BusinessData>(initial);
   const [saving, setSaving] = useState(false);
@@ -142,7 +146,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
   const country = countryConfig(form.country);
   const { data: pacProviders } = useSWR<{ id: string; name: string; configured: boolean }[]>(
     "/api/invoices/pac-providers",
-    fetcher,
+    fetcher
   );
   // Las comisiones se editan en porcentaje y se guardan como fracción.
   const pct = (v: number) => String(Math.round(v * 10000) / 100);
@@ -166,7 +170,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
   function loadQr(file: File | undefined) {
     if (!file) return;
-    if (file.size > MAX_QR_BYTES) return toast.error("La imagen del QR debe pesar menos de 300 KB");
+    if (file.size > MAX_QR_BYTES) return toast.error(tr("La imagen del QR debe pesar menos de 300 KB"));
     const reader = new FileReader();
     reader.onload = () => set("yappyQr", String(reader.result));
     reader.readAsDataURL(file);
@@ -185,7 +189,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
           yappyFeeRate: (Number(fees.yappy) || 0) / 100,
         },
       });
-      toast.success("Cambios guardados");
+      toast.success(tr("Cambios guardados"));
       await onSaved();
       // Moneda, idioma y zona horaria se aplican a toda la app.
       window.location.reload();
@@ -200,29 +204,35 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
     <form onSubmit={save} className="space-y-4">
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Datos del negocio</h2>
+          <h2 className="font-semibold text-slate-900">{tr("Datos del negocio")}</h2>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input label="Nombre" value={form.name} onChange={(e) => set("name", e.target.value)} required />
+          <Input label={tr("Nombre")} value={form.name} onChange={(e) => set("name", e.target.value)} required />
           <Input
-            label="Descripción"
+            label={tr("Descripción")}
             value={form.description ?? ""}
             onChange={(e) => set("description", e.target.value)}
           />
           <div className="grid sm:grid-cols-2 gap-3">
             <Input
-              label="Teléfono"
+              label={tr("Teléfono")}
               type="tel"
               value={form.phone ?? ""}
               onChange={(e) => set("phone", e.target.value)}
             />
-            <Input label="Dirección" value={form.address ?? ""} onChange={(e) => set("address", e.target.value)} />
+            <Input
+              label={tr("Dirección")}
+              value={form.address ?? ""}
+              onChange={(e) => set("address", e.target.value)}
+            />
           </div>
           <Select
-            label="País"
+            label={tr("País")}
             value={form.country}
             onChange={(e) => changeCountry(e.target.value)}
-            hint="Define impuestos, facturación y formatos. Al cambiarlo se ajustan moneda, formato y zona horaria."
+            hint={tr(
+              "Define impuestos, facturación y formatos. Al cambiarlo se ajustan moneda, formato y zona horaria."
+            )}
           >
             {Object.values(COUNTRIES).map((c) => (
               <option key={c.code} value={c.code}>
@@ -231,21 +241,21 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             ))}
           </Select>
           <div className="grid sm:grid-cols-3 gap-3">
-            <Select label="Formato" value={form.locale} onChange={(e) => set("locale", e.target.value)}>
+            <Select label={tr("Formato")} value={form.locale} onChange={(e) => set("locale", e.target.value)}>
               {LOCALES.map((l) => (
                 <option key={l.value} value={l.value}>
                   {l.label}
                 </option>
               ))}
             </Select>
-            <Select label="Moneda" value={form.currency} onChange={(e) => set("currency", e.target.value)}>
+            <Select label={tr("Moneda")} value={form.currency} onChange={(e) => set("currency", e.target.value)}>
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </Select>
-            <Select label="Zona horaria" value={form.timezone} onChange={(e) => set("timezone", e.target.value)}>
+            <Select label={tr("Zona horaria")} value={form.timezone} onChange={(e) => set("timezone", e.target.value)}>
               {[...new Set([form.timezone, ...TIMEZONES])].map((tz) => (
                 <option key={tz} value={tz}>
                   {tz.replace("America/", "").replace(/_/g, " ")}
@@ -255,13 +265,13 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
           </div>
           {form.currency === "USD" && (
             <Checkbox
-              label="Mostrar montos como B/. (balboa)"
+              label={tr("Mostrar montos como B/. (balboa)")}
               checked={form.showBalboa}
               onChange={(e) => set("showBalboa", e.target.checked)}
             />
           )}
           <Checkbox
-            label="Enviarme por correo las alertas diarias de bajo inventario y caducidad"
+            label={tr("Enviarme por correo las alertas diarias de bajo inventario y caducidad")}
             checked={form.lowStockEmailAlerts}
             onChange={(e) => set("lowStockEmailAlerts", e.target.checked)}
           />
@@ -270,31 +280,31 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Programa de puntos</h2>
+          <h2 className="font-semibold text-slate-900">{tr("Programa de puntos")}</h2>
           <p className="text-sm text-slate-500">
-            Tus clientes registrados ganan puntos al comprar y los canjean como descuento.
+            {tr("Tus clientes registrados ganan puntos al comprar y los canjean como descuento.")}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <Checkbox
-            label="Activar puntos de lealtad"
+            label={tr("Activar puntos de lealtad")}
             checked={form.loyaltyEnabled}
             onChange={(e) => set("loyaltyEnabled", e.target.checked)}
           />
           {form.loyaltyEnabled && (
             <div className="grid sm:grid-cols-2 gap-3">
               <Input
-                label="Puntos por cada 1.00 de compra"
+                label={tr("Puntos por cada 1.00 de compra")}
                 inputMode="decimal"
                 value={String(form.loyaltyPointsPerUnit)}
                 onChange={(e) => set("loyaltyPointsPerUnit", Number(e.target.value) || 0)}
               />
               <Input
-                label="Valor de cada punto al canjear"
+                label={tr("Valor de cada punto al canjear")}
                 inputMode="decimal"
                 value={String(form.loyaltyPointValue)}
                 onChange={(e) => set("loyaltyPointValue", Number(e.target.value) || 0)}
-                hint={`Ej.: con 1 punto por 1.00 y valor 0.01, cada compra devuelve 1%.`}
+                hint={tr("Ej.: con 1 punto por 1.00 y valor 0.01, cada compra devuelve 1%.")}
               />
             </div>
           )}
@@ -303,14 +313,16 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Catálogo en línea</h2>
+          <h2 className="font-semibold text-slate-900">{tr("Catálogo en línea")}</h2>
           <p className="text-sm text-slate-500">
-            Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.
+            {tr(
+              "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp."
+            )}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           <Checkbox
-            label="Publicar catálogo"
+            label={tr("Publicar catálogo")}
             checked={form.catalogEnabled}
             onChange={(e) => set("catalogEnabled", e.target.checked)}
           />
@@ -318,14 +330,16 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             <>
               <div className="grid sm:grid-cols-2 gap-3">
                 <Input
-                  label="Dirección del catálogo"
+                  label={tr("Dirección del catálogo")}
                   value={form.catalogSlug ?? ""}
                   onChange={(e) => set("catalogSlug", e.target.value.toLowerCase())}
-                  placeholder="minisuper-el-dorado"
-                  hint={form.catalogSlug ? `Tu enlace: /c/${form.catalogSlug}` : "Solo minúsculas, números y guiones"}
+                  placeholder={"minisuper-el-dorado"}
+                  hint={
+                    form.catalogSlug ? `Tu enlace: /c/${form.catalogSlug}` : tr("Solo minúsculas, números y guiones")
+                  }
                 />
                 <Input
-                  label="WhatsApp que recibe los pedidos"
+                  label={tr("WhatsApp que recibe los pedidos")}
                   type="tel"
                   value={form.catalogWhatsapp ?? ""}
                   onChange={(e) => set("catalogWhatsapp", e.target.value)}
@@ -339,7 +353,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
                   rel="noopener noreferrer"
                   className="text-sm underline text-brand-700 dark:text-brand-300"
                 >
-                  Ver catálogo publicado
+                  {tr("Ver catálogo publicado")}
                 </a>
               )}
             </>
@@ -349,31 +363,31 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
       <Card>
         <CardHeader>
-          <h2 className="font-semibold text-slate-900">Comisiones por forma de pago</h2>
+          <h2 className="font-semibold text-slate-900">{tr("Comisiones por forma de pago")}</h2>
           <p className="text-sm text-slate-500">
-            Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.
+            {tr("Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.")}
           </p>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-3 gap-3">
           <Input
-            label="Tarjeta (%)"
+            label={tr("Tarjeta (%)")}
             inputMode="decimal"
             value={fees.card}
             onChange={(e) => setFees({ ...fees, card: e.target.value })}
           />
           <Input
-            label="Transferencia (%)"
+            label={tr("Transferencia (%)")}
             inputMode="decimal"
             value={fees.transfer}
             onChange={(e) => setFees({ ...fees, transfer: e.target.value })}
           />
           {country.paymentMethods.includes("YAPPY") && (
             <Input
-              label="Yappy (%)"
+              label={tr("Yappy (%)")}
               inputMode="decimal"
               value={fees.yappy}
               onChange={(e) => setFees({ ...fees, yappy: e.target.value })}
-              hint="1% + ITBMS = 1.07%"
+              hint={tr("1% + ITBMS = 1.07%")}
             />
           )}
         </CardContent>
@@ -383,19 +397,19 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
         <>
           <Card>
             <CardHeader>
-              <h2 className="font-semibold text-slate-900">Datos fiscales (Panamá · DGI)</h2>
-              <p className="text-sm text-slate-500">El RUC y el DV aparecen en el ticket.</p>
+              <h2 className="font-semibold text-slate-900">{tr("Datos fiscales (Panamá · DGI)")}</h2>
+              <p className="text-sm text-slate-500">{tr("El RUC y el DV aparecen en el ticket.")}</p>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-[1fr_96px] gap-3">
                 <Input
-                  label="RUC"
+                  label={tr("RUC")}
                   value={form.ruc ?? ""}
                   onChange={(e) => set("ruc", e.target.value.toUpperCase())}
                   placeholder="8-123-4567"
                 />
                 <Input
-                  label="DV"
+                  label={tr("DV")}
                   inputMode="numeric"
                   maxLength={2}
                   value={form.dv ?? ""}
@@ -403,7 +417,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
                 />
               </div>
               <Input
-                label="Razón social"
+                label={tr("Razón social")}
                 value={form.legalName ?? ""}
                 onChange={(e) => set("legalName", e.target.value)}
               />
@@ -412,30 +426,32 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
           <Card>
             <CardHeader>
-              <h2 className="font-semibold text-slate-900">Factura electrónica (DGI)</h2>
+              <h2 className="font-semibold text-slate-900">{tr("Factura electrónica (DGI)")}</h2>
               <p className="text-sm text-slate-500">
-                Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).
+                {tr("Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).")}
               </p>
             </CardHeader>
             <CardContent className="space-y-3">
               <Select
-                label="¿Cómo facturas?"
+                label={tr("¿Cómo facturas?")}
                 value={form.einvoiceMode}
                 onChange={(e) => set("einvoiceMode", e.target.value as BusinessData["einvoiceMode"])}
               >
-                <option value="OFF">No emito factura electrónica todavía</option>
-                <option value="MANUAL">Facturador gratuito o PAC externo (registro el CUFE a mano)</option>
-                <option value="PAC">Automática desde ComercioClaro con un PAC</option>
+                <option value="OFF">{tr("No emito factura electrónica todavía")}</option>
+                <option value="MANUAL">{tr("Facturador gratuito o PAC externo (registro el CUFE a mano)")}</option>
+                <option value="PAC">{tr("Automática desde ComercioClaro con un PAC")}</option>
               </Select>
               {form.einvoiceMode === "MANUAL" && (
                 <>
                   <Checkbox
-                    label="Uso el facturador gratuito de la DGI (vigilar los límites)"
+                    label={tr("Uso el facturador gratuito de la DGI (vigilar los límites)")}
                     checked={form.usesFreeInvoicer}
                     onChange={(e) => set("usesFreeInvoicer", e.target.checked)}
                   />
                   <Checkbox
-                    label="Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)"
+                    label={tr(
+                      "Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)"
+                    )}
                     checked={form.invoicePerSale}
                     onChange={(e) => set("invoicePerSale", e.target.checked)}
                   />
@@ -444,32 +460,34 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               {form.einvoiceMode === "PAC" && (
                 <>
                   <Select
-                    label="PAC"
+                    label={tr("PAC")}
                     value={form.einvoiceProvider ?? ""}
                     onChange={(e) => set("einvoiceProvider", e.target.value || null)}
                   >
-                    <option value="">Selecciona</option>
+                    <option value="">{tr("Selecciona")}</option>
                     {pacProviders?.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
-                        {p.configured ? "" : " — falta configurar credenciales"}
+                        {p.configured ? "" : tr(" — falta configurar credenciales")}
                       </option>
                     ))}
                   </Select>
                   {pacProviders?.find((p) => p.id === form.einvoiceProvider && !p.configured) && (
                     <p className="text-xs text-amber-700">
-                      Agrega ALANUBE_API_URL y ALANUBE_TOKEN en las variables del servidor. Alanube entrega un sandbox
-                      gratuito al solicitarlo.
+                      {tr(
+                        "Agrega ALANUBE_API_URL y ALANUBE_TOKEN en las variables del servidor. Alanube entrega un sandbox gratuito al solicitarlo."
+                      )}
                     </p>
                   )}
                   <Checkbox
-                    label="Emitir la factura de cada venta automáticamente"
+                    label={tr("Emitir la factura de cada venta automáticamente")}
                     checked={form.autoInvoice}
                     onChange={(e) => set("autoInvoice", e.target.checked)}
                   />
                   <p className="text-xs text-slate-500">
-                    Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket
-                    imprime el CUFE y su código QR.
+                    {tr(
+                      "Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket imprime el CUFE y su código QR."
+                    )}
                   </p>
                 </>
               )}
@@ -478,36 +496,38 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
           <Card>
             <CardHeader>
-              <h2 className="font-semibold text-slate-900">Yappy</h2>
-              <p className="text-sm text-slate-500">Se muestra en el punto de venta al cobrar con Yappy.</p>
+              <h2 className="font-semibold text-slate-900">{tr("Yappy")}</h2>
+              <p className="text-sm text-slate-500">{tr("Se muestra en el punto de venta al cobrar con Yappy.")}</p>
             </CardHeader>
             <CardContent className="space-y-3">
               <Select
-                label="Modo de cobro"
+                label={tr("Modo de cobro")}
                 value={form.yappyMode}
                 onChange={(e) => set("yappyMode", e.target.value as BusinessData["yappyMode"])}
                 hint={
                   form.yappyMode === "API"
-                    ? "El cajero escribe el celular del cliente, el cobro le llega a su app y la venta se registra sola al confirmarse. Requiere Yappy Comercial con API (credenciales en el servidor)."
-                    : "El cliente escanea tu QR y el cajero confirma el pago en la app."
+                    ? tr(
+                        "El cajero escribe el celular del cliente, el cobro le llega a su app y la venta se registra sola al confirmarse. Requiere Yappy Comercial con API (credenciales en el servidor)."
+                      )
+                    : tr("El cliente escanea tu QR y el cajero confirma el pago en la app.")
                 }
               >
-                <option value="STATIC">QR fijo del comercio (confirmación manual)</option>
-                <option value="API">Cobro automático por celular (API de Yappy Comercial)</option>
+                <option value="STATIC">{tr("QR fijo del comercio (confirmación manual)")}</option>
+                <option value="API">{tr("Cobro automático por celular (API de Yappy Comercial)")}</option>
               </Select>
               <Input
-                label="Nombre o número en el directorio Yappy"
+                label={tr("Nombre o número en el directorio Yappy")}
                 value={form.yappyDirectory ?? ""}
                 onChange={(e) => set("yappyDirectory", e.target.value)}
-                placeholder="@minisuperlaesperanza o 6123-4567"
+                placeholder={tr("@minisuperlaesperanza o 6123-4567")}
               />
               <div className="space-y-1.5">
-                <p className="text-sm font-medium text-slate-700">QR de cobro de Yappy Comercial</p>
+                <p className="text-sm font-medium text-slate-700">{tr("QR de cobro de Yappy Comercial")}</p>
                 {form.yappyQr && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={form.yappyQr}
-                    alt="QR de Yappy"
+                    alt={tr("QR de Yappy")}
                     className="w-40 h-40 object-contain rounded-xl border border-slate-200 bg-white"
                   />
                 )}
@@ -515,13 +535,13 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
-                    aria-label="Subir imagen del QR de Yappy"
+                    aria-label={tr("Subir imagen del QR de Yappy")}
                     onChange={(e) => loadQr(e.target.files?.[0])}
                     className="text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700"
                   />
                   {form.yappyQr && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => set("yappyQr", null)}>
-                      Quitar
+                      {tr("Quitar")}
                     </Button>
                   )}
                 </div>
@@ -534,50 +554,55 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
       {country.code === "MX" && (
         <Card>
           <CardHeader>
-            <h2 className="font-semibold text-slate-900">Datos fiscales (México · CFDI 4.0)</h2>
+            <h2 className="font-semibold text-slate-900">{tr("Datos fiscales (México · CFDI 4.0)")}</h2>
             <p className="text-sm text-slate-500">
-              Necesarios para facturar. Cópialos de tu Constancia de Situación Fiscal.
+              {tr("Necesarios para facturar. Cópialos de tu Constancia de Situación Fiscal.")}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid sm:grid-cols-2 gap-3">
-              <Input label="RFC" value={form.rfc ?? ""} onChange={(e) => set("rfc", e.target.value.toUpperCase())} />
               <Input
-                label="C.P. (lugar de expedición)"
+                label={tr("RFC")}
+                value={form.rfc ?? ""}
+                onChange={(e) => set("rfc", e.target.value.toUpperCase())}
+              />
+              <Input
+                label={tr("C.P. (lugar de expedición)")}
                 inputMode="numeric"
                 value={form.postalCode ?? ""}
                 onChange={(e) => set("postalCode", e.target.value)}
               />
             </div>
             <Input
-              label="Razón social / nombre"
+              label={tr("Razón social / nombre")}
               value={form.legalName ?? ""}
               onChange={(e) => set("legalName", e.target.value)}
             />
             <Select
-              label="Régimen fiscal"
+              label={tr("Régimen fiscal")}
               value={form.taxRegime ?? ""}
               onChange={(e) => set("taxRegime", e.target.value)}
             >
-              <option value="">Selecciona</option>
-              <option value="626">626 · Régimen Simplificado de Confianza (RESICO)</option>
-              <option value="612">612 · Personas Físicas con Actividades Empresariales</option>
-              <option value="625">625 · Plataformas Tecnológicas</option>
-              <option value="601">601 · General de Ley Personas Morales</option>
-              <option value="621">621 · Incorporación Fiscal</option>
+              <option value="">{tr("Selecciona")}</option>
+              <option value="626">{tr("626 · Régimen Simplificado de Confianza (RESICO)")}</option>
+              <option value="612">{tr("612 · Personas Físicas con Actividades Empresariales")}</option>
+              <option value="625">{tr("625 · Plataformas Tecnológicas")}</option>
+              <option value="601">{tr("601 · General de Ley Personas Morales")}</option>
+              <option value="621">{tr("621 · Incorporación Fiscal")}</option>
             </Select>
           </CardContent>
         </Card>
       )}
 
       <Button type="submit" loading={saving}>
-        Guardar cambios
+        {tr("Guardar cambios")}
       </Button>
     </form>
   );
 }
 
 function ProfileSettings() {
+  const tr = useText();
   const { user } = useSession();
   const toast = useToast();
   const confirm = useConfirm();
@@ -590,7 +615,7 @@ function ProfileSettings() {
     setSaving(true);
     try {
       await api("/api/auth/change-password", { body: { currentPassword: current, newPassword: next } });
-      toast.success("Contraseña actualizada. Se cerraron tus otras sesiones.");
+      toast.success(tr("Contraseña actualizada. Se cerraron tus otras sesiones."));
       setCurrent("");
       setNext("");
     } catch (err) {
@@ -603,9 +628,9 @@ function ProfileSettings() {
   async function logoutAll() {
     if (
       !(await confirm({
-        title: "Cerrar sesión en todos los dispositivos",
-        message: "Tendrás que volver a iniciar sesión en cada dispositivo.",
-        confirmLabel: "Cerrar todas",
+        title: tr("Cerrar sesión en todos los dispositivos"),
+        message: tr("Tendrás que volver a iniciar sesión en cada dispositivo."),
+        confirmLabel: tr("Cerrar todas"),
       }))
     )
       return;
@@ -628,10 +653,10 @@ function ProfileSettings() {
           <p className="text-sm text-slate-500">{user.email}</p>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm font-medium text-slate-700">Tema</p>
+          <p className="text-sm font-medium text-slate-700">{tr("Tema")}</p>
           <ThemeToggle />
           <Select
-            label="Idioma / 语言 / Language"
+            label={tr("Idioma / 语言 / Language")}
             value={user.language}
             onChange={async (e) => {
               try {
@@ -641,7 +666,7 @@ function ProfileSettings() {
                 toast.error(err);
               }
             }}
-            hint="Piloto: menú, punto de venta y caja."
+            hint={tr("Si ves un texto mal traducido, usa “Reportar traducción”.")}
           >
             {LANGUAGES.map((l) => (
               <option key={l.value} value={l.value}>
@@ -649,18 +674,19 @@ function ProfileSettings() {
               </option>
             ))}
           </Select>
+          <TranslationFeedbackButton className="flex items-center gap-2 text-sm text-brand-700 dark:text-brand-300 underline" />
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
           <h2 className="font-semibold text-slate-900 flex items-center gap-2">
-            <KeyRound className="w-4 h-4" aria-hidden="true" /> Cambiar contraseña
+            <KeyRound className="w-4 h-4" aria-hidden="true" /> {tr("Cambiar contraseña")}
           </h2>
         </CardHeader>
         <CardContent>
           <form onSubmit={changePassword} className="space-y-3">
             <Input
-              label="Contraseña actual"
+              label={tr("Contraseña actual")}
               type="password"
               autoComplete="current-password"
               value={current}
@@ -668,23 +694,23 @@ function ProfileSettings() {
               required
             />
             <Input
-              label="Nueva contraseña"
+              label={tr("Nueva contraseña")}
               type="password"
               autoComplete="new-password"
               minLength={8}
               value={next}
               onChange={(e) => setNext(e.target.value)}
               required
-              hint="Mínimo 8 caracteres"
+              hint={tr("Mínimo 8 caracteres")}
             />
             <Button type="submit" loading={saving}>
-              Actualizar contraseña
+              {tr("Actualizar contraseña")}
             </Button>
           </form>
         </CardContent>
       </Card>
       <Button variant="secondary" onClick={logoutAll}>
-        <LogOut className="w-4 h-4" /> Cerrar sesión en todos los dispositivos
+        <LogOut className="w-4 h-4" /> {tr("Cerrar sesión en todos los dispositivos")}
       </Button>
     </div>
   );
@@ -697,6 +723,7 @@ interface Member {
 }
 
 function MembersSettings() {
+  const tr = useText();
   const { user } = useSession();
   const toast = useToast();
   const confirm = useConfirm();
@@ -726,9 +753,9 @@ function MembersSettings() {
     if (
       !(await confirm({
         title: `Quitar a ${m.user.name}`,
-        message: "Perderá el acceso a este negocio de inmediato.",
+        message: tr("Perderá el acceso a este negocio de inmediato."),
         danger: true,
-        confirmLabel: "Quitar",
+        confirmLabel: tr("Quitar"),
       }))
     )
       return;
@@ -744,10 +771,10 @@ function MembersSettings() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-sm text-slate-600">
-          Los cajeros pueden vender, manejar caja y clientes, pero no ven costos, reportes ni configuración.
+          {tr("Los cajeros pueden vender, manejar caja y clientes, pero no ven costos, reportes ni configuración.")}
         </p>
         <Button onClick={() => setOpen(true)}>
-          <UserPlus className="w-4 h-4" /> Agregar
+          <UserPlus className="w-4 h-4" /> {tr("Agregar")}
         </Button>
       </div>
       {!data ? (
@@ -761,7 +788,9 @@ function MembersSettings() {
                 <p className="text-xs text-slate-500">{m.user.email}</p>
               </div>
               <div className="flex items-center gap-2">
-                <Badge tone={m.role === "OWNER" ? "green" : "gray"}>{m.role === "OWNER" ? "Dueño" : "Cajero"}</Badge>
+                <Badge tone={m.role === "OWNER" ? "green" : "gray"}>
+                  {m.role === "OWNER" ? tr("Dueño") : tr("Cajero")}
+                </Badge>
                 {m.user.id !== user.id && (
                   <button
                     aria-label={`Quitar a ${m.user.name}`}
@@ -777,38 +806,38 @@ function MembersSettings() {
         ))
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Agregar usuario">
+      <Modal open={open} onClose={() => setOpen(false)} title={tr("Agregar usuario")}>
         <form onSubmit={add} className="space-y-3">
           <Input
-            label="Nombre"
+            label={tr("Nombre")}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
           />
           <Input
-            label="Correo"
+            label={tr("Correo")}
             type="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
           />
-          <Select label="Rol" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-            <option value="CASHIER">Cajero</option>
-            <option value="OWNER">Dueño (acceso total)</option>
+          <Select label={tr("Rol")} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            <option value="CASHIER">{tr("Cajero")}</option>
+            <option value="OWNER">{tr("Dueño (acceso total)")}</option>
           </Select>
           <Button type="submit" className="w-full" loading={saving}>
-            Agregar
+            {tr("Agregar")}
           </Button>
         </form>
       </Modal>
 
-      <Modal open={invite !== null} onClose={() => setInvite(null)} title="Usuario agregado">
+      <Modal open={invite !== null} onClose={() => setInvite(null)} title={tr("Usuario agregado")}>
         {invite && (
           <div className="space-y-3 text-sm">
             {invite.tempPassword ? (
               <>
                 <p>
-                  Comparte estos datos con la persona. Deberá cambiar la contraseña al entrar.
+                  {tr("Comparte estos datos con la persona. Deberá cambiar la contraseña al entrar.")}
                   {invite.emailed && " También se los enviamos por correo."}
                 </p>
                 <p className="rounded-xl bg-slate-100 p-3 font-mono">
@@ -816,13 +845,13 @@ function MembersSettings() {
                   <br />
                   {invite.tempPassword}
                 </p>
-                <p className="text-xs text-slate-500">Esta contraseña no se volverá a mostrar.</p>
+                <p className="text-xs text-slate-500">{tr("Esta contraseña no se volverá a mostrar.")}</p>
               </>
             ) : (
-              <p>La persona ya tenía cuenta; ahora puede elegir este negocio al iniciar sesión.</p>
+              <p>{tr("La persona ya tenía cuenta; ahora puede elegir este negocio al iniciar sesión.")}</p>
             )}
             <Button className="w-full" onClick={() => setInvite(null)}>
-              Listo
+              {tr("Listo")}
             </Button>
           </div>
         )}
@@ -832,6 +861,7 @@ function MembersSettings() {
 }
 
 function BranchesSettings() {
+  const tr = useText();
   const { businesses, business } = useSession();
   const toast = useToast();
   const [name, setName] = useState("");
@@ -843,7 +873,7 @@ function BranchesSettings() {
     setSaving(true);
     try {
       await api("/api/business/branches", { body: { name, copyCatalog } });
-      toast.success("Sucursal creada. Cámbiate a ella desde el selector bajo el logo.");
+      toast.success(tr("Sucursal creada. Cámbiate a ella desde el selector bajo el logo."));
       window.location.reload();
     } catch (err) {
       toast.error(err);
@@ -855,7 +885,7 @@ function BranchesSettings() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-600">
-        Cada sucursal tiene su propio inventario, caja y ventas. En Reportes puedes ver el consolidado de todas.
+        {tr("Cada sucursal tiene su propio inventario, caja y ventas. En Reportes puedes ver el consolidado de todas.")}
       </p>
       {businesses.map((b) => (
         <Card key={b.id}>
@@ -863,7 +893,7 @@ function BranchesSettings() {
             <span className="flex items-center gap-2 text-slate-900">
               <Building2 className="w-4 h-4 text-slate-400" aria-hidden="true" /> {b.name}
             </span>
-            {b.id === business.id && <Badge tone="green">Actual</Badge>}
+            {b.id === business.id && <Badge tone="green">{tr("Actual")}</Badge>}
           </CardContent>
         </Card>
       ))}
@@ -871,19 +901,19 @@ function BranchesSettings() {
         <CardContent>
           <form onSubmit={create} className="space-y-3">
             <Input
-              label="Nueva sucursal"
+              label={tr("Nueva sucursal")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="Ej. Sucursal Centro"
+              placeholder={tr("Ej. Sucursal Centro")}
             />
             <Checkbox
-              label="Copiar el catálogo de productos (sin existencias)"
+              label={tr("Copiar el catálogo de productos (sin existencias)")}
               checked={copyCatalog}
               onChange={(e) => setCopyCatalog(e.target.checked)}
             />
             <Button type="submit" loading={saving}>
-              <Plus className="w-4 h-4" /> Crear sucursal
+              <Plus className="w-4 h-4" /> {tr("Crear sucursal")}
             </Button>
           </form>
         </CardContent>
@@ -929,12 +959,13 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 function AuditLog() {
+  const tr = useText();
   const fmt = useFormat();
   const list = usePaginated<AuditEntry>("/api/business/audit", { limit: 50 });
   return (
     <div className="space-y-2">
       <p className="text-sm text-slate-600 flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4" aria-hidden="true" /> Registro de quién hizo cada operación importante.
+        <ShieldCheck className="w-4 h-4" aria-hidden="true" /> {tr("Registro de quién hizo cada operación importante.")}
       </p>
       {list.isLoading ? (
         <ListSkeleton />
@@ -944,8 +975,8 @@ function AuditLog() {
             {list.items.map((e) => (
               <div key={e.id} className="py-2.5 text-sm flex justify-between gap-3">
                 <span>
-                  <span className="font-medium text-slate-900">{e.userName ?? "Sistema"}</span>{" "}
-                  <span className="text-slate-600">{ACTION_LABELS[e.action] ?? e.action}</span>
+                  <span className="font-medium text-slate-900">{e.userName ?? tr("Sistema")}</span>{" "}
+                  <span className="text-slate-600">{tr(ACTION_LABELS[e.action] ?? e.action)}</span>
                   {e.details && "folio" in e.details && (
                     <span className="text-slate-500"> #{String(e.details.folio)}</span>
                   )}
@@ -960,6 +991,43 @@ function AuditLog() {
         </Card>
       )}
       <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
+      <TranslationReports />
     </div>
+  );
+}
+
+interface TranslationReport {
+  id: string;
+  language: string;
+  screen: string;
+  original: string;
+  suggestion: string;
+  createdAt: string;
+}
+
+/** Reportes de traducción que envió el equipo (sirven para validar el chino con dueños de minisúper). */
+function TranslationReports() {
+  const tr = useText();
+  const fmt = useFormat();
+  const { data } = useSWR<TranslationReport[]>("/api/translations/feedback", fetcher);
+  if (!data || data.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="font-semibold text-slate-900">{tr("Reportes de traducción")}</h2>
+      </CardHeader>
+      <CardContent className="divide-y divide-slate-100 py-0">
+        {data.map((r) => (
+          <div key={r.id} className="py-2.5 text-sm">
+            <p className="text-slate-900">
+              <Badge tone="gray">{r.language}</Badge> {r.original} → <span className="font-medium">{r.suggestion}</span>
+            </p>
+            <p className="text-xs text-slate-500">
+              {r.screen} · {fmt.dateTime(r.createdAt)}
+            </p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 }

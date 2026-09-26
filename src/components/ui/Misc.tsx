@@ -1,3 +1,4 @@
+import { useText } from "@/lib/client/i18n";
 import { cn } from "@/lib/utils";
 
 export function PageHeader({
@@ -25,8 +26,9 @@ export function Skeleton({ className }: { className?: string }) {
 }
 
 export function ListSkeleton({ rows = 4 }: { rows?: number }) {
+  const tr = useText();
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Cargando">
+    <div className="space-y-3" aria-busy="true" aria-label={tr("Cargando")}>
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton key={i} className="h-16" />
       ))}
@@ -35,12 +37,16 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+  const tr = useText();
   return (
-    <div role="alert" className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm flex items-center justify-between gap-3">
-      <span>{error instanceof Error ? error.message : "No se pudo cargar la información"}</span>
+    <div
+      role="alert"
+      className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm flex items-center justify-between gap-3"
+    >
+      <span>{error instanceof Error ? error.message : tr("No se pudo cargar la información")}</span>
       {onRetry && (
         <button onClick={onRetry} className="font-medium underline">
-          Reintentar
+          {tr("Reintentar")}
         </button>
       )}
     </div>
@@ -83,6 +89,7 @@ export function Stat({
 }
 
 export function LoadMore({ hasMore, loading, onClick }: { hasMore: boolean; loading?: boolean; onClick: () => void }) {
+  const tr = useText();
   if (!hasMore) return null;
   return (
     <div className="flex justify-center pt-2">
@@ -91,7 +98,7 @@ export function LoadMore({ hasMore, loading, onClick }: { hasMore: boolean; load
         disabled={loading}
         className="text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline disabled:opacity-50"
       >
-        {loading ? "Cargando..." : "Cargar más"}
+        {loading ? tr("Cargando...") : tr("Cargar más")}
       </button>
     </div>
   );

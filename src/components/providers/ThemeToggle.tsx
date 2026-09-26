@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useEffect, useSyncExternalStore } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ function subscribeTheme(callback: () => void) {
 }
 
 export function ThemeToggle() {
+  const tr = useText();
   const theme = useSyncExternalStore(subscribeTheme, readTheme, () => "system" as Theme);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function ThemeToggle() {
           )}
         >
           <o.icon className="w-4 h-4" />
-          {o.label}
+          {tr(o.label)}
         </button>
       ))}
     </div>

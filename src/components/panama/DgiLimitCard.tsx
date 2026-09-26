@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import useSWR from "swr";
 import { AlertTriangle, CheckCircle2, FileWarning } from "lucide-react";
 import { fetcher } from "@/lib/client/api";
@@ -49,6 +50,7 @@ function Meter({ label, value, ratio, detail }: { label: string; value: string; 
 
 /** Uso de los límites del facturador gratuito de la DGI (Panamá). */
 export function DgiLimitCard({ compact = false }: { compact?: boolean }) {
+  const tr = useText();
   const fmt = useFormat();
   const { data } = useSWR<DgiStatus>("/api/invoices/dgi-status", fetcher);
   if (!data) return null;
@@ -63,12 +65,18 @@ export function DgiLimitCard({ compact = false }: { compact?: boolean }) {
         : "Dentro de los límites del facturador gratuito.";
 
   return (
-    <Card className={cn(data.status === "exceeded" && "border-red-200", data.status === "warning" && "border-amber-200")}>
+    <Card
+      className={cn(data.status === "exceeded" && "border-red-200", data.status === "warning" && "border-amber-200")}
+    >
       <CardContent className="space-y-3">
         <p
           className={cn(
             "flex items-center gap-2 text-sm font-medium",
-            data.status === "exceeded" ? "text-red-600" : data.status === "warning" ? "text-amber-700" : "text-brand-700 dark:text-brand-300"
+            data.status === "exceeded"
+              ? "text-red-600"
+              : data.status === "warning"
+                ? "text-amber-700"
+                : "text-brand-700 dark:text-brand-300"
           )}
         >
           <Icon className="w-4 h-4 shrink-0" aria-hidden="true" /> {message}
@@ -77,24 +85,31 @@ export function DgiLimitCard({ compact = false }: { compact?: boolean }) {
           label={`Ingresos ${data.year}`}
           value={`${fmt.money(data.revenue)} / ${fmt.money(data.limits.annualRevenue)}`}
           ratio={data.revenueRatio}
-          detail={`A este ritmo cerrarías el año en ${fmt.money(data.projectedAnnualRevenue)}.`}
+          detail={tr("A este ritmo cerrarías el año en {amount}.", { amount: fmt.money(data.projectedAnnualRevenue) })}
         />
         <Meter
-          label="Documentos emitidos este mes"
+          label={tr("Documentos emitidos este mes")}
           value={`${data.documents} / ${data.limits.monthlyDocuments}`}
           ratio={data.documentsRatio}
           detail={
             data.documentsBasis === "pac"
-              ? "Conteo exacto: facturas emitidas desde ComercioClaro con tu PAC."
+              ? tr("Conteo exacto: facturas emitidas desde ComercioClaro con tu PAC.")
               : data.documentsBasis === "perSale"
-                ? `Cuenta cada venta (${data.monthSales}) y cada devolución como nota de crédito (${data.monthReturns}).`
-                : `Solo cuenta facturas con CUFE registrado. Llevas ${data.monthSales} ventas este mes; si facturas cada venta, actívalo en Configuración.`
+                ? tr("Cuenta cada venta ({sales}) y cada devolución como nota de crédito ({returns}).", {
+                    sales: data.monthSales,
+                    returns: data.monthReturns,
+                  })
+                : tr(
+                    "Solo cuenta facturas con CUFE registrado. Llevas {n} ventas este mes; si facturas cada venta, actívalo en Configuración.",
+                    { n: data.monthSales }
+                  )
           }
         />
         {!compact && (
           <p className="text-xs text-slate-500">
-            Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100
-            documentos al mes.
+            {tr(
+              "Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100 documentos al mes."
+            )}
           </p>
         )}
       </CardContent>

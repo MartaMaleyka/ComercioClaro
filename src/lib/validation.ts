@@ -472,3 +472,9 @@ export const reportQuerySchema = z.object({
     .optional(),
   scope: z.enum(["business", "all"]).default("business"),
 });
+
+export const translationFeedbackSchema = z.object({
+  screen: z.string().trim().max(200).default(""),
+  original: z.string().trim().min(1, "Escribe el texto que viste").max(500),
+  suggestion: z.string().trim().min(1, "Escribe cómo debería decir").max(500),
+});

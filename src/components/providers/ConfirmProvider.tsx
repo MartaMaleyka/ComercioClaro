@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,7 @@ type ConfirmFn = (options: ConfirmOptions) => Promise<string | boolean>;
 const ConfirmContext = createContext<ConfirmFn | null>(null);
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const tr = useText();
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const [value, setValue] = useState("");
   const resolver = useRef<(v: string | boolean) => void>(null);
@@ -58,10 +60,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           )}
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="secondary" onClick={() => close(false)}>
-              Cancelar
+              {tr("Cancelar")}
             </Button>
             <Button type="submit" variant={options?.danger ? "danger" : "primary"} disabled={disabled}>
-              {options?.confirmLabel ?? "Confirmar"}
+              {options?.confirmLabel ?? tr("Confirmar")}
             </Button>
           </div>
         </form>

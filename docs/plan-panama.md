@@ -4,7 +4,7 @@ Basado en la investigación de mercado (septiembre 2026): cerca de 16,000 minis�
 
 ## Estado
 
-Fases 1 a 6 implementadas. Pruebas: `tests/unit/panama.test.ts`, `tests/integration/panama.test.ts` y `e2e/panama.spec.ts`. Cuenta de demostración: `demo.pa@comercioclaro.com` / `demo1234` (cajero con interfaz en chino: `cajero.pa@comercioclaro.com`).
+Fases 1 a 6 implementadas, más la fase 7 (abajo). Pruebas: `tests/unit/panama.test.ts`, `tests/integration/panama.test.ts` y `e2e/panama.spec.ts`. Cuenta de demostración: `demo.pa@comercioclaro.com` / `demo1234` (cajero con interfaz en chino: `cajero.pa@comercioclaro.com`).
 
 ## Objetivo
 
@@ -43,8 +43,15 @@ Que un minisúper, abarrotería o fonda en Panamá pueda usar ComercioClaro el p
 - Cuenta de demostración panameña (`demo.pa@comercioclaro.com`) con productos y tasas reales de ITBMS.
 - Pruebas unitarias, de integración y de punta a punta de los flujos panameños.
 
+### Fase 7 — Lo que faltaba y funciones nuevas
+- **Factura electrónica automática con PAC**: capa de proveedores con Alanube (API REST) y un PAC simulado para probar. Emisión al vender (en segundo plano), CUFE y QR en el ticket, notas de crédito en devoluciones, anulación, y contingencia: si el PAC o la DGI no responden, la factura queda pendiente y se reintenta con espera creciente (cron cada 15 minutos y botón "Reintentar pendientes"). Falta: credenciales de sandbox del PAC elegido para validar el formato real.
+- **Yappy automático**: pasarela de Banco General (Botón de Pago / cobro al celular) y simulador. El cajero escribe el celular, el cliente confirma en su app y la venta se registra sola; la IPN se valida con HMAC-SHA256. Un cobro confirmado solo puede usarse en una venta. Falta: afiliación a Yappy Comercial y credenciales.
+- **Conteo exacto de documentos**: la tarjeta de límites cuenta según la fuente disponible: facturas del PAC, cada venta y devolución (si el negocio factura todo) o CUFE registrados.
+- **Traducción completa** al chino y al inglés de todas las pantallas (≈600 textos), con prueba automática que falla si un texto nuevo queda sin traducir y botón "Reportar traducción" para validarla con dueños de minisúper.
+- **Promociones**, **puntos de lealtad**, **catálogo por WhatsApp**, **etiquetas con código de barras** y **conteo físico** (ideas tomadas de Treinta, Kyte, Loyverse y de las quejas de usuarios de POS en la región).
+
 ## Fuera de alcance (siguientes pasos)
-- Integración directa con un PAC (Alanube, eFactura, etc.): requiere elegir proveedor y obtener credenciales de pruebas.
-- QR dinámico de Yappy: requiere afiliación a Yappy Comercial y credenciales de la API del Banco General.
-- Traducción completa de todas las pantallas al chino: primero validar el piloto con 5 a 10 comercios.
+- Validar el PAC con credenciales de sandbox reales (Alanube u otro autorizado por la DGI) y el formato exacto del documento.
+- Afiliación a Yappy Comercial y prueba con el ambiente de pruebas de Banco General.
+- Revisar la traducción al chino con 5 a 10 comercios usando los reportes de traducción.
 - Recargas y pago de servicios (requieren un agregador).

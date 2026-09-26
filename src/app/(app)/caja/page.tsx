@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { ArrowDownCircle, ArrowUpCircle, Lock, Unlock, Wallet } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
-import { useT } from "@/lib/client/i18n";
+import { useT, useText } from "@/lib/client/i18n";
 import type { CashSession } from "@/lib/client/types";
 import { countryConfig } from "@/lib/country";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -36,6 +36,7 @@ interface CashData {
 }
 
 export default function CashPage() {
+  const tr = useText();
   const { role, business } = useSession();
   const isOwner = role === "OWNER";
   const fmt = useFormat();
@@ -168,7 +169,7 @@ export default function CashPage() {
                   (current.cashOut ?? 0) +
                     (current.refunds ?? 0) +
                     (current.cashExpenses ?? 0) +
-                    (current.cashPurchases ?? 0),
+                    (current.cashPurchases ?? 0)
                 )}
                 hint={t("cash.outflowsHint")}
               />
@@ -296,7 +297,7 @@ export default function CashPage() {
             label={t("common.notes")}
             value={closeNotes}
             onChange={(e) => setCloseNotes(e.target.value)}
-            placeholder="Opcional"
+            placeholder={tr("Opcional")}
           />
           <Button type="submit" variant="danger" className="w-full" loading={busy}>
             {t("cash.doClose")}
@@ -327,7 +328,7 @@ export default function CashPage() {
         )}
       </Modal>
 
-      <Modal open={detail !== null} onClose={() => setDetail(null)} title="Detalle del corte">
+      <Modal open={detail !== null} onClose={() => setDetail(null)} title={tr("Detalle del corte")}>
         {!detailData.data ? (
           <ListSkeleton rows={3} />
         ) : (
@@ -350,7 +351,7 @@ export default function CashPage() {
               </div>
             ))}
             <div className="flex justify-between font-semibold pt-2">
-              <dt>Diferencia</dt>
+              <dt>{tr("Diferencia")}</dt>
               <dd>
                 <DifferenceLabel value={detailData.data.session.difference ?? 0} />
               </dd>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import { HandCoins, MessageCircle, Pencil, Plus, Users } from "lucide-react";
@@ -54,6 +55,7 @@ const emptyForm = {
 };
 
 export default function CustomersPage() {
+  const tr = useText();
   const { role, business } = useSession();
   const isOwner = role === "OWNER";
   const country = countryConfig(business.country);
@@ -69,7 +71,7 @@ export default function CustomersPage() {
       withBalance: onlyDebt || undefined,
       overdue: onlyOverdue || undefined,
     }),
-    fetcher,
+    fetcher
   );
   const [editing, setEditing] = useState<Customer | null | undefined>(undefined);
   const [form, setForm] = useState(emptyForm);
@@ -99,7 +101,7 @@ export default function CustomersPage() {
             taxRegime: c.taxRegime ?? "",
             postalCode: c.postalCode ?? "",
           }
-        : emptyForm,
+        : emptyForm
     );
     setEditing(c);
   }
@@ -112,7 +114,7 @@ export default function CustomersPage() {
         method: editing ? "PUT" : "POST",
         body: { ...form, creditLimit: Number(form.creditLimit) || 0, creditDays: Number(form.creditDays) || 0 },
       });
-      toast.success("Cliente guardado");
+      toast.success(tr("Cliente guardado"));
       setEditing(undefined);
       mutate();
     } catch (err) {
@@ -128,7 +130,7 @@ export default function CustomersPage() {
     setSaving(true);
     try {
       await api(`/api/customers/${statementId}/payments`, { body: { amount: Number(payAmount), method: payMethod } });
-      toast.success("Abono registrado");
+      toast.success(tr("Abono registrado"));
       setPayAmount("");
       statement.mutate();
       mutate();
@@ -151,32 +153,40 @@ export default function CustomersPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Clientes"
-        description="Cuentas de fiado y datos para factura"
+        title={tr("Clientes")}
+        description={tr("Cuentas de fiado y datos para factura")}
         actions={
           <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> Cliente
+            <Plus className="w-4 h-4" /> {tr("Cliente")}
           </Button>
         }
       />
 
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Total por cobrar" value={fmt.money(totalDebt)} tone={totalDebt > 0 ? "warning" : "default"} />
         <Stat
-          label="Vencido"
+          label={tr("Total por cobrar")}
+          value={fmt.money(totalDebt)}
+          tone={totalDebt > 0 ? "warning" : "default"}
+        />
+        <Stat
+          label={tr("Vencido")}
           value={fmt.money(totalOverdue)}
           tone={totalOverdue > 0 ? "negative" : "default"}
-          hint={`${data?.filter((c) => (c.overdue ?? 0) > 0).length ?? 0} clientes`}
+          hint={tr("{n} clientes", { n: data?.filter((c) => (c.overdue ?? 0) > 0).length ?? 0 })}
         />
-        <Stat label="Clientes con saldo" value={data?.filter((c) => c.balance > 0).length ?? 0} />
+        <Stat label={tr("Clientes con saldo")} value={data?.filter((c) => c.balance > 0).length ?? 0} />
       </div>
 
       <div className="flex gap-3 items-center flex-wrap">
         <div className="flex-1 min-w-[200px]">
-          <SearchBar value={search} onChange={setSearch} placeholder="Buscar por nombre o teléfono" />
+          <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por nombre o teléfono")} />
         </div>
-        <Checkbox label="Solo con saldo" checked={onlyDebt} onChange={(e) => setOnlyDebt(e.target.checked)} />
-        <Checkbox label="Solo vencidos" checked={onlyOverdue} onChange={(e) => setOnlyOverdue(e.target.checked)} />
+        <Checkbox label={tr("Solo con saldo")} checked={onlyDebt} onChange={(e) => setOnlyDebt(e.target.checked)} />
+        <Checkbox
+          label={tr("Solo vencidos")}
+          checked={onlyOverdue}
+          onChange={(e) => setOnlyOverdue(e.target.checked)}
+        />
       </div>
 
       {error ? (
@@ -186,8 +196,8 @@ export default function CustomersPage() {
       ) : data.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="Sin clientes"
-          description="Registra clientes para venderles fiado y llevar su cuenta."
+          title={tr("Sin clientes")}
+          description={tr("Registra clientes para venderles fiado y llevar su cuenta.")}
         />
       ) : (
         <div className="space-y-2">
@@ -200,11 +210,11 @@ export default function CustomersPage() {
                     <p className="font-medium text-slate-900">{c.name}</p>
                     <p className="text-xs text-slate-500">
                       {c.phone ?? "Sin teléfono"}
-                      {c.creditLimit > 0 && ` · límite ${fmt.money(c.creditLimit)}`}
+                      {c.creditLimit > 0 && tr(" · límite {amount}", { amount: fmt.money(c.creditLimit) })}
                     </p>
                     {business.loyaltyEnabled && (c.points ?? 0) > 0 && (
                       <Badge tone="purple" className="mt-1 mr-1">
-                        {c.points} pts
+                        {tr("{n} pts", { n: c.points ?? 0 })}
                       </Badge>
                     )}
                     {(c.ruc || c.rfc) && (
@@ -222,12 +232,16 @@ export default function CustomersPage() {
                       </p>
                       {(c.overdue ?? 0) > 0 ? (
                         <p className="text-xs text-red-600">
-                          {fmt.money(c.overdue)} vencido · {c.daysOverdue} d
+                          {tr("{amount} vencido · {days} d", {
+                            amount: fmt.money(c.overdue),
+                            days: c.daysOverdue ?? 0,
+                          })}
                         </p>
                       ) : (
                         c.balance > 0 && (
                           <p className="text-xs text-slate-500">
-                            debe{c.nextDueDate ? ` · vence ${fmt.date(c.nextDueDate)}` : ""}
+                            {tr("debe")}
+                            {c.nextDueDate ? tr(" · vence {date}", { date: fmt.date(c.nextDueDate) }) : ""}
                           </p>
                         )
                       )}
@@ -245,7 +259,7 @@ export default function CustomersPage() {
                     )}
                     {isOwner && (
                       <button
-                        aria-label="Editar"
+                        aria-label={tr("Editar")}
                         onClick={() => openForm(c)}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
                       >
@@ -263,11 +277,11 @@ export default function CustomersPage() {
       <Modal
         open={editing !== undefined}
         onClose={() => setEditing(undefined)}
-        title={editing ? "Editar cliente" : "Nuevo cliente"}
+        title={editing ? tr("Editar cliente") : tr("Nuevo cliente")}
       >
         <form onSubmit={save} className="space-y-3">
           <Input
-            label="Nombre"
+            label={tr("Nombre")}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
@@ -275,13 +289,13 @@ export default function CustomersPage() {
           />
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Teléfono (WhatsApp)"
+              label={tr("Teléfono (WhatsApp)")}
               type="tel"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
             <Input
-              label="Correo"
+              label={tr("Correo")}
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -290,41 +304,41 @@ export default function CustomersPage() {
           {isOwner && (
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Límite de crédito (fiado)"
+                label={tr("Límite de crédito (fiado)")}
                 inputMode="decimal"
                 value={form.creditLimit}
                 onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
-                hint="0 = sin límite"
+                hint={tr("0 = sin límite")}
               />
               <Input
-                label="Días de crédito"
+                label={tr("Días de crédito")}
                 inputMode="numeric"
                 value={form.creditDays}
                 onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
-                hint="Plazo para pagar cada venta fiada"
+                hint={tr("Plazo para pagar cada venta fiada")}
               />
             </div>
           )}
           <Textarea
-            label="Notas"
+            label={tr("Notas")}
             rows={2}
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
           <details className="rounded-xl border border-slate-100 p-3">
             <summary className="text-sm font-medium text-slate-700 cursor-pointer">
-              Datos fiscales (para facturar)
+              {tr("Datos fiscales (para facturar)")}
             </summary>
             {country.code === "PA" ? (
               <div className="space-y-3 mt-3">
                 <div className="grid grid-cols-[1fr_96px] gap-3">
                   <Input
-                    label="RUC o cédula"
+                    label={tr("RUC o cédula")}
                     value={form.ruc}
                     onChange={(e) => setForm({ ...form, ruc: e.target.value.toUpperCase() })}
                   />
                   <Input
-                    label="DV"
+                    label={tr("DV")}
                     inputMode="numeric"
                     maxLength={2}
                     value={form.dv}
@@ -332,7 +346,7 @@ export default function CustomersPage() {
                   />
                 </div>
                 <Input
-                  label="Razón social"
+                  label={tr("Razón social")}
                   value={form.legalName}
                   onChange={(e) => setForm({ ...form, legalName: e.target.value })}
                 />
@@ -341,25 +355,25 @@ export default function CustomersPage() {
               <div className="space-y-3 mt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <Input
-                    label="RFC"
+                    label={tr("RFC")}
                     value={form.rfc}
                     onChange={(e) => setForm({ ...form, rfc: e.target.value.toUpperCase() })}
                   />
                   <Input
-                    label="C.P. fiscal"
+                    label={tr("C.P. fiscal")}
                     inputMode="numeric"
                     value={form.postalCode}
                     onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
                   />
                 </div>
                 <Input
-                  label="Razón social (como en su constancia)"
+                  label={tr("Razón social (como en su constancia)")}
                   value={form.legalName}
                   onChange={(e) => setForm({ ...form, legalName: e.target.value })}
                 />
                 <Input
-                  label="Régimen fiscal (clave SAT)"
-                  placeholder="Ej. 612, 626, 601"
+                  label={tr("Régimen fiscal (clave SAT)")}
+                  placeholder={tr("Ej. 612, 626, 601")}
                   value={form.taxRegime}
                   onChange={(e) => setForm({ ...form, taxRegime: e.target.value })}
                 />
@@ -367,7 +381,7 @@ export default function CustomersPage() {
             )}
           </details>
           <Button type="submit" className="w-full" loading={saving}>
-            Guardar
+            {tr("Guardar")}
           </Button>
         </form>
       </Modal>
@@ -382,13 +396,13 @@ export default function CustomersPage() {
         ) : (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <p className="text-sm text-slate-600">Saldo pendiente</p>
+              <p className="text-sm text-slate-600">{tr("Saldo pendiente")}</p>
               <p className="text-2xl font-bold text-slate-900">{fmt.money(statement.data.customer.balance)}</p>
             </div>
             {statement.data.aging && statement.data.aging.pendingSales.length > 0 && (
               <div className="rounded-xl border border-slate-100 p-3 space-y-1 text-sm">
                 <p className="font-medium text-slate-900">
-                  Ventas por pagar
+                  {tr("Ventas por pagar")}
                   {statement.data.aging.overdue > 0 && (
                     <span className="text-red-600"> · {fmt.money(statement.data.aging.overdue)} vencido</span>
                   )}
@@ -397,7 +411,7 @@ export default function CustomersPage() {
                   <div key={p.id} className="flex justify-between">
                     <span className="text-slate-600">
                       #{p.folio} · {fmt.date(p.date)}
-                      {p.dueDate && ` · vence ${fmt.date(p.dueDate)}`}
+                      {p.dueDate && tr(" · vence {date}", { date: fmt.date(p.dueDate) })}
                     </span>
                     <span className={p.overdue ? "text-red-600 font-medium" : "text-slate-900"}>
                       {fmt.money(p.pending)}
@@ -410,7 +424,7 @@ export default function CustomersPage() {
               <form onSubmit={pay} className="flex gap-2 items-end">
                 <div className="flex-1">
                   <Input
-                    label="Abono"
+                    label={tr("Abono")}
                     inputMode="decimal"
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
@@ -418,18 +432,18 @@ export default function CustomersPage() {
                   />
                 </div>
                 <Select
-                  aria-label="Forma de pago"
+                  aria-label={tr("Forma de pago")}
                   value={payMethod}
                   onChange={(e) => setPayMethod(e.target.value)}
                   className="w-auto"
                 >
-                  <option value="CASH">Efectivo</option>
-                  <option value="CARD">Tarjeta</option>
-                  <option value="TRANSFER">Transferencia</option>
-                  {business.country === "PA" && <option value="YAPPY">Yappy</option>}
+                  <option value="CASH">{tr("Efectivo")}</option>
+                  <option value="CARD">{tr("Tarjeta")}</option>
+                  <option value="TRANSFER">{tr("Transferencia")}</option>
+                  {business.country === "PA" && <option value="YAPPY">{tr("Yappy")}</option>}
                 </Select>
                 <Button type="submit" loading={saving}>
-                  <HandCoins className="w-4 h-4" /> Abonar
+                  <HandCoins className="w-4 h-4" /> {tr("Abonar")}
                 </Button>
               </form>
             )}
@@ -437,10 +451,10 @@ export default function CustomersPage() {
               <table className="w-full text-sm min-w-[420px]">
                 <thead>
                   <tr className="text-left text-xs text-slate-500">
-                    <th className="py-1 font-medium">Fecha</th>
-                    <th className="py-1 font-medium">Concepto</th>
-                    <th className="py-1 font-medium text-right">Monto</th>
-                    <th className="py-1 font-medium text-right">Saldo</th>
+                    <th className="py-1 font-medium">{tr("Fecha")}</th>
+                    <th className="py-1 font-medium">{tr("Concepto")}</th>
+                    <th className="py-1 font-medium text-right">{tr("Monto")}</th>
+                    <th className="py-1 font-medium text-right">{tr("Saldo")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -459,7 +473,9 @@ export default function CustomersPage() {
                 </tbody>
               </table>
             </div>
-            {statement.data.entries.length === 0 && <p className="text-sm text-slate-500">Sin movimientos de fiado.</p>}
+            {statement.data.entries.length === 0 && (
+              <p className="text-sm text-slate-500">{tr("Sin movimientos de fiado.")}</p>
+            )}
           </div>
         )}
       </Modal>

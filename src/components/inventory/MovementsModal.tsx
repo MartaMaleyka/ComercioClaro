@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { usePaginated } from "@/lib/client/hooks";
 import { useFormat } from "@/lib/client/format";
 import type { Product } from "@/lib/client/types";
@@ -23,6 +24,7 @@ export function MovementsModal({ product, onClose }: { product: Product | null; 
 }
 
 function Movements({ product, onClose }: { product: Product; onClose: () => void }) {
+  const tr = useText();
   const fmt = useFormat();
   const list = usePaginated<Movement>(`/api/products/${product.id}/movements`);
 
@@ -31,17 +33,17 @@ function Movements({ product, onClose }: { product: Product; onClose: () => void
       {list.isLoading ? (
         <ListSkeleton rows={3} />
       ) : list.items.length === 0 ? (
-        <p className="text-sm text-slate-500">Sin movimientos registrados.</p>
+        <p className="text-sm text-slate-500">{tr("Sin movimientos registrados.")}</p>
       ) : (
         <div className="space-y-1">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[420px]">
               <thead>
                 <tr className="text-left text-xs text-slate-500">
-                  <th className="py-1 font-medium">Fecha</th>
-                  <th className="py-1 font-medium">Movimiento</th>
-                  <th className="py-1 font-medium text-right">Cant.</th>
-                  <th className="py-1 font-medium text-right">Queda</th>
+                  <th className="py-1 font-medium">{tr("Fecha")}</th>
+                  <th className="py-1 font-medium">{tr("Movimiento")}</th>
+                  <th className="py-1 font-medium text-right">{tr("Cant.")}</th>
+                  <th className="py-1 font-medium text-right">{tr("Queda")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -49,9 +51,9 @@ function Movements({ product, onClose }: { product: Product; onClose: () => void
                   <tr key={m.id}>
                     <td className="py-2 text-xs text-slate-500">{fmt.dateTime(m.createdAt)}</td>
                     <td className="py-2">
-                      {MOVEMENT_TYPE_LABELS[m.type] ?? m.type}
+                      {tr(MOVEMENT_TYPE_LABELS[m.type] ?? m.type)}
                       {m.reason && (
-                        <span className="text-xs text-slate-500"> · {ADJUSTMENT_REASON_LABELS[m.reason]}</span>
+                        <span className="text-xs text-slate-500"> · {tr(ADJUSTMENT_REASON_LABELS[m.reason])}</span>
                       )}
                       {m.notes && <span className="block text-xs text-slate-500">{m.notes}</span>}
                     </td>

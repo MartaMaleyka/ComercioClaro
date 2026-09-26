@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import useSWR from "swr";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
@@ -39,6 +40,7 @@ const empty = {
 };
 
 export default function PromotionsPage() {
+  const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
   const confirm = useConfirm();
@@ -67,7 +69,7 @@ export default function PromotionsPage() {
             endsAt: p.endsAt ? String(p.endsAt).slice(0, 10) : "",
             active: p.active,
           }
-        : empty,
+        : empty
     );
     setEditing(p);
   }
@@ -94,7 +96,7 @@ export default function PromotionsPage() {
         method: editing ? "PUT" : "POST",
         body,
       });
-      toast.success("Promoción guardada");
+      toast.success(tr("Promoción guardada"));
       setEditing(undefined);
       mutate();
     } catch (err) {
@@ -105,7 +107,7 @@ export default function PromotionsPage() {
   }
 
   async function remove(p: Promotion) {
-    if (!(await confirm({ title: `Eliminar ${p.name}`, danger: true, confirmLabel: "Eliminar" }))) return;
+    if (!(await confirm({ title: `Eliminar ${p.name}`, danger: true, confirmLabel: tr("Eliminar") }))) return;
     try {
       await api(`/api/promotions/${p.id}`, { method: "DELETE" });
       mutate();
@@ -119,11 +121,11 @@ export default function PromotionsPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Promociones"
-        description="2x1, 3 por B/.1, % de descuento. Se aplican solas al vender."
+        title={tr("Promociones")}
+        description={tr("2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.")}
         actions={
           <Button onClick={() => open(null)}>
-            <Plus className="w-4 h-4" /> Promoción
+            <Plus className="w-4 h-4" /> {tr("Promoción")}
           </Button>
         }
       />
@@ -135,8 +137,10 @@ export default function PromotionsPage() {
       ) : data.length === 0 ? (
         <EmptyState
           icon={Tag}
-          title="Sin promociones"
-          description="Crea ofertas como 2x1 en cervezas o 10% en limpieza; el punto de venta las aplica automáticamente."
+          title={tr("Sin promociones")}
+          description={tr(
+            "Crea ofertas como 2x1 en cervezas o 10% en limpieza; el punto de venta las aplica automáticamente."
+          )}
         />
       ) : (
         <div className="space-y-2">
@@ -152,19 +156,19 @@ export default function PromotionsPage() {
                       {p.endsAt && ` · hasta ${fmt.date(p.endsAt as string)}`}
                     </p>
                     <Badge tone={live ? "green" : "gray"} className="mt-1">
-                      {live ? "Vigente" : p.active ? "Fuera de fecha" : "Pausada"}
+                      {live ? tr("Vigente") : p.active ? "Fuera de fecha" : "Pausada"}
                     </Badge>
                   </div>
                   <div className="flex gap-1">
                     <button
-                      aria-label="Editar"
+                      aria-label={tr("Editar")}
                       onClick={() => open(p)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
-                      aria-label="Eliminar"
+                      aria-label={tr("Eliminar")}
                       onClick={() => remove(p)}
                       className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
                     >
@@ -181,31 +185,35 @@ export default function PromotionsPage() {
       <Modal
         open={editing !== undefined}
         onClose={() => setEditing(undefined)}
-        title={editing ? "Editar promoción" : "Nueva promoción"}
+        title={editing ? tr("Editar promoción") : tr("Nueva promoción")}
       >
         <form onSubmit={save} className="space-y-3">
           <Input
-            label="Nombre"
+            label={tr("Nombre")}
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
-            placeholder="2x1 Cerveza Panamá"
+            placeholder={tr("2x1 Cerveza Panamá")}
             required
           />
-          <Select label="Tipo" value={form.type} onChange={(e) => set("type", e.target.value as PromotionRule["type"])}>
-            <option value="BUY_X_PAY_Y">Lleva X, paga Y (2x1, 3x2)</option>
-            <option value="BUNDLE_PRICE">Precio por cantidad (3 por B/.1.00)</option>
-            <option value="PERCENT">Porcentaje de descuento</option>
+          <Select
+            label={tr("Tipo")}
+            value={form.type}
+            onChange={(e) => set("type", e.target.value as PromotionRule["type"])}
+          >
+            <option value="BUY_X_PAY_Y">{tr("Lleva X, paga Y (2x1, 3x2)")}</option>
+            <option value="BUNDLE_PRICE">{tr("Precio por cantidad (3 por B/.1.00)")}</option>
+            <option value="PERCENT">{tr("Porcentaje de descuento")}</option>
           </Select>
           {form.type === "BUY_X_PAY_Y" && (
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Lleva"
+                label={tr("Lleva")}
                 inputMode="numeric"
                 value={form.buyQty}
                 onChange={(e) => set("buyQty", e.target.value)}
               />
               <Input
-                label="Paga"
+                label={tr("Paga")}
                 inputMode="numeric"
                 value={form.payQty}
                 onChange={(e) => set("payQty", e.target.value)}
@@ -215,13 +223,13 @@ export default function PromotionsPage() {
           {form.type === "BUNDLE_PRICE" && (
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Cantidad"
+                label={tr("Cantidad")}
                 inputMode="numeric"
                 value={form.bundleQty}
                 onChange={(e) => set("bundleQty", e.target.value)}
               />
               <Input
-                label="Precio del paquete"
+                label={tr("Precio del paquete")}
                 inputMode="decimal"
                 value={form.bundlePrice}
                 onChange={(e) => set("bundlePrice", e.target.value)}
@@ -230,23 +238,28 @@ export default function PromotionsPage() {
           )}
           {form.type === "PERCENT" && (
             <Input
-              label="Descuento (%)"
+              label={tr("Descuento (%)")}
               inputMode="decimal"
               value={form.percent}
               onChange={(e) => set("percent", e.target.value)}
             />
           )}
           <Select
-            label="Aplica a"
+            label={tr("Aplica a")}
             value={form.target}
             onChange={(e) => set("target", e.target.value as "product" | "category")}
           >
-            <option value="product">Un producto</option>
-            <option value="category">Toda una categoría</option>
+            <option value="product">{tr("Un producto")}</option>
+            <option value="category">{tr("Toda una categoría")}</option>
           </Select>
           {form.target === "product" ? (
-            <Select label="Producto" value={form.productId} onChange={(e) => set("productId", e.target.value)} required>
-              <option value="">Selecciona</option>
+            <Select
+              label={tr("Producto")}
+              value={form.productId}
+              onChange={(e) => set("productId", e.target.value)}
+              required
+            >
+              <option value="">{tr("Selecciona")}</option>
               {catalog?.items.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -255,12 +268,12 @@ export default function PromotionsPage() {
             </Select>
           ) : (
             <Select
-              label="Categoría"
+              label={tr("Categoría")}
               value={form.categoryId}
               onChange={(e) => set("categoryId", e.target.value)}
               required
             >
-              <option value="">Selecciona</option>
+              <option value="">{tr("Selecciona")}</option>
               {categories?.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -270,21 +283,21 @@ export default function PromotionsPage() {
           )}
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Desde (opcional)"
+              label={tr("Desde (opcional)")}
               type="date"
               value={form.startsAt}
               onChange={(e) => set("startsAt", e.target.value)}
             />
             <Input
-              label="Hasta (opcional)"
+              label={tr("Hasta (opcional)")}
               type="date"
               value={form.endsAt}
               onChange={(e) => set("endsAt", e.target.value)}
             />
           </div>
-          <Checkbox label="Activa" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
+          <Checkbox label={tr("Activa")} checked={form.active} onChange={(e) => set("active", e.target.checked)} />
           <Button type="submit" className="w-full" loading={saving}>
-            Guardar
+            {tr("Guardar")}
           </Button>
         </form>
       </Modal>

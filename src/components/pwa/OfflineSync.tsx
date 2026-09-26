@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { AlertTriangle, CloudUpload, Trash2 } from "lucide-react";
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 
 /** Envía las ventas guardadas sin conexión cuando vuelve la red. */
 export function OfflineSync() {
+  const tr = useText();
   const { business } = useSession();
   const toast = useToast();
   const fmt = useFormat();
@@ -62,10 +64,10 @@ export function OfflineSync() {
       }
     } finally {
       syncing.current = false;
-      if (sent > 0) toast.success(`${sent} venta(s) sin conexión sincronizada(s)`);
+      if (sent > 0) toast.success(tr("{n} venta(s) sin conexión sincronizada(s)", { n: sent }));
       refresh();
     }
-  }, [business.id, refresh, toast]);
+  }, [business.id, refresh, toast, tr]);
 
   useEffect(() => {
     sync();
@@ -87,28 +89,30 @@ export function OfflineSync() {
       <div className="bg-blue-50 text-blue-700 text-sm px-4 py-2 flex items-center justify-between gap-2">
         <span className="flex items-center gap-2">
           <CloudUpload className="w-4 h-4" aria-hidden="true" />
-          {pending.length > 0 && `${pending.length} venta(s) pendiente(s) de enviar. `}
+          {pending.length > 0 && tr("{n} venta(s) pendiente(s) de enviar. ", { n: pending.length })}
           {failed.length > 0 && (
-            <span className="text-red-700 font-medium">{failed.length} con error.</span>
+            <span className="text-red-700 font-medium">{tr("{n} con error.", { n: failed.length })}</span>
           )}
         </span>
         <span className="flex gap-3">
           {pending.length > 0 && (
             <button onClick={sync} className="font-medium underline">
-              Sincronizar
+              {tr("Sincronizar")}
             </button>
           )}
           <button onClick={() => setOpen(true)} className="font-medium underline">
-            Ver
+            {tr("Ver")}
           </button>
         </span>
       </div>
-      <Modal open={open} onClose={() => setOpen(false)} title="Ventas sin conexión">
+      <Modal open={open} onClose={() => setOpen(false)} title={tr("Ventas sin conexión")}>
         <div className="space-y-4">
           {pending.map((s) => (
             <div key={s.clientRequestId} className="flex justify-between text-sm">
               <span>{fmt.dateTime(s.createdAt)}</span>
-              <span className="font-medium">{fmt.money(s.total)} · pendiente</span>
+              <span className="font-medium">
+                {fmt.money(s.total)} {tr("· pendiente")}
+              </span>
             </div>
           ))}
           {failed.map((s) => (
@@ -121,12 +125,12 @@ export function OfflineSync() {
                 <AlertTriangle className="w-4 h-4" aria-hidden="true" /> {s.error}
               </p>
               <Button size="sm" variant="secondary" onClick={() => removeFailed(s.clientRequestId)}>
-                <Trash2 className="w-4 h-4" /> Descartar
+                <Trash2 className="w-4 h-4" /> {tr("Descartar")}
               </Button>
             </div>
           ))}
           <p className="text-xs text-slate-500">
-            Las ventas rechazadas no afectaron el inventario. Regístralas de nuevo si corresponde.
+            {tr("Las ventas rechazadas no afectaron el inventario. Regístralas de nuevo si corresponde.")}
           </p>
         </div>
       </Modal>

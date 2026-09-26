@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
 import { Download, Plus, Receipt, Trash2 } from "lucide-react";
 import { api, withQuery } from "@/lib/client/api";
@@ -32,6 +33,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
+  const tr = useText();
   const { business } = useSession();
   const fmt = useFormat();
   const toast = useToast();
@@ -62,7 +64,7 @@ export default function ExpensesPage() {
       // Mediodía local para que la fecha no cambie por zona horaria.
       const date = form.date ? `${form.date}T12:00:00` : null;
       await api("/api/expenses", { body: { ...form, amount: Number(form.amount), date } });
-      toast.success("Gasto registrado");
+      toast.success(tr("Gasto registrado"));
       setOpen(false);
       setForm((f) => ({ ...f, description: "", amount: "" }));
       list.mutate();
@@ -76,10 +78,10 @@ export default function ExpensesPage() {
   async function remove(expense: Expense) {
     if (
       !(await confirm({
-        title: "Eliminar gasto",
+        title: tr("Eliminar gasto"),
         message: `${expense.category} · ${fmt.money(expense.amount)}`,
         danger: true,
-        confirmLabel: "Eliminar",
+        confirmLabel: tr("Eliminar"),
       }))
     )
       return;
@@ -94,33 +96,33 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Gastos"
-        description="Renta, servicios, sueldos... para calcular tu ganancia real"
+        title={tr("Gastos")}
+        description={tr("Renta, servicios, sueldos... para calcular tu ganancia real")}
         actions={
           <>
             <a
               href={withQuery("/api/export/expenses", { from, to })}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              <Download className="w-4 h-4" /> CSV
+              <Download className="w-4 h-4" /> {tr("CSV")}
             </a>
             <Button onClick={() => setOpen(true)}>
-              <Plus className="w-4 h-4" /> Gasto
+              <Plus className="w-4 h-4" /> {tr("Gasto")}
             </Button>
           </>
         }
       />
 
       <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
-        <SearchBar value={search} onChange={setSearch} placeholder="Buscar gasto" />
-        <Input type="date" aria-label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
+        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar gasto")} />
+        <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+        <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
       <Stat
-        label="Total mostrado"
+        label={tr("Total mostrado")}
         value={fmt.money(total)}
-        hint={list.hasMore ? "Carga más para ver el total completo" : undefined}
+        hint={list.hasMore ? tr("Carga más para ver el total completo") : undefined}
       />
 
       {list.error ? (
@@ -130,8 +132,8 @@ export default function ExpensesPage() {
       ) : list.items.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="Sin gastos"
-          description="Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta."
+          title={tr("Sin gastos")}
+          description={tr("Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta.")}
         />
       ) : (
         <div className="space-y-2">
@@ -148,7 +150,7 @@ export default function ExpensesPage() {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-red-600 tabular-nums">{fmt.money(e.amount)}</p>
                   <button
-                    aria-label="Eliminar gasto"
+                    aria-label={tr("Eliminar gasto")}
                     onClick={() => remove(e)}
                     className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
                   >
@@ -162,10 +164,10 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Nuevo gasto">
+      <Modal open={open} onClose={() => setOpen(false)} title={tr("Nuevo gasto")}>
         <form onSubmit={save} className="space-y-3">
           <Select
-            label="Categoría"
+            label={tr("Categoría")}
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
           >
@@ -176,7 +178,7 @@ export default function ExpensesPage() {
             ))}
           </Select>
           <Input
-            label="Monto"
+            label={tr("Monto")}
             inputMode="decimal"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
@@ -185,30 +187,30 @@ export default function ExpensesPage() {
           />
           <div className="grid grid-cols-2 gap-3">
             <Select
-              label="Pagado con"
+              label={tr("Pagado con")}
               value={form.paymentMethod}
               onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
             >
-              <option value="CASH">Efectivo (sale de caja)</option>
-              <option value="CARD">Tarjeta</option>
-              <option value="TRANSFER">Transferencia</option>
-              {business.country === "PA" && <option value="YAPPY">Yappy</option>}
+              <option value="CASH">{tr("Efectivo (sale de caja)")}</option>
+              <option value="CARD">{tr("Tarjeta")}</option>
+              <option value="TRANSFER">{tr("Transferencia")}</option>
+              {business.country === "PA" && <option value="YAPPY">{tr("Yappy")}</option>}
             </Select>
             <Input
-              label="Fecha"
+              label={tr("Fecha")}
               type="date"
               value={form.date}
               onChange={(e) => setForm({ ...form, date: e.target.value })}
             />
           </div>
           <Input
-            label="Descripción"
+            label={tr("Descripción")}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="Opcional"
+            placeholder={tr("Opcional")}
           />
           <Button type="submit" className="w-full" loading={saving}>
-            Guardar
+            {tr("Guardar")}
           </Button>
         </form>
       </Modal>

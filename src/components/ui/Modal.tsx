@@ -1,5 +1,6 @@
 "use client";
 
+import { useText } from "@/lib/client/i18n";
 import { X } from "lucide-react";
 import { useEffect, useId } from "react";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, size = "md" }: ModalProps) {
+  const tr = useText();
   const titleId = useId();
 
   useEffect(() => {
@@ -46,7 +48,11 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
           <h2 id={titleId} className="text-lg font-semibold text-slate-900">
             {title}
           </h2>
-          <button onClick={onClose} aria-label="Cerrar" className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+          <button
+            onClick={onClose}
+            aria-label={tr("Cerrar")}
+            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+          >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
