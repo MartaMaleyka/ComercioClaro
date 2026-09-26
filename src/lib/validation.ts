@@ -37,7 +37,7 @@ export const password = z
   .min(8, "La contraseña debe tener al menos 8 caracteres")
   .max(128, "La contraseña es demasiado larga");
 
-export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY"], { error: "Forma de pago inválida" });
+export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY", "GIFT_CARD"], { error: "Forma de pago inválida" });
 export const immediatePaymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "YAPPY"], { error: "Forma de pago inválida" });
 export const country = z.enum(["MX", "PA", "OTHER"], { error: "País inválido" });
 const feeRate = number.min(0).max(0.2, "La comisión debe estar entre 0% y 20%");
@@ -297,6 +297,7 @@ export const saleSchema = z.object({
   paymentReference: optText(60),
   yappyChargeId: id.nullish(),
   onlineOrderId: id.nullish(),
+  giftCardCode: optText(40),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
   notes: optText(),
@@ -560,4 +561,11 @@ export const serviceSaleSchema = z.object({
   reference: optText(60),
   amount: positiveMoney,
   paymentMethod: immediatePaymentMethod.default("CASH"),
+});
+
+export const giftCardSchema = z.object({
+  amount: positiveMoney,
+  paymentMethod: immediatePaymentMethod.default("CASH"),
+  customerName: optText(100),
+  expiresAt: z.coerce.date().nullish(),
 });

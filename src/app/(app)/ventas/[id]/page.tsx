@@ -75,7 +75,10 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   function openReturn() {
     setReturnQty({});
     setReturnReason("");
-    setRefundMethod(sale!.paymentMethod === "CREDIT" ? "CREDIT" : "CASH");
+    // Fiado y vale se devuelven a la misma cuenta; lo demás, a elección.
+    setRefundMethod(
+      sale!.paymentMethod === "CREDIT" || sale!.paymentMethod === "GIFT_CARD" ? sale!.paymentMethod : "CASH"
+    );
     setReturnOpen(true);
   }
 
@@ -300,7 +303,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             {sale.returns.map((r) => (
               <div key={r.id} className="flex justify-between text-sm">
                 <span className="text-slate-600">
-                  {fmt.dateTime(r.createdAt)} · {PAYMENT_METHOD_LABELS[r.refundMethod]}
+                  {fmt.dateTime(r.createdAt)} · {tr(PAYMENT_METHOD_LABELS[r.refundMethod])}
                   {r.reason && ` · ${r.reason}`}
                 </span>
                 <span className="font-medium text-red-600">-{fmt.money(r.total)}</span>
@@ -339,10 +342,12 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             label={tr("Reembolso")}
             value={refundMethod}
             onChange={(e) => setRefundMethod(e.target.value as PaymentMethod)}
-            disabled={sale.paymentMethod === "CREDIT"}
+            disabled={sale.paymentMethod === "CREDIT" || sale.paymentMethod === "GIFT_CARD"}
           >
             {sale.paymentMethod === "CREDIT" ? (
               <option value="CREDIT">{tr("Descontar del saldo del cliente")}</option>
+            ) : sale.paymentMethod === "GIFT_CARD" ? (
+              <option value="GIFT_CARD">{tr("Regresar al saldo del vale")}</option>
             ) : (
               <>
                 <option value="CASH">{tr("Efectivo (sale de caja)")}</option>

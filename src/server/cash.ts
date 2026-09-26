@@ -88,6 +88,12 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
   const cashExpenses = D(expenses._sum.amount);
   const cashPurchases = D(purchases._sum.total);
   const serviceCash = D(services._sum.amount);
+  // Vales vendidos en efectivo en este turno (pasivo: se canjearán después).
+  const giftCards = await db.giftCardTransaction.aggregate({
+    where: { cashSessionId: sessionId, type: "ISSUE", paymentMethod: "CASH" },
+    _sum: { amount: true },
+  });
+  const giftCardCash = D(giftCards._sum.amount);
 
   const expected = money(
     D(session.openingAmount)
@@ -95,6 +101,7 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
       .plus(customerPayments)
       .plus(cashIn)
       .plus(serviceCash)
+      .plus(giftCardCash)
       .minus(refunds)
       .minus(cashOut)
       .minus(cashExpenses)
@@ -112,6 +119,7 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
     cashExpenses,
     cashPurchases,
     serviceCash,
+    giftCardCash,
     expected,
     movements,
   };

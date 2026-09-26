@@ -63,6 +63,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   TRANSFER: "Transferencia",
   CREDIT: "Fiado",
   YAPPY: "Yappy",
+  GIFT_CARD: "Vale",
 };
 
 export const ADJUSTMENT_REASON_LABELS: Record<string, string> = {

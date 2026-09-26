@@ -1,7 +1,7 @@
 // Tipos de las respuestas de la API (Decimal ya convertido a number y fechas a ISO).
 
 export type Unit = "PIECE" | "KG" | "G" | "L" | "ML" | "M";
-export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT" | "YAPPY";
+export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT" | "YAPPY" | "GIFT_CARD";
 
 export interface Category {
   id: string;

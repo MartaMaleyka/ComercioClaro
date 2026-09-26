@@ -13,6 +13,7 @@ import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./
 import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
 import { closeOrderWithSale } from "./online-orders";
+import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
 
@@ -24,8 +25,12 @@ export function toPromotionRule(p: Promotion): PromotionRule {
   };
 }
 
-export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference" | "yappyChargeId" | "onlineOrderId"> & {
+export type SaleInput = Omit<
+  z.infer<typeof saleSchema>,
+  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "giftCardCode"
+> & {
   paymentReference?: string | null;
+  giftCardCode?: string | null;
   yappyChargeId?: string | null;
   onlineOrderId?: string | null;
 };
@@ -131,7 +136,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       if (input.redeemPoints && input.redeemPoints > 0) {
         if (!business.loyaltyEnabled) throw new AppError(400, "El programa de puntos no está activo");
         if (!customer) throw new AppError(400, "Selecciona el cliente para canjear puntos");
-        if (customer.points < input.redeemPoints) throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
+        if (customer.points < input.redeemPoints)
+          throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
         const value = D(business.loyaltyPointValue);
         const maxPoints = value.gt(0) ? total.div(value).floor().toNumber() : 0;
         pointsRedeemed = Math.min(input.redeemPoints, maxPoints);
@@ -181,6 +187,12 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       });
 
       const saleId = crypto.randomUUID();
+      // Pago con vale: se descuenta el saldo (debe cubrir toda la venta).
+      let giftCard = null;
+      if (input.paymentMethod === "GIFT_CARD") {
+        if (!input.giftCardCode) throw new AppError(400, "Escribe o escanea el código del vale");
+        giftCard = await redeemGiftCard(tx, actor, input.giftCardCode, total, saleId);
+      }
       // Orden estable por producto para evitar bloqueos cruzados entre ventas simultáneas.
       const ordered = [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id));
       const itemCosts = new Map<(typeof lines)[number], Decimal>();
@@ -212,11 +224,14 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           change,
           pointsRedeemed,
           pointsDiscount,
+          giftCardId: giftCard?.id ?? null,
           paymentReference: yappyCharge
             ? (yappyCharge.providerTxId ?? yappyCharge.orderId)
-            : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
-              ? null
-              : (input.paymentReference ?? null),
+            : giftCard
+              ? maskCode(giftCard.code)
+              : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
+                ? null
+                : (input.paymentReference ?? null),
           dueDate,
           notes: input.notes,
           customerId: customer?.id ?? null,
@@ -279,11 +294,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
     });
   } catch (err) {
     // Otra petición con el mismo clientRequestId ganó la carrera: devolver esa venta.
-    if (
-      input.clientRequestId &&
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === "P2002"
-    ) {
+    if (input.clientRequestId && err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       const existing = await prisma.sale.findUnique({
         where: { businessId_clientRequestId: { businessId: actor.businessId, clientRequestId: input.clientRequestId } },
         include: saleInclude,
@@ -400,6 +411,12 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
       });
     }
 
+    // Pagada con vale: lo no devuelto regresa al saldo del vale.
+    if (sale.paymentMethod === "GIFT_CARD" && sale.giftCardId) {
+      const refunded = sum(sale.returns.filter((r) => r.refundMethod === "GIFT_CARD").map((r) => r.total));
+      await refundGiftCard(tx, actor, sale.giftCardId, D(sale.total).minus(refunded), sale.id);
+    }
+
     // Si cobraba un pedido en línea, el pedido vuelve a quedar listo para cobrarse de nuevo.
     await tx.onlineOrder.updateMany({ where: { saleId: sale.id }, data: { status: "READY", saleId: null } });
 
@@ -426,6 +443,9 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
     }
     if (sale.paymentMethod === "CREDIT" && input.refundMethod !== "CREDIT") {
       throw new AppError(400, "Las ventas fiadas se devuelven descontando del saldo del cliente");
+    }
+    if ((input.refundMethod === "GIFT_CARD") !== (sale.paymentMethod === "GIFT_CARD")) {
+      throw new AppError(400, "Las ventas pagadas con vale se devuelven al mismo vale");
     }
 
     const factor = D(sale.subtotal).gt(0) ? D(sale.total).div(sale.subtotal) : D(0);
@@ -498,6 +518,9 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
     if (input.refundMethod === "CREDIT" && sale.customerId) {
       await tx.customer.update({ where: { id: sale.customerId }, data: { balance: { decrement: total } } });
     }
+    if (input.refundMethod === "GIFT_CARD" && sale.giftCardId) {
+      await refundGiftCard(tx, actor, sale.giftCardId, total, sale.id);
+    }
 
     await audit(tx, actor, "sale.return", "Sale", sale.id, { folio: sale.folio, total: total.toNumber() });
     return saleReturn;
@@ -520,7 +543,8 @@ export function receiptText(
     country?: string;
   }
 ) {
-  const fmt = (n: Decimal | number) => formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
+  const fmt = (n: Decimal | number) =>
+    formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
   const date = new Intl.DateTimeFormat(business.locale, {
     dateStyle: "short",
     timeStyle: "short",

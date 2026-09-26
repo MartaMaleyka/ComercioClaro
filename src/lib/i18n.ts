@@ -37,6 +37,7 @@ const es = {
   "offline.banner": "Sin conexión. Las ventas se guardan en este dispositivo y se enviarán al volver la señal.",
   // Formas de pago
   "pay.CASH": "Efectivo",
+  "pay.GIFT_CARD": "Vale",
   "pay.CARD": "Tarjeta",
   "pay.TRANSFER": "Transferencia",
   "pay.YAPPY": "Yappy",
@@ -174,6 +175,7 @@ const zh: Partial<Record<MessageKey, string>> = {
   "role.CASHIER": "收银员",
   "offline.banner": "无网络。销售记录会保存在本设备上，网络恢复后自动上传。",
   "pay.CASH": "现金",
+  "pay.GIFT_CARD": "礼品卡",
   "pay.CARD": "刷卡",
   "pay.TRANSFER": "转账",
   "pay.YAPPY": "Yappy",
@@ -307,6 +309,7 @@ const en: Partial<Record<MessageKey, string>> = {
   "role.CASHIER": "Cashier",
   "offline.banner": "Offline. Sales are saved on this device and will be sent when the connection is back.",
   "pay.CASH": "Cash",
+  "pay.GIFT_CARD": "Gift card",
   "pay.CARD": "Card",
   "pay.TRANSFER": "Transfer",
   "pay.CREDIT": "On credit",

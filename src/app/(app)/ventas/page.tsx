@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Banknote,
   CreditCard,
+  Gift,
   HandCoins,
   Landmark,
   Minus,
@@ -22,10 +23,10 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { api, fetcher, isNetworkError } from "@/lib/client/api";
+import { api, fetcher, isNetworkError, withQuery } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
 import { useT, useText } from "@/lib/client/i18n";
-import { useDebounce } from "@/lib/client/hooks";
+import { useDebounce, useOnline } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
 import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
 import { useDisplayRemote, usePublishDisplay } from "@/lib/client/display";
@@ -73,6 +74,7 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Bankn
   { value: "TRANSFER", label: "Transferencia", icon: Landmark },
   { value: "YAPPY", label: "Yappy", icon: Smartphone },
   { value: "CREDIT", label: "Fiado", icon: HandCoins },
+  { value: "GIFT_CARD", label: "Vale", icon: Gift },
 ];
 
 const num = (v: string | number) => {
@@ -133,7 +135,10 @@ export default function PosPage() {
   const catalog = useCachedList<Product>("/api/products?all=true", `catalog:${business.id}`);
   const customers = useCachedList<Customer>("/api/customers", `customers:${business.id}`);
   const country = countryConfig(business.country);
-  const paymentOptions = PAYMENT_OPTIONS.filter((o) => country.paymentMethods.includes(o.value));
+  // El vale se acepta en todos los países (lo emite el propio negocio).
+  const paymentOptions = PAYMENT_OPTIONS.filter(
+    (o) => o.value === "GIFT_CARD" || (country.paymentMethods as PaymentMethod[]).includes(o.value)
+  );
   const { data: cash } = useSWR<{ current: { session: { id: string } } | null }>("/api/cash", fetcher);
 
   const [search, setSearch] = useState("");
@@ -146,6 +151,10 @@ export default function PosPage() {
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  // Vale: código y saldo consultado
+  const [giftCode, setGiftCode] = useState("");
+  const [giftBalance, setGiftBalance] = useState<{ code: string; balance: number; status: string } | null>(null);
+  const online = useOnline();
   const [redeemPoints, setRedeemPoints] = useState("");
   const { data: promotionList } = useSWR<PromotionRule[]>("/api/promotions", fetcher);
   // Con la API de Yappy la venta se registra sola al confirmarse el pago.
@@ -360,7 +369,9 @@ export default function PosPage() {
     !invalidLine &&
     !(paymentMethod === "CREDIT" && !customerId) &&
     !creditExceeded &&
-    !(paymentMethod === "CASH" && amountReceived !== "" && received < total);
+    !(paymentMethod === "CASH" && amountReceived !== "" && received < total) &&
+    // El vale se valida en el servidor: no se puede cobrar sin conexión.
+    !(paymentMethod === "GIFT_CARD" && (!giftCode.trim() || !online));
 
   function resetSale() {
     setCart([]);
@@ -369,6 +380,8 @@ export default function PosPage() {
     setCustomerId("");
     setNotes("");
     setPaymentReference("");
+    setGiftCode("");
+    setGiftBalance(null);
     setRedeemPoints("");
     setYappyManual(false);
     setOnlineOrder(null);
@@ -394,6 +407,7 @@ export default function PosPage() {
       paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
       yappyChargeId: yappyChargeId ?? null,
       onlineOrderId: onlineOrder?.id ?? null,
+      giftCardCode: paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
       notes: notes || null,
@@ -610,6 +624,56 @@ export default function PosPage() {
             value={paymentReference}
             onChange={(e) => setPaymentReference(e.target.value)}
           />
+        )}
+
+        {paymentMethod === "GIFT_CARD" && (
+          <div className="space-y-2">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  label={tr("Código del vale")}
+                  inputMode="numeric"
+                  value={giftCode}
+                  onChange={(e) => {
+                    setGiftCode(e.target.value);
+                    setGiftBalance(null);
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                disabled={giftCode.trim().length < 4}
+                onClick={async () => {
+                  try {
+                    setGiftBalance(await api(withQuery("/api/gift-cards/lookup", { code: giftCode.trim() })));
+                  } catch (err) {
+                    toast.error(err);
+                  }
+                }}
+              >
+                {tr("Ver saldo")}
+              </Button>
+            </div>
+            {giftBalance && (
+              <p
+                role="status"
+                className={cn(
+                  "text-sm",
+                  giftBalance.balance < total || giftBalance.status !== "ACTIVE"
+                    ? "text-red-600"
+                    : "text-brand-700 dark:text-brand-300"
+                )}
+              >
+                {giftBalance.status !== "ACTIVE"
+                  ? tr("El vale está anulado")
+                  : tr("Saldo del vale: {amount}", { amount: fmt.money(giftBalance.balance) })}
+                {giftBalance.status === "ACTIVE" &&
+                  giftBalance.balance < total &&
+                  ` · ${tr("No alcanza para esta venta")}`}
+              </p>
+            )}
+            {!online && <p className="text-sm text-amber-700">{tr("Para cobrar con vale necesitas conexión.")}</p>}
+          </div>
         )}
 
         {(paymentMethod === "CREDIT" || customerId) && (

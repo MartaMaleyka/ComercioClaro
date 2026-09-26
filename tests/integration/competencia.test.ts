@@ -16,6 +16,7 @@ import { cancelTransfer, createTransfer, receiveTransfer, transferDestinations }
 import { cancelServiceSale, createServiceSale, serviceProviders } from "@/server/services";
 import { cashSessionSummary } from "@/server/cash";
 import { financialSummary } from "@/server/reports";
+import { findGiftCard, issueGiftCard, voidGiftCard } from "@/server/gift-cards";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -408,5 +409,78 @@ describe.skipIf(!hasDatabase)("recargas y pago de servicios", () => {
     await expect(cancelServiceSale(owner, recharge.id)).rejects.toThrow(/ya está anulado/);
     await closeCashSession(owner, { countedAmount: 20, notes: null });
     await expect(cancelServiceSale(owner, bill.id)).resolves.toMatchObject({ status: "CANCELLED" });
+  });
+});
+
+describe.skipIf(!hasDatabase)("vales", () => {
+  beforeEach(resetDatabase);
+
+  it("se venden como pasivo, pagan ventas y recuperan saldo en devoluciones y cancelaciones", async () => {
+    const owner = await panamaOwner();
+    const p = await makeProduct(owner, { price: 10, taxRate: 0, stock: 20 });
+    await expect(
+      issueGiftCard(owner, { amount: 25, paymentMethod: "CASH", customerName: "Ana", expiresAt: null })
+    ).rejects.toThrow(/Abre la caja/);
+    const session = await openCashSession(owner, { openingAmount: 0, notes: null });
+    const card = await issueGiftCard(owner, {
+      amount: 25,
+      paymentMethod: "CASH",
+      customerName: "Ana",
+      expiresAt: null,
+    });
+    expect(card.code).toMatch(/^[1-9]\d{11}$/);
+    let summary = await cashSessionSummary(prisma, session.id);
+    expect(Number(summary.giftCardCash)).toBe(25);
+    expect(Number(summary.expected)).toBe(25);
+
+    const range = { start: new Date(Date.now() - 60_000), end: new Date(Date.now() + 60_000) };
+    expect(Number((await financialSummary(owner.businessId, range)).revenue)).toBe(0);
+
+    await expect(
+      createSale(
+        owner,
+        saleInput([{ productId: p.id, quantity: 3 }], { paymentMethod: "GIFT_CARD", giftCardCode: card.code })
+      )
+    ).rejects.toThrow(/no alcanza/);
+    const sale = await createSale(
+      owner,
+      saleInput([{ productId: p.id, quantity: 2 }], { paymentMethod: "GIFT_CARD", giftCardCode: card.code })
+    );
+    expect(sale.paymentReference).toBe(`••••${card.code.slice(-4)}`);
+    expect(Number((await findGiftCard(owner.businessId, card.code)).balance)).toBe(5);
+    // La venta con vale es ingreso, pero no efectivo.
+    expect(Number((await financialSummary(owner.businessId, range)).revenue)).toBe(20);
+    summary = await cashSessionSummary(prisma, session.id);
+    expect(Number(summary.expected)).toBe(25);
+
+    await expect(
+      returnSale(owner, sale.id, {
+        items: [{ saleItemId: sale.items[0].id, quantity: 1 }],
+        refundMethod: "CASH",
+        reason: null,
+      })
+    ).rejects.toThrow(/mismo vale/);
+    await returnSale(owner, sale.id, {
+      items: [{ saleItemId: sale.items[0].id, quantity: 1 }],
+      refundMethod: "GIFT_CARD",
+      reason: null,
+    });
+    expect(Number((await findGiftCard(owner.businessId, card.code)).balance)).toBe(15);
+    await cancelSale(owner, sale.id, "Error");
+    expect(Number((await findGiftCard(owner.businessId, card.code)).balance)).toBe(25);
+
+    await voidGiftCard(owner, card.id);
+    await expect(
+      createSale(
+        owner,
+        saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "GIFT_CARD", giftCardCode: card.code })
+      )
+    ).rejects.toThrow(/anulado/);
+    await expect(
+      createSale(
+        owner,
+        saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "GIFT_CARD", giftCardCode: "999" })
+      )
+    ).rejects.toThrow(/No existe/);
   });
 });
