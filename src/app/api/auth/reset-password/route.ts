@@ -1,72 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/auth";
-import crypto from "crypto";
+import { handler, parseBody, clientIp } from "@/lib/api";
+import { rateLimit } from "@/lib/rate-limit";
+import { resetConfirmSchema, resetRequestSchema } from "@/lib/validation";
+import { confirmPasswordReset, requestPasswordReset } from "@/server/account";
 
-export async function POST(request: NextRequest) {
-  try {
-    const { email, token, password } = await request.json();
+const GENERIC_MESSAGE = "Si el correo existe, recibirás instrucciones para recuperar tu contraseña";
 
-    if (token && password) {
-      const user = await prisma.user.findFirst({
-        where: {
-          resetToken: token,
-          resetExpires: { gt: new Date() },
-        },
-      });
+/** Solicitar enlace de recuperación. La respuesta es la misma exista o no el correo. */
+export const POST = handler(async (request) => {
+  const { email } = await parseBody(request, resetRequestSchema);
+  await rateLimit(`reset:ip:${clientIp(request)}`, 10, 60 * 60);
+  await rateLimit(`reset:email:${email}`, 3, 60 * 60);
+  await requestPasswordReset(email);
+  return { success: true, message: GENERIC_MESSAGE };
+});
 
-      if (!user) {
-        return NextResponse.json(
-          { error: "El enlace de recuperación no es válido o ha expirado" },
-          { status: 400 }
-        );
-      }
-
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          passwordHash: await hashPassword(password),
-          resetToken: null,
-          resetExpires: null,
-        },
-      });
-
-      return NextResponse.json({ success: true, message: "Contraseña actualizada" });
-    }
-
-    if (!email) {
-      return NextResponse.json(
-        { error: "El correo es obligatorio" },
-        { status: 400 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return NextResponse.json({
-        success: true,
-        message: "Si el correo existe, recibirás instrucciones para recuperar tu contraseña",
-      });
-    }
-
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetExpires: new Date(Date.now() + 3600000),
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: "Si el correo existe, recibirás instrucciones para recuperar tu contraseña",
-      resetToken: process.env.NODE_ENV === "development" ? resetToken : undefined,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Error al procesar la solicitud" },
-      { status: 500 }
-    );
-  }
-}
+/** Confirmar nueva contraseña con el token recibido por correo. */
+export const PUT = handler(async (request) => {
+  await rateLimit(`reset-confirm:ip:${clientIp(request)}`, 10, 15 * 60);
+  const { token, password } = await parseBody(request, resetConfirmSchema);
+  await confirmPasswordReset(token, password);
+  return { success: true, message: "Contraseña actualizada. Ya puedes iniciar sesión." };
+});

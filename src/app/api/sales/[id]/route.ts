@@ -1,48 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getBusinessId } from "@/lib/auth";
+import { handler } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
+import { getSale, receiptText } from "@/server/sales";
+import { publicSale } from "@/server/views";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
+export const GET = handler<{ id: string }>(async (_request, { params }) => {
+  const auth = await requireAuth();
   const { id } = await params;
-  const sale = await prisma.sale.findFirst({
-    where: { id, businessId },
-    include: { items: { include: { product: true } } },
-  });
-
-  if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
-  return NextResponse.json(sale);
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const { id } = await params;
-  const sale = await prisma.sale.findFirst({
-    where: { id, businessId },
-    include: { items: true },
-  });
-
-  if (!sale) return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
-
-  await prisma.$transaction(async (tx) => {
-    for (const item of sale.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { increment: item.quantity } },
-      });
-    }
-    await tx.sale.delete({ where: { id } });
-  });
-
-  return NextResponse.json({ success: true });
-}
+  const sale = await getSale(auth.businessId, id);
+  return { ...publicSale(sale, auth.role), receiptText: receiptText(sale, auth.business) };
+});

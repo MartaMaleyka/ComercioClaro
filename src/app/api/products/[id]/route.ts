@@ -1,62 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+import { handler, parseBody } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
+import { notFound } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
-import { getBusinessId } from "@/lib/auth";
+import { productUpdateSchema } from "@/lib/validation";
+import { updateProduct } from "@/server/catalog";
+import { publicProduct } from "@/server/views";
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
+export const GET = handler<{ id: string }>(async (_request, { params }) => {
+  const auth = await requireAuth();
   const { id } = await params;
   const product = await prisma.product.findFirst({
-    where: { id, businessId },
-  });
-
-  if (!product) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-  return NextResponse.json(product);
-}
-
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const { id } = await params;
-  const data = await request.json();
-
-  const existing = await prisma.product.findFirst({ where: { id, businessId } });
-  if (!existing) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-
-  const product = await prisma.product.update({
-    where: { id },
-    data: {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.price !== undefined && { price: parseFloat(data.price) }),
-      ...(data.cost !== undefined && { cost: parseFloat(data.cost) }),
-      ...(data.stock !== undefined && { stock: parseInt(data.stock) }),
-      ...(data.minStock !== undefined && { minStock: parseInt(data.minStock) }),
+    where: { id, businessId: auth.businessId },
+    include: {
+      category: { select: { id: true, name: true } },
+      batches: { where: { remaining: { gt: 0 } }, orderBy: { expiresAt: { sort: "asc", nulls: "last" } } },
     },
   });
+  if (!product) throw notFound("Producto");
+  return { ...publicProduct(product, auth.role), batches: product.batches };
+});
 
-  return NextResponse.json(product);
-}
-
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
+export const PUT = handler<{ id: string }>(async (request, { params }) => {
+  const auth = await requireAuth("OWNER");
   const { id } = await params;
-  const existing = await prisma.product.findFirst({ where: { id, businessId } });
-  if (!existing) return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+  const input = await parseBody(request, productUpdateSchema);
+  return updateProduct(auth, id, input);
+});
 
-  await prisma.product.delete({ where: { id } });
-  return NextResponse.json({ success: true });
-}
+/** Archiva el producto: se oculta del catálogo pero conserva su historial. */
+export const DELETE = handler<{ id: string }>(async (_request, { params }) => {
+  const auth = await requireAuth("OWNER");
+  const { id } = await params;
+  await updateProduct(auth, id, { archived: true });
+  return { success: true };
+});

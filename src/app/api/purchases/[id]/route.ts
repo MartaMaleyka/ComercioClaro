@@ -1,31 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { handler } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
+import { notFound } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
-import { getBusinessId } from "@/lib/auth";
+import { purchaseInclude } from "@/server/purchases";
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const businessId = await getBusinessId();
-  if (!businessId) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
+export const GET = handler<{ id: string }>(async (_request, { params }) => {
+  const auth = await requireAuth("OWNER");
   const { id } = await params;
-  const purchase = await prisma.purchase.findFirst({
-    where: { id, businessId },
-    include: { items: true },
-  });
-
-  if (!purchase) return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
-
-  await prisma.$transaction(async (tx) => {
-    for (const item of purchase.items) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
-      });
-    }
-    await tx.purchase.delete({ where: { id } });
-  });
-
-  return NextResponse.json({ success: true });
-}
+  const purchase = await prisma.purchase.findFirst({ where: { id, businessId: auth.businessId }, include: purchaseInclude });
+  if (!purchase) throw notFound("Compra");
+  return purchase;
+});

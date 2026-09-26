@@ -1,20 +1,12 @@
-import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "./prisma";
+import { COOKIE_NAME, EXPIRY_SECONDS, createToken, verifyToken, type SessionPayload } from "./session-token";
+import { AppError, forbidden, unauthorized } from "./errors";
+import type { Role } from "@/generated/prisma/enums";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "comercio-claro-dev-secret"
-);
-
-const COOKIE_NAME = "comercio-claro-session";
-const EXPIRY = "7d";
-
-export interface SessionPayload {
-  userId: string;
-  email: string;
-  name: string;
-}
+export { COOKIE_NAME, verifyToken, type SessionPayload };
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
@@ -24,30 +16,18 @@ export async function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export async function createToken(payload: SessionPayload) {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(EXPIRY)
-    .sign(JWT_SECRET);
+export function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export async function verifyToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as unknown as SessionPayload;
-  } catch {
-    return null;
-  }
-}
-
-export async function setSessionCookie(token: string) {
+export async function startSession(payload: SessionPayload) {
+  const token = await createToken(payload);
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: EXPIRY_SECONDS,
     path: "/",
   });
 }
@@ -57,24 +37,63 @@ export async function clearSessionCookie() {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+async function readSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
   return verifyToken(token);
 }
 
-export async function getCurrentUser() {
-  const session = await getSession();
-  if (!session) return null;
-
-  return prisma.user.findUnique({
-    where: { id: session.userId },
-    include: { business: true },
-  });
+export interface AuthContext {
+  userId: string;
+  businessId: string;
+  role: Role;
+  user: { id: string; email: string; name: string; mustChangePassword: boolean };
+  business: Awaited<ReturnType<typeof prisma.business.findUniqueOrThrow>>;
 }
 
-export async function getBusinessId(): Promise<string | null> {
-  const user = await getCurrentUser();
-  return user?.business?.id ?? null;
+/** Valida la sesión contra la base de datos (versión de token y membresía vigente). */
+export async function getAuth(): Promise<AuthContext | null> {
+  const session = await readSession();
+  if (!session) return null;
+
+  const membership = await prisma.membership.findUnique({
+    where: { userId_businessId: { userId: session.sub, businessId: session.bid } },
+    include: { user: true, business: true },
+  });
+  if (!membership || membership.user.tokenVersion !== session.tv) return null;
+
+  const { user, business } = membership;
+  return {
+    userId: user.id,
+    businessId: business.id,
+    role: membership.role,
+    user: { id: user.id, email: user.email, name: user.name, mustChangePassword: user.mustChangePassword },
+    business,
+  };
+}
+
+/** Exige sesión válida y, opcionalmente, uno de los roles indicados. */
+export async function requireAuth(...roles: Role[]): Promise<AuthContext> {
+  const auth = await getAuth();
+  if (!auth) throw unauthorized();
+  if (roles.length > 0 && !roles.includes(auth.role)) throw forbidden();
+  return auth;
+}
+
+export function requireOwner(auth: AuthContext) {
+  if (auth.role !== "OWNER") throw forbidden();
+}
+
+export function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export function assertPasswordStrength(password: string) {
+  if (password.length < 8) {
+    throw new AppError(400, "La contraseña debe tener al menos 8 caracteres");
+  }
+  if (password.length > 128) {
+    throw new AppError(400, "La contraseña es demasiado larga");
+  }
 }

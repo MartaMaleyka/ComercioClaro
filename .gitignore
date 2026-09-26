@@ -42,3 +42,10 @@ next-env.d.ts
 # prisma
 prisma/dev.db
 prisma/dev.db-journal
+
+# prisma client generado
+/src/generated/
+
+# playwright
+/test-results/
+/playwright-report/
