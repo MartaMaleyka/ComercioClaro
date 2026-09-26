@@ -31,6 +31,7 @@ export const zh: Record<string, string> = {
   Abono: "还款",
   "Abono registrado": "还款已登记",
   "Abrir caja": "开钱箱",
+  "Abrir en este equipo": "在本设备打开",
   "Abrió caja": "开了钱箱",
   Activa: "启用",
   "Activa “Controlar lotes y caducidad” en los productos y captura la fecha al registrar compras.":
@@ -51,6 +52,7 @@ export const zh: Record<string, string> = {
   "Agregó usuario": "添加了用户",
   "Agrupa las ventas sin factura del periodo con el RFC XAXX010101000. Debe emitirse dentro de las 24 horas siguientes al cierre del periodo.":
     "将本期未开票的销售合并，使用 RFC XAXX010101000。须在期末后 24 小时内开具。",
+  Ahorro: "节省",
   "Ajustar existencia": "调整库存",
   Ajuste: "调整",
   "Ajustó inventario": "调整了库存",
@@ -61,6 +63,7 @@ export const zh: Record<string, string> = {
   "Apunta la cámara al código de barras. También puedes usar un lector USB o Bluetooth: escanea directamente en el buscador.":
     "将摄像头对准条码。也可以使用 USB 或蓝牙扫码枪，直接在搜索框中扫描。",
   "Aquí aparecerán las facturas timbradas.": "已开具的发票会显示在这里。",
+  "Aquí verás tu compra mientras te atendemos.": "结账时，您可以在这里看到所购商品。",
   Archivar: "归档",
   "Archivo CSV": "CSV 文件",
   "Archivó producto": "归档了商品",
@@ -224,6 +227,7 @@ export const zh: Record<string, string> = {
   Diferencia: "差额",
   Dirección: "地址",
   "Dirección del catálogo": "目录网址",
+  Directorio: "目录",
   "Documentos emitidos este mes": "本月开具的单据",
   Dueño: "店主",
   "Dueño (acceso total)": "店主（全部权限）",
@@ -265,7 +269,10 @@ export const zh: Record<string, string> = {
   "Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)":
     "我每笔销售都开发票（这样月度计数包括所有销售和退货）",
   "En contingencia": "应急中",
+  "En la tableta, inicia sesión con cualquier usuario de este negocio y abre {url}.":
+    "在平板上用本店任一用户登录并打开 {url}。",
   Enviar: "发送",
+  "Enviar también a otra pantalla o tableta": "同时发送到另一块屏幕或平板",
   "Enviarme por correo las alertas diarias de bajo inventario y caducidad": "每天通过邮件发送库存不足和临期提醒",
   Equipo: "团队",
   Error: "错误",
@@ -392,6 +399,8 @@ export const zh: Record<string, string> = {
   Movimiento: "变动",
   "Movimiento de caja": "钱箱变动",
   Movimientos: "变动记录",
+  "Muestra al cliente lo que se cobra, el total y el QR de Yappy. Úsala en un segundo monitor o en una tableta.":
+    "向顾客显示所购商品、合计和 Yappy 二维码。可用于第二台显示器或平板。",
   "Más vendidos": "畅销商品",
   "Mínimo 8 caracteres": "至少 8 个字符",
   "Nada por caducar": "没有临期商品",
@@ -429,7 +438,10 @@ export const zh: Record<string, string> = {
   PAC: "PAC",
   PDF: "PDF",
   Paga: "付",
+  "Paga con Yappy": "用 Yappy 付款",
   "Pagado con": "付款来源",
+  "Pantalla completa": "全屏",
+  "Pantalla del cliente": "顾客显示屏",
   'Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.':
     "要修改库存，请使用“调整库存”，系统会记录原因。",
   'Para dar de baja producto caducado usa "Ajustar existencia" con motivo Caducidad.':
@@ -567,6 +579,7 @@ export const zh: Record<string, string> = {
   "Solo minúsculas, números y guiones": "仅限小写字母、数字和连字符",
   "Solo vencidos": "仅逾期",
   "Stock mínimo (alerta)": "最低库存（提醒）",
+  "Su cambio": "找零",
   "Subir imagen del QR de Yappy": "上传 Yappy 二维码图片",
   Sucursal: "分店",
   "Sucursal creada. Cámbiate a ella desde el selector bajo el logo.": "分店已创建。可在标志下方的选择器中切换。",
@@ -585,6 +598,7 @@ export const zh: Record<string, string> = {
   "Texto en pantalla": "页面上的文字",
   Ticket: "小票",
   "Ticket promedio": "平均客单价",
+  "Tienes {n} puntos": "您有 {n} 积分",
   Timbrada: "已开具",
   "Timbrar factura": "开具发票",
   "Timbrar global": "开具汇总发票",
@@ -598,12 +612,14 @@ export const zh: Record<string, string> = {
   "Todas las sucursales": "所有分店",
   "Todo en orden": "一切正常",
   Total: "合计",
+  "Total a pagar": "应付合计",
   "Total mostrado": "显示合计",
   "Total por cobrar": "应收合计",
   "Total vendido": "销售总额",
   "Total:": "合计：",
   Transferencia: "转账",
   "Transferencia (%)": "转账（%）",
+  "Tu compra": "您的购物",
   "Tus clientes registrados ganan puntos al comprar y los canjean como descuento.":
     "已登记的客户购物可获得积分，并可兑换为折扣。",
   "Un producto": "单个商品",
@@ -675,6 +691,8 @@ export const zh: Record<string, string> = {
   "{n} ventas": "{n} 笔销售",
   "{n} ventas · ticket {amount}": "{n} 笔销售 · 客单价 {amount}",
   "{tax} a declarar": "应申报 {tax}",
+  "¡Bienvenido!": "欢迎光临！",
+  "¡Gracias por su compra!": "感谢惠顾！",
   "· cad.": "· 到期",
   "· pendiente": "· 待处理",
   "¿Cómo facturas?": "你如何开票？",

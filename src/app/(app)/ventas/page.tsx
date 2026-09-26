@@ -14,6 +14,7 @@ import {
   Printer,
   ScanBarcode,
   Share2,
+  MonitorSmartphone,
   ShoppingCart,
   Smartphone,
   Trash2,
@@ -25,6 +26,7 @@ import { useT, useText } from "@/lib/client/i18n";
 import { useDebounce } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
 import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
+import { useDisplayRemote, usePublishDisplay } from "@/lib/client/display";
 import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types";
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
 import { countryConfig } from "@/lib/country";
@@ -33,7 +35,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input, Select } from "@/components/ui/Input";
+import { Checkbox, Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
@@ -250,6 +252,42 @@ export default function PosPage() {
   const change = paymentMethod === "CASH" && amountReceived ? round2(received - total) : 0;
   const customer = customers.list?.find((c) => c.id === customerId);
   const itemsCount = cart.reduce((acc, l) => acc + (isFractionalUnit(l.unit) ? 1 : num(l.quantity)), 0);
+
+  // Pantalla para el cliente: lo que se cobra, el ahorro y el QR de Yappy.
+  const grossTotal = round2(cart.reduce((acc, l) => acc + num(l.quantity) * unitPrice(l, isOwner), 0));
+  usePublishDisplay(
+    completed
+      ? {
+          status: "done",
+          lines: [],
+          subtotal: completed.total,
+          discount: 0,
+          total: completed.total,
+          paymentMethod: "CASH",
+          customerName: null,
+          points: null,
+          change: completed.change,
+        }
+      : {
+          status: cart.length > 0 ? "cart" : "idle",
+          lines: cart.map((l) => ({
+            name: l.name,
+            quantity: num(l.quantity),
+            unit: l.unit,
+            total: lineTotal(l, isOwner, promotions),
+            promotion: linePromotion(l, isOwner, promotions)?.promotion.name ?? null,
+          })),
+          subtotal,
+          discount: Math.max(0, round2(grossTotal - total)),
+          total,
+          paymentMethod,
+          customerName: customer?.name ?? null,
+          points: business.loyaltyEnabled && customer ? (customer.points ?? 0) : null,
+          change: 0,
+        }
+  );
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [displayRemote, setDisplayRemote] = useDisplayRemote();
 
   const invalidLine = cart.find((l) => {
     const q = num(l.quantity);
@@ -672,6 +710,9 @@ export default function PosPage() {
             <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label={t("pos.scan")}>
               <ScanBarcode className="w-5 h-5" />
             </Button>
+            <Button variant="secondary" onClick={() => setDisplayOpen(true)} aria-label={tr("Pantalla del cliente")}>
+              <MonitorSmartphone className="w-5 h-5" />
+            </Button>
           </div>
 
           {categories.length > 0 && (
@@ -777,6 +818,35 @@ export default function PosPage() {
 
       <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title={t("pos.currentSale")}>
         {cartPanel}
+      </Modal>
+
+      <Modal open={displayOpen} onClose={() => setDisplayOpen(false)} title={tr("Pantalla del cliente")}>
+        <div className="space-y-4 text-sm text-slate-600">
+          <p>
+            {tr(
+              "Muestra al cliente lo que se cobra, el total y el QR de Yappy. Úsala en un segundo monitor o en una tableta."
+            )}
+          </p>
+          <Button
+            className="w-full"
+            onClick={() => {
+              window.open("/pantalla-cliente", "comercioclaro-pantalla", "popup,width=1024,height=768");
+              setDisplayOpen(false);
+            }}
+          >
+            <MonitorSmartphone className="w-4 h-4" /> {tr("Abrir en este equipo")}
+          </Button>
+          <Checkbox
+            label={tr("Enviar también a otra pantalla o tableta")}
+            checked={displayRemote}
+            onChange={(e) => setDisplayRemote(e.target.checked)}
+          />
+          <p className="text-xs text-slate-500">
+            {tr("En la tableta, inicia sesión con cualquier usuario de este negocio y abre {url}.", {
+              url: "/pantalla-cliente",
+            })}
+          </p>
+        </div>
       </Modal>
 
       <BarcodeScanner

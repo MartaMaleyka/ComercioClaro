@@ -32,6 +32,7 @@ export const en: Record<string, string> = {
   Abono: "Payment",
   "Abono registrado": "Payment recorded",
   "Abrir caja": "Open register",
+  "Abrir en este equipo": "Open on this device",
   "Abrió caja": "Opened register",
   Activa: "Active",
   "Activa “Controlar lotes y caducidad” en los productos y captura la fecha al registrar compras.":
@@ -53,6 +54,7 @@ export const en: Record<string, string> = {
   "Agregó usuario": "Added user",
   "Agrupa las ventas sin factura del periodo con el RFC XAXX010101000. Debe emitirse dentro de las 24 horas siguientes al cierre del periodo.":
     "Groups the period's uninvoiced sales under RFC XAXX010101000. Must be issued within 24 hours after the period closes.",
+  Ahorro: "Savings",
   "Ajustar existencia": "Adjust stock",
   Ajuste: "Adjustment",
   "Ajustó inventario": "Adjusted inventory",
@@ -63,6 +65,7 @@ export const en: Record<string, string> = {
   "Apunta la cámara al código de barras. También puedes usar un lector USB o Bluetooth: escanea directamente en el buscador.":
     "Point the camera at the barcode. You can also use a USB or Bluetooth scanner: scan directly into the search box.",
   "Aquí aparecerán las facturas timbradas.": "Stamped invoices will appear here.",
+  "Aquí verás tu compra mientras te atendemos.": "You will see your purchase here while we serve you.",
   Archivar: "Archive",
   "Archivo CSV": "CSV file",
   "Archivó producto": "Archived product",
@@ -227,6 +230,7 @@ export const en: Record<string, string> = {
   Diferencia: "Difference",
   Dirección: "Address",
   "Dirección del catálogo": "Catalog address",
+  Directorio: "Directory",
   "Documentos emitidos este mes": "Documents issued this month",
   Dueño: "Owner",
   "Dueño (acceso total)": "Owner (full access)",
@@ -269,7 +273,10 @@ export const en: Record<string, string> = {
   "Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)":
     "I issue an invoice for every sale (so the monthly count includes all sales and returns)",
   "En contingencia": "In contingency",
+  "En la tableta, inicia sesión con cualquier usuario de este negocio y abre {url}.":
+    "On the tablet, sign in with any user of this business and open {url}.",
   Enviar: "Send",
+  "Enviar también a otra pantalla o tableta": "Also send to another screen or tablet",
   "Enviarme por correo las alertas diarias de bajo inventario y caducidad":
     "Email me daily low-stock and expiry alerts",
   Equipo: "Team",
@@ -401,6 +408,8 @@ export const en: Record<string, string> = {
   Movimiento: "Movement",
   "Movimiento de caja": "Cash movement",
   Movimientos: "Movements",
+  "Muestra al cliente lo que se cobra, el total y el QR de Yappy. Úsala en un segundo monitor o en una tableta.":
+    "Shows the customer what is being charged, the total and the Yappy QR. Use it on a second monitor or a tablet.",
   "Más vendidos": "Best sellers",
   "Mínimo 8 caracteres": "At least 8 characters",
   "Nada por caducar": "Nothing about to expire",
@@ -439,7 +448,10 @@ export const en: Record<string, string> = {
   PAC: "PAC",
   PDF: "PDF",
   Paga: "Pay",
+  "Paga con Yappy": "Pay with Yappy",
   "Pagado con": "Paid with",
+  "Pantalla completa": "Full screen",
+  "Pantalla del cliente": "Customer display",
   'Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.':
     'To change the stock use "Adjust stock" and the reason is recorded.',
   'Para dar de baja producto caducado usa "Ajustar existencia" con motivo Caducidad.':
@@ -583,6 +595,7 @@ export const en: Record<string, string> = {
   "Solo minúsculas, números y guiones": "Lowercase letters, numbers and hyphens only",
   "Solo vencidos": "Overdue only",
   "Stock mínimo (alerta)": "Minimum stock (alert)",
+  "Su cambio": "Your change",
   "Subir imagen del QR de Yappy": "Upload Yappy QR image",
   Sucursal: "Branch",
   "Sucursal creada. Cámbiate a ella desde el selector bajo el logo.":
@@ -602,6 +615,7 @@ export const en: Record<string, string> = {
   "Texto en pantalla": "Text on screen",
   Ticket: "Receipt",
   "Ticket promedio": "Average ticket",
+  "Tienes {n} puntos": "You have {n} points",
   Timbrada: "Stamped",
   "Timbrar factura": "Stamp invoice",
   "Timbrar global": "Stamp global invoice",
@@ -615,12 +629,14 @@ export const en: Record<string, string> = {
   "Todas las sucursales": "All branches",
   "Todo en orden": "All good",
   Total: "Total",
+  "Total a pagar": "Total to pay",
   "Total mostrado": "Total shown",
   "Total por cobrar": "Total receivable",
   "Total vendido": "Total sold",
   "Total:": "Total:",
   Transferencia: "Transfer",
   "Transferencia (%)": "Transfer (%)",
+  "Tu compra": "Your purchase",
   "Tus clientes registrados ganan puntos al comprar y los canjean como descuento.":
     "Registered customers earn points when they buy and redeem them as a discount.",
   "Un producto": "One product",
@@ -692,6 +708,8 @@ export const en: Record<string, string> = {
   "{n} ventas": "{n} sales",
   "{n} ventas · ticket {amount}": "{n} sales · ticket {amount}",
   "{tax} a declarar": "{tax} to report",
+  "¡Bienvenido!": "Welcome!",
+  "¡Gracias por su compra!": "Thank you for your purchase!",
   "· cad.": "· exp.",
   "· pendiente": "· pending",
   "¿Cómo facturas?": "How do you invoice?",

@@ -179,6 +179,7 @@ model Business {
   yappyCharges     YappyCharge[]
   promotions       Promotion[]
   inventoryCounts  InventoryCount[]
+  customerDisplays CustomerDisplay[]
 }
 
 model Category {
@@ -720,6 +721,21 @@ model TranslationFeedback {
   createdAt  DateTime @default(now())
 
   @@index([language, createdAt])
+}
+
+/**
+ * Lo que muestra la pantalla para el cliente de cada cajero (se sincroniza desde el punto de venta).
+ */
+model CustomerDisplay {
+  id         String   @id @default(cuid())
+  state      Json
+  userId     String
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, userId])
+  @@index([businessId, updatedAt])
 }
 
 model RateLimit {
