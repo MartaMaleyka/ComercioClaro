@@ -26,6 +26,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 import { TaxesView } from "@/components/reports/TaxesView";
 import { TeamView } from "@/components/reports/TeamView";
+import { SeniorsView } from "@/components/reports/SeniorsView";
 import { ReconciliationView } from "@/components/reports/ReconciliationView";
 
 interface Report {
@@ -103,7 +104,7 @@ export default function ReportsPage() {
   const [to, setTo] = useState(todayKey(business.timezone));
   const [scope, setScope] = useState<"business" | "all">("business");
   const [showTable, setShowTable] = useState(false);
-  const [view, setView] = useState<"summary" | "taxes" | "team" | "reconcile">("summary");
+  const [view, setView] = useState<"summary" | "taxes" | "seniors" | "team" | "reconcile">("summary");
 
   const query = period === "custom" ? { from, to } : { period };
   const { data, error, mutate } = useSWR<Report>(
@@ -150,6 +151,7 @@ export default function ReportsPage() {
         tabs={[
           { value: "summary", label: tr("Resumen") },
           { value: "taxes", label: tr("Impuestos") },
+          ...(business.seniorDiscountRate > 0 ? [{ value: "seniors" as const, label: tr("Jubilados") }] : []),
           { value: "team", label: tr("Equipo") },
           { value: "reconcile", label: tr("Conciliación") },
         ]}
@@ -161,6 +163,8 @@ export default function ReportsPage() {
         <ReconciliationView />
       ) : view === "taxes" ? (
         <TaxesView />
+      ) : view === "seniors" ? (
+        <SeniorsView />
       ) : (
         <>
           <div className="flex flex-wrap gap-2 items-end">

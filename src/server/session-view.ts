@@ -32,6 +32,9 @@ export async function sessionData(auth: AuthContext): Promise<SessionData> {
       yappyMode: business.yappyMode,
       loyaltyEnabled: business.loyaltyEnabled,
       loyaltyPointValue: business.loyaltyPointValue.toNumber(),
+      seniorDiscountRate: business.seniorDiscountRate.toNumber(),
+      offlineDays: business.offlineDays,
+      region: business.region,
     },
     businesses: memberships.map((m) => ({ id: m.business.id, name: m.business.name, role: m.role })),
   };

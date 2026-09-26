@@ -185,7 +185,8 @@ function ProductsTab() {
       ) : (
         <div className="space-y-2">
           {list.items.map((p) => {
-            const low = p.stock <= p.minStock;
+            const service = p.trackStock === false;
+            const low = !service && p.stock <= p.minStock;
             return (
               <Card key={p.id}>
                 <CardContent className="flex items-center justify-between gap-3">
@@ -204,15 +205,20 @@ function ProductsTab() {
                       )}
                       {p.wholesalePrice != null && <Badge tone="blue">{tr("Mayoreo")}</Badge>}
                       {p.trackExpiry && <Badge tone="purple">{tr("Caducidad")}</Badge>}
+                      {service && <Badge tone="blue">{tr("Servicio")}</Badge>}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`font-semibold tabular-nums ${low ? "text-amber-600" : "text-slate-900"}`}>
-                      {fmt.qty(p.stock, p.unit)}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {tr("mín.")} {fmt.number(p.minStock)}
-                    </p>
+                    {!service && (
+                      <>
+                        <p className={`font-semibold tabular-nums ${low ? "text-amber-600" : "text-slate-900"}`}>
+                          {fmt.qty(p.stock, p.unit)}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {tr("mín.")} {fmt.number(p.minStock)}
+                        </p>
+                      </>
+                    )}
                     {isOwner && (
                       <div className="flex gap-0.5 justify-end mt-1">
                         {archived ? (

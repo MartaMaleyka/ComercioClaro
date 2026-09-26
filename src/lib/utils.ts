@@ -55,6 +55,9 @@ export const UNIT_LABELS: Record<string, string> = {
   L: "l",
   ML: "ml",
   M: "m",
+  LB: "lb",
+  OZ: "oz",
+  GAL: "gal",
 };
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {

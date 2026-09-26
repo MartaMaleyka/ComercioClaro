@@ -1,31 +1,24 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { BUSINESS, OWNER, login } from "./helpers";
 
 // Requiere los datos de demostración (npm run db:seed). Solo en escritorio: son flujos largos.
-
-async function login(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña").fill("demo1234");
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
-  await page.waitForURL(/\/(dashboard|ventas)/);
-}
 
 test.beforeEach(({ isMobile }) => {
   test.skip(isMobile, "Se cubre en escritorio");
 });
 
 test("reporte de ITBMS y desempeño del equipo", async ({ page }) => {
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   await page.goto("/reportes");
   await page.getByRole("tab", { name: "Impuestos" }).click();
   await expect(page.getByText("ITBMS a declarar")).toBeVisible();
   await expect(page.getByRole("rowheader", { name: "7%" })).toBeVisible();
   await page.getByRole("tab", { name: "Equipo" }).click();
-  await expect(page.getByRole("rowheader", { name: /Wei Chen/ })).toBeVisible();
+  await expect(page.getByRole("rowheader", { name: /María García/ })).toBeVisible();
 });
 
 test("la pantalla del cliente muestra el carrito del punto de venta", async ({ page, context }) => {
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   const display = await context.newPage();
   await display.goto("/pantalla-cliente");
   await expect(display.getByText("¡Bienvenido!")).toBeVisible();
@@ -45,7 +38,7 @@ test("pedido del catálogo en línea se cobra desde la bandeja", async ({ page, 
   await (await popup).close();
   await expect(catalog.getByText(/Recibimos tu pedido #\d+/)).toBeVisible();
 
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   await page.goto("/pedidos");
   const card = page.getByRole("listitem").filter({ hasText: "Cliente E2E" }).first();
   await card.getByRole("link", { name: "Cobrar en el punto de venta" }).click();
@@ -58,7 +51,7 @@ test("pedido del catálogo en línea se cobra desde la bandeja", async ({ page, 
 });
 
 test("vale: se vende y se cobra con él en el punto de venta", async ({ page }) => {
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   const res = await page.request.post("/api/gift-cards", {
     data: { amount: 20, paymentMethod: "CASH", customerName: "Regalo E2E" },
   });
@@ -81,7 +74,7 @@ test("vale: se vende y se cobra con él en el punto de venta", async ({ page }) 
 
 test("fonda: variante, extras, cuenta abierta y pantalla de cocina", async ({ page, context }) => {
   const table = `Mesa ${Date.now().toString().slice(-6)}`;
-  await login(page, "demo.fonda@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.fonda);
   await page.goto("/ventas");
   await page.getByRole("button", { name: /^Chicha de maracuyá/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: /Grande/ }).click();

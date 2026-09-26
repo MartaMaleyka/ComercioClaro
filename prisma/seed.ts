@@ -6,6 +6,8 @@ import { createPurchase } from "../src/server/purchases";
 import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
 import { openCashSession } from "../src/server/cash";
+import { syncDeliveryZones } from "../src/server/delivery";
+import type { Prisma } from "../src/generated/prisma/client";
 
 const DEMO_EMAIL = "demo@comercioclaro.com";
 const DEMO_PASSWORD = "demo1234";
@@ -17,6 +19,56 @@ function rng(seed: number) {
     seed = (seed * 1664525 + 1013904223) % 4294967296;
     return seed / 4294967296;
   };
+}
+
+/**
+ * Cuentas de demostración de Panamá de versiones anteriores. Sus negocios se integran a las
+ * cuentas Dueño y Cajero; los usuarios y sus datos se conservan.
+ */
+const LEGACY_DEMO_ACCOUNTS = [
+  "demo.pa@comercioclaro.com",
+  "cajero.pa@comercioclaro.com",
+  "demo.fonda@comercioclaro.com",
+  "demo.interior@comercioclaro.com",
+];
+
+/** Dueño y cajero de demostración: tienen acceso a todos los negocios de ejemplo. */
+async function demoUsers() {
+  const [owner, cashier] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { email: DEMO_EMAIL } }),
+    prisma.user.findUniqueOrThrow({ where: { email: CASHIER_EMAIL } }),
+  ]);
+  return { owner, cashier };
+}
+
+async function hasDemoBusiness(ownerId: string, name: string) {
+  const found = await prisma.business.findFirst({ where: { name, memberships: { some: { userId: ownerId } } } });
+  return found !== null;
+}
+
+/** Da acceso al dueño y al cajero de demostración a los negocios de las cuentas anteriores. */
+async function integrateLegacyDemoAccounts() {
+  const { owner, cashier } = await demoUsers();
+  const legacy = await prisma.membership.findMany({
+    where: { user: { email: { in: LEGACY_DEMO_ACCOUNTS } } },
+    select: { businessId: true },
+  });
+  const businessIds = [...new Set(legacy.map((m) => m.businessId))];
+  for (const businessId of businessIds) {
+    for (const [userId, role] of [
+      [owner.id, "OWNER"],
+      [cashier.id, "CASHIER"],
+    ] as const) {
+      await prisma.membership.upsert({
+        where: { userId_businessId: { userId, businessId } },
+        create: { userId, businessId, role },
+        update: {},
+      });
+    }
+  }
+  if (businessIds.length > 0) {
+    console.log(`✅ ${businessIds.length} negocio(s) de las cuentas anteriores integrados a Dueño y Cajero`);
+  }
 }
 
 async function seedMexico() {
@@ -304,63 +356,40 @@ async function seedMexico() {
   console.log(`   Cajero: ${CASHIER_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
-const PA_EMAIL = "demo.pa@comercioclaro.com";
-const PA_CASHIER_EMAIL = "cajero.pa@comercioclaro.com";
-
 /** Minisúper panameño: ITBMS 0/7/10/15%, B/., Yappy, fiado a 15 días y facturador gratuito. */
 async function seedPanama() {
-  const existing = await prisma.user.findUnique({ where: { email: PA_EMAIL } });
-  if (existing) {
-    console.log("ℹ️  La cuenta de demostración de Panamá ya existe; no se modificó.");
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Minisúper El Dorado")) {
+    console.log("ℹ️  La demostración de Panamá ya existe; no se modificó.");
     return;
   }
-
-  const passwordHash = await hashPassword(DEMO_PASSWORD);
-  const owner = await prisma.user.create({
+  const { id: businessId } = await prisma.business.create({
     data: {
-      email: PA_EMAIL,
-      passwordHash,
-      name: "Wei Chen",
+      name: "Minisúper El Dorado",
+      description: "Abarrotería y minisúper",
+      phone: "6123-4567",
+      address: "Vía Ricardo J. Alfaro, El Dorado, Panamá",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      ruc: "8-812-2345",
+      dv: "45",
+      legalName: "Wei Chen",
+      usesFreeInvoicer: true,
+      yappyDirectory: "@minisupereldorado",
+      cardFeeRate: 0.029,
+      yappyFeeRate: 0.0107,
       memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: "Minisúper El Dorado",
-              description: "Abarrotería y minisúper",
-              phone: "6123-4567",
-              address: "Vía Ricardo J. Alfaro, El Dorado, Panamá",
-              country: "PA",
-              currency: "USD",
-              locale: "es-PA",
-              timezone: "America/Panama",
-              showBalboa: true,
-              ruc: "8-812-2345",
-              dv: "45",
-              legalName: "Wei Chen",
-              usesFreeInvoicer: true,
-              yappyDirectory: "@minisupereldorado",
-              cardFeeRate: 0.029,
-              yappyFeeRate: 0.0107,
-            },
-          },
-        },
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
       },
     },
-    include: { memberships: true },
   });
-  const businessId = owner.memberships[0].businessId;
   const actor = { userId: owner.id, businessId, role: "OWNER" as const };
-
-  await prisma.user.create({
-    data: {
-      email: PA_CASHIER_EMAIL,
-      passwordHash,
-      name: "Li Na",
-      language: "zh",
-      memberships: { create: { role: "CASHIER", businessId } },
-    },
-  });
 
   const categoryNames = ["Abarrotes", "Bebidas", "Cervezas", "Cigarrillos", "Lácteos y huevos", "Limpieza"];
   const categories = Object.fromEntries(
@@ -605,51 +634,60 @@ async function seedPanama() {
       catalogEnabled: true,
       catalogSlug: "minisuper-el-dorado",
       catalogWhatsapp: "61234567",
+      region: "CAPITAL",
+      offlineDays: 7,
     },
+  });
+  // Capital: entrega a domicilio con costo por corregimiento.
+  const zones = await prisma.$transaction((tx) =>
+    syncDeliveryZones(tx, businessId, [
+      { name: "El Dorado", fee: 1.5 },
+      { name: "Betania", fee: 2 },
+      { name: "Bethania · Villa de las Fuentes", fee: 2.5 },
+      { name: "San Francisco", fee: 3 },
+    ])
+  );
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { deliveryZones: zones as unknown as Prisma.InputJsonValue },
   });
 
   await openCashSession(actor, { openingAmount: 50, notes: "Fondo inicial" });
 
   console.log("✅ Demostración de Panamá creada");
-  console.log(`   Dueño:  ${PA_EMAIL} / ${DEMO_PASSWORD}`);
-  console.log(`   Cajero: ${PA_CASHIER_EMAIL} / ${DEMO_PASSWORD} (interfaz en chino)`);
   console.log("   Catálogo público: /c/minisuper-el-dorado");
 }
 
-const FONDA_EMAIL = "demo.fonda@comercioclaro.com";
-
 /** Fonda panameña en modo restaurante: cuentas por mesa, cocina, extras y variantes. */
 async function seedFonda() {
-  const existing = await prisma.user.findUnique({ where: { email: FONDA_EMAIL } });
-  if (existing) return;
-  const owner = await prisma.user.create({
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Fonda La Chiricana")) {
+    console.log("ℹ️  La demostración de la fonda ya existe; no se modificó.");
+    return;
+  }
+  const { id: businessId } = await prisma.business.create({
     data: {
-      email: FONDA_EMAIL,
-      passwordHash: await hashPassword(DEMO_PASSWORD),
-      name: "Rosa Pérez",
+      name: "Fonda La Chiricana",
+      description: "Comida típica panameña",
+      address: "Calle 50, Bella Vista, Panamá",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      restaurantMode: true,
+      yappyDirectory: "@fondachiricana",
+      region: "CAPITAL",
+      // Ley 6 de 1987: 25% a jubilados en restaurantes.
+      seniorDiscountRate: 0.25,
       memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: "Fonda La Chiricana",
-              description: "Comida típica panameña",
-              address: "Calle 50, Bella Vista, Panamá",
-              country: "PA",
-              currency: "USD",
-              locale: "es-PA",
-              timezone: "America/Panama",
-              showBalboa: true,
-              restaurantMode: true,
-              yappyDirectory: "@fondachiricana",
-            },
-          },
-        },
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
       },
     },
-    include: { memberships: true },
   });
-  const businessId = owner.memberships[0].businessId;
   const actor = { userId: owner.id, businessId, role: "OWNER" as const };
   const base = {
     description: null,
@@ -709,13 +747,100 @@ async function seedFonda() {
   await createProduct(actor, { ...base, name: "Soda en lata", price: 1, cost: 0.55, stock: 120, taxRate: 0.07 });
   await openCashSession(actor, { openingAmount: 40, notes: "Fondo inicial" });
   console.log("✅ Demostración de fonda (modo restaurante) creada");
-  console.log(`   Dueña: ${FONDA_EMAIL} / ${DEMO_PASSWORD}`);
+}
+
+/** Abarrotería del interior: venta por libra, fiado a la quincena y a la cosecha, y efectivo. */
+async function seedInterior() {
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Abarrotería Los Santos")) {
+    console.log("ℹ️  La demostración del interior ya existe; no se modificó.");
+    return;
+  }
+  const { id: businessId } = await prisma.business.create({
+    data: {
+      name: "Abarrotería Los Santos",
+      description: "Abarrotería de pueblo",
+      address: "Calle principal, Las Tablas, Los Santos",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      region: "INTERIOR",
+      offlineDays: 30,
+      memberships: {
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
+      },
+    },
+  });
+  const actor = { userId: owner.id, businessId, role: "OWNER" as const };
+  const base = {
+    description: null,
+    sku: null,
+    barcode: null,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    categoryId: null,
+  };
+  const products = [];
+  for (const p of [
+    { name: "Arroz (libra)", unit: "LB" as const, price: 0.55, cost: 0.42, stock: 300, minStock: 50, taxRate: 0 },
+    { name: "Frijol chiricano (libra)", unit: "LB" as const, price: 1.25, cost: 0.95, stock: 80, minStock: 15, taxRate: 0 },
+    { name: "Azúcar (libra)", unit: "LB" as const, price: 0.6, cost: 0.45, stock: 120, minStock: 20, taxRate: 0 },
+    { name: "Queso blanco (libra)", unit: "LB" as const, price: 3.25, cost: 2.4, stock: 25, minStock: 5, taxRate: 0 },
+    { name: "Aceite (galón)", unit: "PIECE" as const, price: 9.5, cost: 7.8, stock: 12, minStock: 3, taxRate: 0 },
+    { name: "Sardina en lata", unit: "PIECE" as const, price: 1.1, cost: 0.8, stock: 60, minStock: 12, taxRate: 0 },
+    { name: "Soda 2 L", unit: "PIECE" as const, price: 2.1, cost: 1.5, stock: 36, minStock: 6, taxRate: 0.07 },
+  ]) {
+    products.push(await createProduct(actor, { ...base, satUnitKey: p.unit === "LB" ? "LBR" : "H87", ...p }));
+  }
+  const harvest = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 3, 15));
+  const [worker, farmer] = await Promise.all([
+    prisma.customer.create({
+      data: { name: "Chelo (jornalero)", creditLimit: 40, creditTerm: "QUINCENA", businessId },
+    }),
+    prisma.customer.create({
+      data: { name: "Don Nando (productor)", creditLimit: 150, creditTerm: "FIXED", creditDueDate: harvest, businessId },
+    }),
+  ]);
+  const [rice, beans, , cheese] = products;
+  await createSale(actor, {
+    items: [
+      { productId: rice.id, quantity: 5, discount: 0 },
+      { productId: beans.id, quantity: 2, discount: 0 },
+    ],
+    discount: 0,
+    paymentMethod: "CREDIT",
+    customerId: worker.id,
+    notes: null,
+  });
+  await createSale(actor, {
+    items: [
+      { productId: rice.id, quantity: 25, discount: 0 },
+      { productId: cheese.id, quantity: 1.5, discount: 0 },
+    ],
+    discount: 0,
+    paymentMethod: "CREDIT",
+    customerId: farmer.id,
+    notes: null,
+  });
+  await openCashSession(actor, { openingAmount: 30, notes: "Fondo inicial" });
+  console.log("✅ Demostración del interior creada (libras, fiado a la quincena y a la cosecha)");
 }
 
 async function main() {
   await seedMexico();
+  await integrateLegacyDemoAccounts();
   await seedPanama();
   await seedFonda();
+  await seedInterior();
 }
 
 main()

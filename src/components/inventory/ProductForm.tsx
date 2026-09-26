@@ -20,6 +20,16 @@ const UNITS = [
   { value: "L", label: "Litro", sat: "LTR" },
   { value: "ML", label: "Mililitro", sat: "MLT" },
   { value: "M", label: "Metro", sat: "MTR" },
+  { value: "LB", label: "Libra (granel)", sat: "LBR" },
+  { value: "OZ", label: "Onza", sat: "ONZ" },
+  { value: "GAL", label: "Galón", sat: "GLL" },
+];
+/** En Panamá la carne, el queso y los granos se venden por libra: van primero, después de pieza. */
+const IMPERIAL = ["LB", "OZ", "GAL"];
+const UNITS_PA = [
+  UNITS[0],
+  ...UNITS.filter((u) => IMPERIAL.includes(u.value)),
+  ...UNITS.slice(1).filter((u) => !IMPERIAL.includes(u.value)),
 ];
 
 const empty = {
@@ -44,6 +54,8 @@ const empty = {
   variantGroup: "",
   variantLabel: "",
   sendToKitchen: false,
+  trackStock: true,
+  seniorEligible: true,
 };
 
 type FormState = typeof empty;
@@ -72,6 +84,8 @@ function toForm(product: Product | null): FormState {
     variantGroup: product.variantGroup ?? "",
     variantLabel: product.variantLabel ?? "",
     sendToKitchen: product.sendToKitchen ?? false,
+    trackStock: product.trackStock ?? true,
+    seniorEligible: product.seniorEligible ?? true,
   };
 }
 
@@ -154,6 +168,8 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
       variantGroup: form.variantGroup || null,
       variantLabel: form.variantLabel || null,
       sendToKitchen: form.sendToKitchen,
+      trackStock: form.trackStock,
+      seniorEligible: form.seniorEligible,
       modifiers: modifiers
         .filter((m) => m.name.trim())
         .map((m) => ({ id: m.id, name: m.name.trim(), price: Number(m.price.replace(",", ".")) || 0 })),
@@ -222,7 +238,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
                 setForm((f) => ({ ...f, unit: unit.value, satUnitKey: unit.sat }));
               }}
             >
-              {UNITS.map((u) => (
+              {(country.code === "PA" ? UNITS_PA : UNITS).map((u) => (
                 <option key={u.value} value={u.value}>
                   {tr(u.label)}
                 </option>
@@ -300,6 +316,18 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
               label={tr("Se prepara en cocina (aparece en la pantalla de cocina)")}
               checked={form.sendToKitchen}
               onChange={(e) => set("sendToKitchen", e.target.checked)}
+            />
+          )}
+          <Checkbox
+            label={tr("Es un servicio: no lleva existencias (entrega, reparación, recarga propia)")}
+            checked={!form.trackStock}
+            onChange={(e) => set("trackStock", !e.target.checked)}
+          />
+          {business.seniorDiscountRate > 0 && (
+            <Checkbox
+              label={tr("Aplica el descuento de jubilado")}
+              checked={form.seniorEligible}
+              onChange={(e) => set("seniorEligible", e.target.checked)}
             />
           )}
           <Checkbox

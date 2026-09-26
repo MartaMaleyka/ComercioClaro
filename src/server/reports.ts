@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { D, money, type Decimal } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
+import { currentPaydayEnd } from "@/lib/credit-terms";
 import { customersAging } from "./customers";
 import { serviceCommissions } from "./services";
 import { addDays, dayKey, dayKeysBetween, dayRange, startOfDay, startOfMonth } from "@/lib/dates";
@@ -293,13 +294,23 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
     financialSummary(business.id, today, business),
     financialSummary(business.id, month, business),
     prisma.product.findMany({
-      where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
+      where: {
+        businessId: business.id,
+        archivedAt: null,
+        trackStock: true,
+        stock: { lte: prisma.product.fields.minStock },
+      },
       orderBy: { stock: "asc" },
       take: 5,
       select: { id: true, name: true, stock: true, minStock: true, unit: true },
     }),
     prisma.product.count({
-      where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
+      where: {
+        businessId: business.id,
+        archivedAt: null,
+        trackStock: true,
+        stock: { lte: prisma.product.fields.minStock },
+      },
     }),
     prisma.$queryRaw<{ value: Decimal | null }[]>`
         SELECT SUM(GREATEST("stock", 0) * "cost") AS value FROM "Product"
@@ -336,22 +347,34 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
     receivables: {
       total: D(receivables._sum.balance),
       customers: receivables._count,
-      ...(await overdueReceivables(business.id)),
+      ...(await overdueReceivables(business.id, business.timezone)),
     },
     cashSession: openCash,
     recentSales,
   };
 }
 
-async function overdueReceivables(businessId: string) {
+async function overdueReceivables(businessId: string, timeZone: string) {
   const aging = await customersAging(businessId);
+  // Lo que vence de aquí al fin de la quincena (el 15 o el último día del mes), aún no vencido.
+  const paydayEnd = currentPaydayEnd(new Date(), timeZone);
   let overdue = 0;
   let overdueCustomers = 0;
+  let dueThisPeriod = 0;
+  let dueThisPeriodCustomers = 0;
   for (const a of aging.values()) {
     if (a.overdue > 0) {
       overdue += a.overdue;
       overdueCustomers++;
     }
+    const due = a.charges
+      .filter((c) => c.pending > 0 && !c.overdue && c.dueDate && c.dueDate.getTime() <= paydayEnd.getTime())
+      .reduce((acc, c) => acc + c.pending, 0);
+    if (due > 0) {
+      dueThisPeriod += due;
+      dueThisPeriodCustomers++;
+    }
   }
-  return { overdue: Math.round(overdue * 100) / 100, overdueCustomers };
+  const round = (n: number) => Math.round(n * 100) / 100;
+  return { overdue: round(overdue), overdueCustomers, dueThisPeriod: round(dueThisPeriod), dueThisPeriodCustomers };
 }

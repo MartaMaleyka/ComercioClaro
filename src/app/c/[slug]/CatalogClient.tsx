@@ -25,13 +25,20 @@ interface CatalogBusiness {
   showBalboa: boolean;
 }
 
+export interface CatalogZone {
+  name: string;
+  fee: number;
+}
+
 export function CatalogClient({
   slug,
   business,
+  zones,
   products,
 }: {
   slug: string;
   business: CatalogBusiness;
+  zones: CatalogZone[];
   products: CatalogProduct[];
 }) {
   const [search, setSearch] = useState("");
@@ -42,6 +49,7 @@ export function CatalogClient({
   const [phone, setPhone] = useState("");
   const [delivery, setDelivery] = useState(false);
   const [address, setAddress] = useState("");
+  const [zoneName, setZoneName] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -52,7 +60,8 @@ export function CatalogClient({
     (p) => (!category || p.category === category) && (!search || p.name.toLowerCase().includes(search.toLowerCase()))
   );
   const lines = products.filter((p) => cart[p.id]).map((p) => ({ ...p, qty: cart[p.id] }));
-  const total = lines.reduce((acc, l) => acc + l.qty * l.price, 0);
+  const zone = delivery ? zones.find((z) => z.name === zoneName) : undefined;
+  const total = lines.reduce((acc, l) => acc + l.qty * l.price, 0) + (zone?.fee ?? 0);
 
   const change = (id: string, delta: number) =>
     setCart((c) => {
@@ -70,6 +79,7 @@ export function CatalogClient({
         : `Hola ${business.name}, quiero hacer un pedido:`,
       "",
       ...lines.map((l) => `• ${l.qty} ${UNIT_LABELS[l.unit] ?? ""} ${l.name} (${money(l.price)})`),
+      zone ? `• Entrega · ${zone.name} (${money(zone.fee)})` : null,
       "",
       `Total aproximado: ${money(total)}`,
       name ? `Nombre: ${name}` : null,
@@ -83,6 +93,10 @@ export function CatalogClient({
   async function sendOrder(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (delivery && zones.length > 0 && !zone) {
+      setError("Elige la zona de entrega");
+      return;
+    }
     // Se abre la ventana antes de esperar a la red para que el navegador no la bloquee.
     const whatsappWindow = window.open("", "_blank");
     setSending(true);
@@ -97,6 +111,7 @@ export function CatalogClient({
           notes: note || null,
           fulfillment: delivery ? "DELIVERY" : "PICKUP",
           address: delivery ? address || null : null,
+          deliveryZone: zone?.name ?? null,
           items: lines.map((l) => ({ productId: l.id, quantity: l.qty })),
         }),
       });
@@ -269,10 +284,26 @@ export function CatalogClient({
                 A domicilio
               </label>
             </fieldset>
+            {delivery && zones.length > 0 && (
+              <select
+                aria-label="Zona de entrega"
+                required
+                value={zoneName}
+                onChange={(e) => setZoneName(e.target.value)}
+                className="w-full px-3 py-2 bg-surface border border-slate-200 rounded-xl text-sm"
+              >
+                <option value="">Zona de entrega…</option>
+                {zones.map((z) => (
+                  <option key={z.name} value={z.name}>
+                    {z.name} · {money(z.fee)}
+                  </option>
+                ))}
+              </select>
+            )}
             {delivery && (
               <input
-                aria-label="Dirección de entrega"
-                placeholder="Dirección de entrega"
+                aria-label="Dirección y punto de referencia"
+                placeholder="Dirección y punto de referencia (p. ej. frente a la escuela)"
                 maxLength={300}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}

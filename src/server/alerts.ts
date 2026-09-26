@@ -15,7 +15,7 @@ export async function sendLowStockAlerts() {
   for (const business of businesses) {
     const [low, expiring] = await Promise.all([
       prisma.product.findMany({
-        where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
+        where: { businessId: business.id, archivedAt: null, trackStock: true, stock: { lte: prisma.product.fields.minStock } },
         orderBy: { stock: "asc" },
         take: 50,
       }),

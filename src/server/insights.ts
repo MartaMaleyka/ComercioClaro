@@ -212,3 +212,49 @@ export async function cashierReport(businessId: string, range: Range) {
     }))
     .sort((a, b) => b.salesTotal - a.salesTotal);
 }
+
+/**
+ * Descuentos de jubilado del mes (Ley 6 de 1987 en Panamá): cada venta con el número de
+ * cédula o carné, para responder a una fiscalización de Acodeco.
+ */
+export async function seniorReport(business: { id: string; timezone: string }, month?: string | null) {
+  const range = monthRange(business.timezone, month);
+  const sales = await prisma.sale.findMany({
+    where: {
+      businessId: business.id,
+      status: "ACTIVE",
+      seniorDiscount: { gt: 0 },
+      createdAt: { gte: range.start, lt: range.end },
+    },
+    select: {
+      id: true,
+      folio: true,
+      createdAt: true,
+      seniorId: true,
+      total: true,
+      seniorDiscount: true,
+      userId: true,
+      customer: { select: { name: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  const userIds = [...new Set(sales.map((s) => s.userId).filter((id) => id !== null))];
+  const users = await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } });
+  const names = new Map(users.map((u) => [u.id, u.name]));
+  return {
+    month: range.month,
+    count: sales.length,
+    discount: money(sales.reduce((acc, s) => acc.plus(s.seniorDiscount), D(0))).toNumber(),
+    total: money(sales.reduce((acc, s) => acc.plus(s.total), D(0))).toNumber(),
+    sales: sales.map((s) => ({
+      id: s.id,
+      folio: s.folio,
+      createdAt: s.createdAt,
+      seniorId: s.seniorId,
+      customer: s.customer?.name ?? null,
+      cashier: (s.userId && names.get(s.userId)) ?? "",
+      total: D(s.total).toNumber(),
+      discount: D(s.seniorDiscount).toNumber(),
+    })),
+  };
+}

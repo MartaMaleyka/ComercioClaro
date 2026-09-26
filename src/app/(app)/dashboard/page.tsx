@@ -38,7 +38,14 @@ interface DashboardData {
     expiresAt: string;
     product: { id: string; name: string; unit: string };
   }[];
-  receivables: { total: number; customers: number; overdue: number; overdueCustomers: number };
+  receivables: {
+    total: number;
+    customers: number;
+    overdue: number;
+    overdueCustomers: number;
+    dueThisPeriod: number;
+    dueThisPeriodCustomers: number;
+  };
   cashSession: { id: string; openedAt: string } | null;
   recentSales: {
     id: string;
@@ -154,6 +161,13 @@ export default function DashboardPage() {
                 {tr("{amount} vencido ({n})", {
                   amount: fmt.money(data.receivables.overdue),
                   n: data.receivables.overdueCustomers,
+                })}
+              </Link>
+            ) : data.receivables.dueThisPeriod > 0 ? (
+              <Link href="/clientes" className="underline">
+                {tr("{amount} vence esta quincena ({n})", {
+                  amount: fmt.money(data.receivables.dueThisPeriod),
+                  n: data.receivables.dueThisPeriodCustomers,
                 })}
               </Link>
             ) : (

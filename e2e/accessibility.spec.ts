@@ -1,17 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { BUSINESS, CASHIER, OWNER, login, setLanguage } from "./helpers";
 
 // Requiere los datos de demostración (npm run db:seed).
 
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-
-async function login(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña").fill("demo1234");
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
-  await page.waitForURL(/\/(dashboard|ventas)/);
-}
 
 async function expectAccessible(page: Page, url: string) {
   await page.goto(url);
@@ -35,7 +28,7 @@ for (const scheme of ["light", "dark"] as const) {
     });
 
     test("pantallas del dueño", async ({ page }) => {
-      await login(page, "demo.pa@comercioclaro.com");
+      await login(page, OWNER, BUSINESS.panama);
       for (const url of [
         "/dashboard",
         "/ventas",
@@ -62,7 +55,7 @@ for (const scheme of ["light", "dark"] as const) {
 
 test("los diálogos atrapan el foco, cierran con Escape y lo devuelven", async ({ page, isMobile }) => {
   test.skip(isMobile, "Se cubre en escritorio");
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   await page.goto("/clientes");
   const opener = page.getByRole("button", { name: "Cliente", exact: true });
   await opener.focus();
@@ -83,7 +76,7 @@ test("los diálogos atrapan el foco, cierran con Escape y lo devuelven", async (
 
 test("las pestañas se recorren con las flechas", async ({ page, isMobile }) => {
   test.skip(isMobile, "Se cubre en escritorio");
-  await login(page, "demo.pa@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.panama);
   await page.goto("/inventario");
   const tabs = page.getByRole("tab");
   await tabs.first().focus();
@@ -95,6 +88,12 @@ test("las pestañas se recorren con las flechas", async ({ page, isMobile }) => 
 });
 
 test("la página toma el idioma del usuario", async ({ page }) => {
-  await login(page, "cajero.pa@comercioclaro.com");
-  await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  await login(page, CASHIER, BUSINESS.panama);
+  await setLanguage(page, "zh");
+  try {
+    await page.goto("/ventas");
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hans");
+  } finally {
+    await setLanguage(page, "es");
+  }
 });

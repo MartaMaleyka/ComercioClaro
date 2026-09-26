@@ -9,7 +9,11 @@ export const en: Record<string, string> = {
   "/ mín.": "/ min.",
   "0 = sin límite": "0 = no limit",
   "1% + ITBMS = 1.07%": "1% + ITBMS = 1.07%",
+  "10% · otros comercios": "10% · other stores",
+  "15% · comida rápida": "15% · fast food",
   "160% (cigarros)": "160% (cigarettes)",
+  "20% · farmacia (medicamentos)": "20% · pharmacy (medicines)",
+  "25% · restaurante o fonda (consumo individual)": "25% · restaurant or fonda (individual meal)",
   "26.5% (cerveza)": "26.5% (beer)",
   "2x1 Cerveza Panamá": "2-for-1 Cerveza Panamá",
   "2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.":
@@ -28,6 +32,7 @@ export const en: Record<string, string> = {
   "@minisuperlaesperanza o 6123-4567": "@minisuperlaesperanza or 6123-4567",
   "A domicilio": "Delivery",
   "A este ritmo cerrarías el año en {amount}.": "At this pace you would close the year at {amount}.",
+  "A un plazo en días": "Within a number of days",
   Abierta: "Open",
   Abiertas: "Open",
   Abonar: "Pay",
@@ -59,6 +64,7 @@ export const en: Record<string, string> = {
   "Agregar producto (nombre o código)": "Add product (name or code)",
   "Agregar proveedor": "Add provider",
   "Agregar usuario": "Add user",
+  "Agregar zona": "Add zone",
   "Agregar · {price}": "Add · {price}",
   "Agregó usuario": "Added user",
   "Agrupa las ventas sin factura del periodo con el RFC XAXX010101000. Debe emitirse dentro de las 24 horas siguientes al cierre del periodo.":
@@ -67,11 +73,13 @@ export const en: Record<string, string> = {
   "Ajustar existencia": "Adjust stock",
   Ajuste: "Adjustment",
   "Ajustó inventario": "Adjusted inventory",
+  "Al elegirlo se ajustan los días de venta sin conexión.": "Choosing it adjusts the offline sales days.",
   "Anaquel 90×40 mm": "Shelf 90×40 mm",
   Anulado: "Voided",
   Anular: "Void",
   "Anular vale {code}": "Void gift card {code}",
   "Aplica a": "Applies to",
+  "Aplica el descuento de jubilado": "Retiree discount applies",
   "Aplicar ajustes": "Apply adjustments",
   "Aplicar conteo": "Apply count",
   "Apunta la cámara al código de barras. También puedes usar un lector USB o Bluetooth: escanea directamente en el buscador.":
@@ -92,6 +100,7 @@ export const en: Record<string, string> = {
   "Bajo el mínimo": "Below minimum",
   "Bajo inventario": "Low stock",
   "Base gravable": "Taxable base",
+  Billetes: "Bills",
   Bimestral: "Bimonthly",
   Bitácora: "Activity log",
   Borrador: "Draft",
@@ -143,6 +152,7 @@ export const en: Record<string, string> = {
   Cantidad: "Quantity",
   "Cantidad ({unit})": "Quantity ({unit})",
   "Cantidad que se da de baja": "Quantity written off",
+  "Capital o interior": "Capital or interior",
   "Carga más para ver el total completo": "Load more to see the full total",
   Cargando: "Loading",
   "Cargando...": "Loading...",
@@ -159,6 +169,7 @@ export const en: Record<string, string> = {
   "Cerrar todas": "Close all",
   "Cerró caja": "Closed register",
   "Chica 50×25 mm": "Small 50×25 mm",
+  "Ciudad de Panamá, San Miguelito, Panamá Oeste o Colón": "Panama City, San Miguelito, Panamá Oeste or Colón",
   Claro: "Light",
   "Clave SAT producto": "SAT product code",
   "Clave SAT unidad": "SAT unit code",
@@ -202,6 +213,8 @@ export const en: Record<string, string> = {
   Contacto: "Contact",
   "Contactos e historial de precios": "Contacts and price history",
   Contado: "Counted",
+  "Contar por billetes y monedas": "Count by bills and coins",
+  Conteo: "Count",
   "Conteo aplicado: {n} productos ajustados": "Count applied: {n} products adjusted",
   "Conteo exacto: facturas emitidas desde ComercioClaro con tu PAC.":
     "Exact count: invoices issued from ComercioClaro with your PAC.",
@@ -241,6 +254,8 @@ export const en: Record<string, string> = {
   "Cuenta {label} (#{n})": "Tab {label} (#{n})",
   "Cuentas abiertas": "Open tabs",
   "Cuentas de fiado y datos para factura": "Credit accounts and invoicing details",
+  "Cédula o carné": "ID or card number",
+  "Cédula o carné del jubilado": "Retiree ID or card number",
   "Código de barras": "Barcode",
   "Código del vale": "Gift card code",
   "Cómo debería decir": "What it should say",
@@ -267,9 +282,13 @@ export const en: Record<string, string> = {
   "Descartar conteo": "Discard count",
   "Descontar del saldo del cliente": "Deduct from customer balance",
   Descripción: "Description",
+  Descuento: "Discount",
   "Descuento (%)": "Discount (%)",
+  "Descuento de jubilado (Ley 6)": "Retiree discount (Law 6)",
   "Descuento general": "Order discount",
+  "Descuento otorgado": "Discount given",
   Descuentos: "Discounts",
+  "Descuentos de jubilado": "Retiree discounts",
   "Descuentos manuales sin contar promociones. Faltantes: suma de los cortes que cerraron con menos efectivo.":
     "Manual discounts, excluding promotions. Shortages: total of closings that ended with less cash.",
   Desde: "From",
@@ -281,6 +300,7 @@ export const en: Record<string, string> = {
   "Detalle CSV": "Detail CSV",
   "Detalle de ventas": "Sales detail",
   "Detalle del corte": "Closing detail",
+  "Detalle por venta": "Detail by sale",
   Devoluciones: "Returns",
   "Devoluciones del mes": "Returns this month",
   Devolución: "Return",
@@ -297,6 +317,7 @@ export const en: Record<string, string> = {
   Día: "Day",
   "Días de crédito": "Credit days",
   "Días de visita, condiciones de pago...": "Visit days, payment terms...",
+  "Días que se aceptan ventas hechas sin conexión": "Days offline sales are accepted",
   Editar: "Edit",
   "Editar cliente": "Edit customer",
   "Editar producto": "Edit product",
@@ -321,6 +342,8 @@ export const en: Record<string, string> = {
   "El cajero escribe el celular del cliente, el cobro le llega a su app y la venta se registra sola al confirmarse. Requiere Yappy Comercial con API (credenciales en el servidor).":
     "The cashier enters the customer's phone, the charge reaches their app and the sale is recorded once confirmed. Requires Yappy Comercial with API (credentials on the server).",
   "El catálogo en línea está apagado. Actívalo en Configuración.": "The online catalog is off. Turn it on in Settings.",
+  "El catálogo en línea pide la zona y suma su costo. Cada zona se cobra como un servicio en el punto de venta.":
+    "The online catalog asks for the zone and adds its fee. Each zone is charged as a service at the point of sale.",
   "El cliente escanea tu QR y el cajero confirma el pago en la app.":
     "The customer scans your QR and the cashier confirms the payment in the app.",
   "El costo de cada producto se actualiza con el promedio ponderado de lo que ya tenías y lo que entra.":
@@ -345,9 +368,13 @@ export const en: Record<string, string> = {
   "Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)":
     "I issue an invoice for every sale (so the monthly count includes all sales and returns)",
   "En contingencia": "In contingency",
+  "En la capital se paga con Yappy y se pide a domicilio; en el interior se paga en efectivo, se fía a la quincena y la señal se cae por días.":
+    "In the capital people pay with Yappy and order delivery; in the interior they pay cash, buy on credit until payday, and the signal drops for days.",
+  "En la quincena (15 y fin de mes)": "On payday (15th and end of month)",
   "En la tableta, inicia sesión con cualquier usuario de este negocio y abre {url}.":
     "On the tablet, sign in with any user of this business and open {url}.",
   "En tránsito": "In transit",
+  "En una fecha fija (cosecha, pago del mes)": "On a fixed date (harvest, monthly pay)",
   Entradas: "Cash in",
   Entregado: "Delivered",
   Entregados: "Delivered",
@@ -361,6 +388,8 @@ export const en: Record<string, string> = {
     "Email me daily low-stock and expiry alerts",
   Equipo: "Team",
   Error: "Error",
+  "Es un servicio: no lleva existencias (entrega, reparación, recarga propia)":
+    "It is a service: no stock (delivery, repair, own top-up)",
   "Escanea o busca cada producto del anaquel. Al terminar, las existencias se ajustan a lo contado y queda registrado el motivo.":
     "Scan or search each product on the shelf. When done, stock is set to what you counted and the reason is recorded.",
   "Escanea o escribe el código y Enter": "Scan or type the code and press Enter",
@@ -407,6 +436,7 @@ export const en: Record<string, string> = {
   Faltantes: "Shortages",
   Fecha: "Date",
   "Fecha de entrega": "Delivery date",
+  "Fecha de pago": "Payment date",
   Fechas: "Dates",
   Fiado: "Credit",
   "Fiado por cobrar": "Credit receivable",
@@ -414,6 +444,7 @@ export const en: Record<string, string> = {
   "Fondo inicial": "Opening float",
   "Forma de pago": "Payment method",
   Formato: "Format",
+  Galón: "Gallon",
   "Ganancia neta": "Net profit",
   Gasto: "Expense",
   "Gasto registrado": "Expense recorded",
@@ -427,6 +458,8 @@ export const en: Record<string, string> = {
   Gramo: "Gram",
   "Grupo de variantes": "Variant group",
   "Gráfica de ventas y ganancia neta por día": "Chart of sales and net profit per day",
+  "Guarda este reporte: Acodeco puede pedir la prueba de los descuentos otorgados.":
+    "Keep this report: Acodeco may ask for proof of the discounts given.",
   "Guarda tu hoja de Excel como CSV. Columnas reconocidas: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. Si el código de barras (o el nombre) ya existe se actualiza el producto.":
     "Save your Excel sheet as CSV. Recognized columns: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. If the barcode (or name) already exists, the product is updated.",
   Guardar: "Save",
@@ -436,6 +469,7 @@ export const en: Record<string, string> = {
   "Guardar como cuenta abierta": "Save as open tab",
   "Guardar cuenta": "Save tab",
   "Guardar proveedores": "Save providers",
+  "Guardar zonas": "Save zones",
   "Hacia {name}": "To {name}",
   Hasta: "To",
   "Hasta (opcional)": "To (optional)",
@@ -456,11 +490,17 @@ export const en: Record<string, string> = {
   "Imprimir vale {code}": "Print gift card {code}",
   Impuestos: "Taxes",
   "Impuestos por tasa": "Taxes by rate",
+  "Incluye descuento de jubilado": "Includes retiree discount",
   "Indica qué cantidad se devuelve": "Enter the quantity returned",
   "Iniciar conteo": "Start count",
+  "Interior o comarca": "Interior or indigenous comarca",
   Inventario: "Inventory",
   "Inventario inicial": "Initial stock",
   "Ir al contenido": "Skip to content",
+  Jubilado: "Retiree",
+  "Jubilado o pensionado": "Retiree or pensioner",
+  "Jubilado o pensionado ({rate}%)": "Retiree or pensioner ({rate}%)",
+  Jubilados: "Retirees",
   "Kilogramo (granel)": "Kilogram (bulk)",
   "La facturación electrónica está disponible para México y Panamá.": "E-invoicing is available for Mexico and Panama.",
   "La facturación no está activa. Contrata un PAC (por ejemplo Facturama) y configura":
@@ -469,13 +509,20 @@ export const en: Record<string, string> = {
   "La mercancía regresa al inventario de esta sucursal.": "The goods go back to this branch's inventory.",
   "La mercancía sale de esta sucursal al enviarla y entra a la otra cuando la reciben.":
     "Goods leave this branch when sent and enter the other one when received.",
+  "La más antigua lleva {days} día(s) sin enviarse: se registrará con la fecha de envío.":
+    "The oldest has gone {days} day(s) unsent: it will be recorded with the send date.",
+  "La más antigua lleva {days} día(s) sin enviarse; conéctate en menos de {left} día(s).":
+    "The oldest has gone {days} day(s) unsent; connect within {left} day(s).",
   "La orden se cancelará; no se registró ninguna mercancía.": "The order will be cancelled; no goods were recorded.",
   "La persona ya tenía cuenta; ahora puede elegir este negocio al iniciar sesión.":
     "The person already had an account; they can now choose this business when signing in.",
   "Las sucursales usan monedas distintas; los totales suman importes sin convertir.":
     "Branches use different currencies; totals add amounts without conversion.",
+  "Las ventas guardadas en el equipo conservan su fecha si se sincronizan dentro de este plazo.":
+    "Sales saved on the device keep their date if they sync within this period.",
   "Las ventas rechazadas no afectaron el inventario. Regístralas de nuevo si corresponde.":
     "Rejected sales did not affect inventory. Record them again if needed.",
+  "Libra (granel)": "Pound (bulk)",
   "Limpiar búsqueda": "Clear search",
   Listo: "Done",
   "Listo para entregar": "Ready",
@@ -519,6 +566,7 @@ export const en: Record<string, string> = {
   "Modo de cobro": "Charge mode",
   "Modo restaurante": "Restaurant mode",
   Moneda: "Currency",
+  Monedas: "Coins",
   Monto: "Amount",
   Mostrar: "Show",
   "Mostrar montos como B/. (balboa)": "Show amounts as B/. (balboa)",
@@ -547,6 +595,7 @@ export const en: Record<string, string> = {
   "No emito factura electrónica todavía": "I don't issue e-invoices yet",
   "No hay cuentas abiertas.": "No open tabs.",
   "No hay ventas en este periodo.": "No sales in this period.",
+  "No ofrezco descuento de jubilado": "I don't offer a retiree discount",
   "No se pudo cargar la información": "Could not load the information",
   Nombre: "Name",
   "Nombre de la cuenta (p. ej. Mesa 3)": "Tab name (e.g. Table 3)",
@@ -576,6 +625,7 @@ export const en: Record<string, string> = {
     "Required with a PAC if you exceed B/.36,000 a year or 100 documents a month (Resolution 201-6299).",
   Ocultar: "Hide",
   "Ocurrió un error": "An error occurred",
+  Onza: "Ounce",
   Opcional: "Optional",
   "Orden #{folio}": "Order #{folio}",
   "Orden de compra creada": "Purchase order created",
@@ -586,6 +636,7 @@ export const en: Record<string, string> = {
   PDF: "PDF",
   Paga: "Pay",
   "Paga con Yappy": "Pay with Yappy",
+  "Paga el fiado": "Pays credit",
   "Pagado con": "Paid with",
   "Pago de servicio": "Bill payment",
   "Pagos que no encontramos en tus ventas: abonos de fiado, ventas no registradas u otros ingresos.":
@@ -732,6 +783,8 @@ export const en: Record<string, string> = {
   Salidas: "Cash out",
   "Se ajustarán {n} productos para que su existencia sea igual a lo contado. Los productos no contados no cambian.":
     "{n} products will be adjusted so their stock matches the count. Products not counted do not change.",
+  "Se aplica con el botón Jubilado en el punto de venta y queda en el reporte mensual.":
+    "Applied with the Retiree button at the point of sale and recorded in the monthly report.",
   "Se muestra en el punto de venta al cobrar con Yappy.": "Shown at the POS when charging with Yappy.",
   "Se pagó con dinero de la caja": "Paid with money from the register",
   "Se prepara en cocina (aparece en la pantalla de cocina)": "Prepared in the kitchen (shown on the kitchen display)",
@@ -745,11 +798,14 @@ export const en: Record<string, string> = {
   "Selecciona un cliente con datos fiscales": "Select a customer with tax details",
   "Seleccionar todos": "Select all",
   Semanal: "Weekly",
+  Servicio: "Service",
   Servido: "Served",
   "Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)":
     "If you buy by the box and sell loose (e.g. 20 cigarettes per pack, 30 eggs per tray)",
   "Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket imprime el CUFE y su código QR.":
     "If the PAC or the DGI does not respond, the invoice stays in contingency and is retried automatically. The receipt prints the CUFE and its QR code.",
+  "Si la fecha pasa, se usan los días de crédito hasta que la cambies":
+    "If the date passes, credit days apply until you change it",
   "Si ves un texto mal traducido, usa “Reportar traducción”.":
     "If you see a badly translated text, use “Report translation”.",
   "Sin categoría": "Uncategorized",
@@ -758,12 +814,14 @@ export const en: Record<string, string> = {
   "Sin compras registradas.": "No purchases recorded.",
   "Sin conexión y no se pudo guardar la venta en este dispositivo":
     "Offline and the sale could not be saved on this device",
+  "Sin definir": "Not set",
   "Sin existencias: {items}": "Out of stock: {items}",
   "Sin facturas": "No invoices",
   "Sin gastos": "No expenses",
   "Sin gastos registrados en el periodo.": "No expenses recorded in the period.",
   "Sin movimientos de fiado.": "No credit movements.",
   "Sin movimientos registrados.": "No movements recorded.",
+  "Sin número": "No number",
   "Sin pedidos": "No orders",
   "Sin productos": "No products",
   "Sin promociones": "No promotions",
@@ -780,6 +838,8 @@ export const en: Record<string, string> = {
   "Solo con saldo": "With balance only",
   "Solo cuenta facturas con CUFE registrado. Llevas {n} ventas este mes; si facturas cada venta, actívalo en Configuración.":
     "Only counts invoices with a registered CUFE. You have {n} sales this month; if you invoice every sale, turn it on in Settings.",
+  "Solo el número; la ley no permite fotografiar el carné.":
+    "Number only; the law does not allow photographing the card.",
   "Solo minúsculas, números y guiones": "Lowercase letters, numbers and hyphens only",
   "Solo vencidos": "Overdue only",
   "Stock mínimo (alerta)": "Minimum stock (alert)",
@@ -821,6 +881,8 @@ export const en: Record<string, string> = {
   Todos: "All",
   Total: "Total",
   "Total a pagar": "Total to pay",
+  "Total cobrado": "Total charged",
+  "Total contado: {amount}": "Counted total: {amount}",
   "Total estimado": "Estimated total",
   "Total mostrado": "Total shown",
   "Total por cobrar": "Total receivable",
@@ -868,7 +930,9 @@ export const en: Record<string, string> = {
   Venta: "Sale",
   "Venta #{folio}": "Sale #{folio}",
   "Venta cancelada": "Sale cancelled",
+  "Venta sin conexión": "Offline sales",
   Ventas: "Sales",
+  "Ventas a jubilados": "Sales to retirees",
   "Ventas en efectivo": "Cash sales",
   "Ventas netas": "Net sales",
   "Ventas netas del mes": "Net sales this month",
@@ -894,7 +958,10 @@ export const en: Record<string, string> = {
   XML: "XML",
   Yappy: "Yappy",
   "Yappy (%)": "Yappy (%)",
+  Zona: "Zone",
   "Zona horaria": "Time zone",
+  "Zona o corregimiento": "Zone or district",
+  "Zonas de entrega": "Delivery zones",
   "caja(s)": "box(es)",
   debe: "owes",
   diferencia: "difference",
@@ -911,6 +978,7 @@ export const en: Record<string, string> = {
   'y usa "Facturar".': 'and use "Invoice".',
   'y usa "Registrar CUFE". Así sabrás qué ventas ya están facturadas. La conexión directa con un PAC se activará cuando elijas proveedor.':
     'and use "Register CUFE". That way you\'ll know which sales are invoiced. The direct PAC connection will be enabled when you choose a provider.',
+  "{amount} vence esta quincena ({n})": "{amount} due this payday ({n})",
   "{amount} vencido ({n})": "{amount} overdue ({n})",
   "{amount} vencido · {days} d": "{amount} overdue · {days} d",
   "{created} creados · {updated} actualizados": "{created} created · {updated} updated",
@@ -937,6 +1005,7 @@ export const en: Record<string, string> = {
   "· cad.": "· exp.",
   "· pendiente": "· pending",
   "¿Cómo facturas?": "How do you invoice?",
+  "¿Dónde está el negocio?": "Where is the business?",
   "¿Me confirma disponibilidad y precio? Gracias.": "Could you confirm availability and price? Thank you.",
   "¿No aparece? Agrega RFC, razón social, régimen y C.P. al cliente en":
     "Not listed? Add RFC, legal name, regime and ZIP code to the customer in",

@@ -171,6 +171,8 @@ export async function createBranch(actor: Actor, input: { name: string; copyCata
             cost: p.cost,
             minStock: p.minStock,
             trackExpiry: p.trackExpiry,
+            trackStock: p.trackStock,
+            seniorEligible: p.seniorEligible,
             packSize: p.packSize,
             taxRate: p.taxRate,
             iepsRate: p.iepsRate,

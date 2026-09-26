@@ -47,12 +47,14 @@ export async function createProduct(actor: Actor, input: ProductInput) {
         categoryId: input.categoryId ?? null,
         variantGroup: input.variantGroup ?? null,
         sendToKitchen: input.sendToKitchen ?? false,
+        trackStock: input.trackStock ?? true,
+        seniorEligible: input.seniorEligible ?? true,
         variantLabel: input.variantLabel ?? null,
         ...(input.modifiers?.length ? { modifiers: input.modifiers } : {}),
         businessId: actor.businessId,
       },
     });
-    if (input.stock > 0) {
+    if (input.stock > 0 && input.trackStock !== false) {
       await applyStockChange(tx, actor, {
         productId: product.id,
         delta: input.stock,
@@ -109,6 +111,8 @@ export async function updateProduct(
   if (input.archived !== undefined) data.archivedAt = input.archived ? new Date() : null;
   if (input.variantGroup !== undefined) data.variantGroup = input.variantGroup;
   if (input.sendToKitchen !== undefined) data.sendToKitchen = input.sendToKitchen;
+  if (input.trackStock !== undefined) data.trackStock = input.trackStock;
+  if (input.seniorEligible !== undefined) data.seniorEligible = input.seniorEligible;
   if (input.variantLabel !== undefined) data.variantLabel = input.variantLabel;
   if (input.modifiers !== undefined) data.modifiers = input.modifiers?.length ? input.modifiers : Prisma.DbNull;
 
@@ -171,6 +175,15 @@ const UNIT_ALIASES: Record<string, string> = {
   ml: "ML",
   m: "M",
   metro: "M",
+  lb: "LB",
+  lbs: "LB",
+  libra: "LB",
+  libras: "LB",
+  oz: "OZ",
+  onza: "OZ",
+  gal: "GAL",
+  galon: "GAL",
+  galón: "GAL",
 };
 
 /**
@@ -319,6 +332,8 @@ export async function createVariants(actor: Actor, productId: string, input: { b
             categoryId: base.categoryId,
             ...(base.modifiers ? { modifiers: base.modifiers } : {}),
             sendToKitchen: base.sendToKitchen,
+            trackStock: base.trackStock,
+            seniorEligible: base.seniorEligible,
             businessId: actor.businessId,
           },
         })
