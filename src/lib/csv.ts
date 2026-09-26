@@ -48,11 +48,20 @@ export function parseCsv(input: string): string[][] {
   return rows.filter((r) => r.some((v) => v.trim() !== ""));
 }
 
+/**
+ * Separador de la primera línea; si la primera línea no tiene ninguno (los estados de cuenta
+ * traen un título antes del encabezado), el más frecuente en las primeras líneas.
+ */
 function detectDelimiter(text: string) {
-  const firstLine = text.split(/\r?\n/, 1)[0] ?? "";
-  const commas = (firstLine.match(/,/g) ?? []).length;
-  const semicolons = (firstLine.match(/;/g) ?? []).length;
-  return semicolons > commas ? ";" : ",";
+  const lines = text.split(/\r?\n/, 10);
+  const pick = (candidates: string[]) => {
+    const count = (d: string) => Math.max(0, ...candidates.map((l) => l.split(d).length - 1));
+    const [semicolons, commas, tabs] = [count(";"), count(","), count("\t")];
+    if (tabs > commas && tabs > semicolons) return "\t";
+    if (semicolons > commas) return ";";
+    return commas > 0 ? "," : null;
+  };
+  return pick(lines.slice(0, 1)) ?? pick(lines) ?? ",";
 }
 
 export function csvResponse(filename: string, content: string) {

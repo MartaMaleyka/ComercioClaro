@@ -4,6 +4,8 @@ import { registerAccount } from "@/server/account";
 import { cancelSale, createSale, returnSale, type SalesActor } from "@/server/sales";
 import { closeCashSession, openCashSession } from "@/server/cash";
 import { cashierReport, monthRange, taxReport } from "@/server/insights";
+import { reconcileStatement } from "@/server/reconciliation";
+import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
 async function panamaOwner(settings: Record<string, unknown> = {}): Promise<SalesActor> {
@@ -98,5 +100,30 @@ describe.skipIf(!hasDatabase)("desempeño por cajero", () => {
     expect(li.averageTicket).toBe(14.5);
     // La venta cancelada no cuenta como venta ni su descuento; sí la cancelación.
     expect(wei).toMatchObject({ salesCount: 1, salesTotal: 10, discounts: 0, cancellations: 1 });
+  });
+});
+
+describe.skipIf(!hasDatabase)("conciliación bancaria", () => {
+  beforeEach(resetDatabase);
+
+  it("cruza el estado de cuenta con las ventas de Yappy", async () => {
+    const owner = await panamaOwner();
+    const p = await makeProduct(owner, { price: 2.1, taxRate: 0, stock: 50 });
+    const paid = await createSale(owner, saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "YAPPY", paymentReference: "998877" }));
+    const byAmount = await createSale(owner, saleInput([{ productId: p.id, quantity: 2 }], { paymentMethod: "YAPPY" }));
+    const missing = await createSale(owner, saleInput([{ productId: p.id, quantity: 3 }], { paymentMethod: "YAPPY" }));
+    await createSale(owner, saleInput([{ productId: p.id, quantity: 1 }])); // efectivo: no entra
+    const today = dayKey(new Date(), "America/Panama").split("-").reverse().join("/");
+    const csv = `Fecha,Descripción,Referencia,Monto\n${today},PAGO YAPPY,998877,2.10\n${today},PAGO YAPPY,,4.20\n${today},OTRO,,50.00\n`;
+
+    const b = await business(owner);
+    const result = await reconcileStatement(b, { csv, method: "YAPPY" });
+    expect(result.matches.map((m) => [m.type, m.sales[0].id])).toEqual([
+      ["reference", paid.id],
+      ["amount", byAmount.id],
+    ]);
+    expect(result.unmatchedSales.map((s) => s.id)).toEqual([missing.id]);
+    expect(result.unmatchedLines.map((l) => l.amount)).toEqual([50]);
+    await expect(reconcileStatement(b, { csv: "hola,mundo\n1,2", method: "YAPPY" })).rejects.toThrow(/columnas/);
   });
 });

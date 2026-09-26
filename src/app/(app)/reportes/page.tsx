@@ -26,6 +26,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 import { TaxesView } from "@/components/reports/TaxesView";
 import { TeamView } from "@/components/reports/TeamView";
+import { ReconciliationView } from "@/components/reports/ReconciliationView";
 
 interface Report {
   from: string;
@@ -101,7 +102,7 @@ export default function ReportsPage() {
   const [to, setTo] = useState(todayKey(business.timezone));
   const [scope, setScope] = useState<"business" | "all">("business");
   const [showTable, setShowTable] = useState(false);
-  const [view, setView] = useState<"summary" | "taxes" | "team">("summary");
+  const [view, setView] = useState<"summary" | "taxes" | "team" | "reconcile">("summary");
 
   const query = period === "custom" ? { from, to } : { period };
   const { data, error, mutate } = useSWR<Report>(
@@ -149,12 +150,15 @@ export default function ReportsPage() {
           { value: "summary", label: tr("Resumen") },
           { value: "taxes", label: tr("Impuestos") },
           { value: "team", label: tr("Equipo") },
+          { value: "reconcile", label: tr("Conciliación") },
         ]}
         value={view}
         onChange={setView}
       />
 
-      {view === "taxes" ? (
+      {view === "reconcile" ? (
+        <ReconciliationView />
+      ) : view === "taxes" ? (
         <TaxesView />
       ) : (
         <>

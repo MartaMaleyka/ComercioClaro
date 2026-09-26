@@ -142,6 +142,7 @@ export const en: Record<string, string> = {
   Clientes: "Customers",
   "Clientes con saldo": "Customers with balance",
   "Cobro automático por celular (API de Yappy Comercial)": "Automatic charge by phone (Yappy Comercial API)",
+  "Cobros por": "Payments by",
   "Comisiones estimadas": "Estimated fees",
   "Comisiones por forma de pago": "Fees by payment method",
   "Comparte estos datos con la persona. Deberá cambiar la contraseña al entrar.":
@@ -155,6 +156,10 @@ export const en: Record<string, string> = {
   "Compras del mes": "Purchases this month",
   "Con devolución": "With return",
   Concepto: "Concept",
+  Conciliación: "Reconciliation",
+  Conciliados: "Matched",
+  Conciliar: "Reconcile",
+  "Conciliar con el banco": "Reconcile with the bank",
   "Configura las comisiones en Configuración": "Set up fees in Settings",
   Configuración: "Settings",
   Confirmar: "Confirm",
@@ -201,6 +206,10 @@ export const en: Record<string, string> = {
     "Sets taxes, invoicing and formats. Changing it adjusts currency, format and time zone.",
   "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.":
     "It will no longer appear in the catalog, but its sales and purchase history is kept.",
+  "Depósitos en el archivo": "Deposits in the file",
+  "Depósitos sin venta": "Deposits without a sale",
+  "Descarga el estado de cuenta en CSV desde la banca en línea y súbelo aquí. Cada depósito se cruza con tus ventas por número de operación, por monto y fecha, o como lote del día.":
+    "Download your bank statement as CSV from online banking and upload it here. Each deposit is matched with your sales by transaction number, by amount and date, or as a daily batch.",
   "Descarga tu información en CSV (se abre en Excel) o un respaldo completo.":
     "Download your data as CSV (opens in Excel) or as a full backup.",
   "Descargar CSV": "Download CSV",
@@ -288,6 +297,7 @@ export const en: Record<string, string> = {
   "Escanear código": "Scan code",
   "Esta contraseña no se volverá a mostrar.": "This password will not be shown again.",
   Estado: "Status",
+  "Estado de cuenta (CSV)": "Bank statement (CSV)",
   "Este mes": "This month",
   Etiquetas: "Labels",
   Exento: "Exempt",
@@ -382,6 +392,7 @@ export const en: Record<string, string> = {
   "Los productos de esta categoría quedarán sin categoría.":
     "Products in this category will be left without a category.",
   Lote: "Lot",
+  "Lote del día": "Daily batch",
   "Límite de crédito (fiado)": "Credit limit",
   "Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100 documentos al mes.":
     "Limits of DGI Resolution 201-6299 (since January 1, 2026): up to B/.36,000 of income per year and 100 documents per month.",
@@ -450,6 +461,8 @@ export const en: Record<string, string> = {
   Paga: "Pay",
   "Paga con Yappy": "Pay with Yappy",
   "Pagado con": "Paid with",
+  "Pagos que no encontramos en tus ventas: abonos de fiado, ventas no registradas u otros ingresos.":
+    "Payments we could not find in your sales: credit payments, unrecorded sales or other income.",
   "Pantalla completa": "Full screen",
   "Pantalla del cliente": "Customer display",
   'Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.':
@@ -469,6 +482,8 @@ export const en: Record<string, string> = {
   "Plazo para pagar cada venta fiada": "Time to pay each credit sale",
   "Por agotarse": "Running out",
   "Por forma de pago": "By payment method",
+  "Por monto y fecha": "By amount and date",
+  "Por número de operación": "By transaction number",
   "Porcentaje de descuento": "Discount percentage",
   "Precio de mayoreo": "Wholesale price",
   "Precio de venta": "Sale price",
@@ -544,6 +559,8 @@ export const en: Record<string, string> = {
   "Reportes de traducción": "Translation reports",
   Restaurar: "Restore",
   Resumen: "Summary",
+  "Revisa si el cliente realmente pagó o si el banco las acreditará después.":
+    "Check whether the customer really paid or the bank will credit it later.",
   Robo: "Theft",
   Rol: "Role",
   "Régimen fiscal": "Tax regime",
@@ -628,6 +645,7 @@ export const en: Record<string, string> = {
   "Todas las categorías": "All categories",
   "Todas las sucursales": "All branches",
   "Todo en orden": "All good",
+  Todos: "All",
   Total: "Total",
   "Total a pagar": "Total to pay",
   "Total mostrado": "Total shown",
@@ -667,6 +685,7 @@ export const en: Record<string, string> = {
   "Ventas por pagar": "Unpaid sales",
   "Ventas recientes": "Recent sales",
   "Ventas sin conexión": "Offline sales",
+  "Ventas sin depósito": "Sales without a deposit",
   "Ventas y ganancia neta por día": "Sales and net profit per day",
   "Ventas, utilidad real y lo que más se vende": "Sales, real profit and best sellers",
   Ver: "View",
@@ -686,6 +705,7 @@ export const en: Record<string, string> = {
   "Zona horaria": "Time zone",
   "caja(s)": "box(es)",
   debe: "owes",
+  diferencia: "difference",
   "en el servidor. También completa los datos fiscales en": "on the server. Also complete the tax details in",
   "impuestos y datos adicionales": "taxes and additional details",
   "mín.": "min.",
@@ -700,6 +720,8 @@ export const en: Record<string, string> = {
   "{n} clientes": "{n} customers",
   "{n} con error.": "{n} with errors.",
   "{n} códigos internos asignados": "{n} internal codes assigned",
+  "{n} filas del archivo no son depósitos (cargos, saldos o renglones vacíos) y se omitieron.":
+    "{n} rows in the file are not deposits (charges, balances or empty rows) and were skipped.",
   "{n} productos": "{n} products",
   "{n} productos contados · diferencia estimada a costo:": "{n} products counted · estimated difference at cost:",
   "{n} pts": "{n} pts",

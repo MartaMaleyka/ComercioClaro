@@ -140,6 +140,7 @@ export const zh: Record<string, string> = {
   Clientes: "客户",
   "Clientes con saldo": "有欠款的客户",
   "Cobro automático por celular (API de Yappy Comercial)": "手机号自动收款（Yappy 商户 API）",
+  "Cobros por": "收款方式",
   "Comisiones estimadas": "预计手续费",
   "Comisiones por forma de pago": "各付款方式手续费",
   "Comparte estos datos con la persona. Deberá cambiar la contraseña al entrar.":
@@ -153,6 +154,10 @@ export const zh: Record<string, string> = {
   "Compras del mes": "本月进货",
   "Con devolución": "有退货",
   Concepto: "项目",
+  Conciliación: "对账",
+  Conciliados: "已核对",
+  Conciliar: "对账",
+  "Conciliar con el banco": "与银行对账",
   "Configura las comisiones en Configuración": "请在“设置”中配置手续费",
   Configuración: "设置",
   Confirmar: "确认",
@@ -198,6 +203,10 @@ export const zh: Record<string, string> = {
     "决定税费、开票和格式。更改后会调整货币、格式和时区。",
   "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.":
     "将不再出现在商品目录中，但保留其销售和进货记录。",
+  "Depósitos en el archivo": "文件中的入账",
+  "Depósitos sin venta": "无对应销售的入账",
+  "Descarga el estado de cuenta en CSV desde la banca en línea y súbelo aquí. Cada depósito se cruza con tus ventas por número de operación, por monto y fecha, o como lote del día.":
+    "从网上银行下载 CSV 格式的对账单并上传到这里。每笔入账会按交易号、按金额和日期或按当日批次与销售核对。",
   "Descarga tu información en CSV (se abre en Excel) o un respaldo completo.":
     "以 CSV（可用 Excel 打开）或完整备份下载你的数据。",
   "Descargar CSV": "下载 CSV",
@@ -283,6 +292,7 @@ export const zh: Record<string, string> = {
   "Escanear código": "扫描条码",
   "Esta contraseña no se volverá a mostrar.": "此密码不会再次显示。",
   Estado: "状态",
+  "Estado de cuenta (CSV)": "银行对账单（CSV）",
   "Este mes": "本月",
   Etiquetas: "价签",
   Exento: "免税",
@@ -373,6 +383,7 @@ export const zh: Record<string, string> = {
     "价格已含税。折扣和积分按比例分摊，退货计入发生当月并予以扣减。",
   "Los productos de esta categoría quedarán sin categoría.": "该分类下的商品将变为未分类。",
   Lote: "批次",
+  "Lote del día": "当日批次",
   "Límite de crédito (fiado)": "赊账额度",
   "Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100 documentos al mes.":
     "DGI 第 201-6299 号决议限额（自 2026 年 1 月 1 日起）：年收入不超过 B/.36,000，每月不超过 100 份单据。",
@@ -440,6 +451,8 @@ export const zh: Record<string, string> = {
   Paga: "付",
   "Paga con Yappy": "用 Yappy 付款",
   "Pagado con": "付款来源",
+  "Pagos que no encontramos en tus ventas: abonos de fiado, ventas no registradas u otros ingresos.":
+    "在销售中找不到的款项：赊账还款、未登记的销售或其他收入。",
   "Pantalla completa": "全屏",
   "Pantalla del cliente": "顾客显示屏",
   'Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.':
@@ -459,6 +472,8 @@ export const zh: Record<string, string> = {
   "Plazo para pagar cada venta fiada": "每笔赊账的付款期限",
   "Por agotarse": "即将售完",
   "Por forma de pago": "按付款方式",
+  "Por monto y fecha": "按金额和日期",
+  "Por número de operación": "按交易号",
   "Porcentaje de descuento": "折扣百分比",
   "Precio de mayoreo": "批发价",
   "Precio de venta": "售价",
@@ -530,6 +545,8 @@ export const zh: Record<string, string> = {
   "Reportes de traducción": "翻译问题报告",
   Restaurar: "恢复",
   Resumen: "概览",
+  "Revisa si el cliente realmente pagó o si el banco las acreditará después.":
+    "请确认客户是否确实付款，或银行是否会稍后入账。",
   Robo: "被盗",
   Rol: "角色",
   "Régimen fiscal": "税务制度",
@@ -611,6 +628,7 @@ export const zh: Record<string, string> = {
   "Todas las categorías": "所有分类",
   "Todas las sucursales": "所有分店",
   "Todo en orden": "一切正常",
+  Todos: "全部",
   Total: "合计",
   "Total a pagar": "应付合计",
   "Total mostrado": "显示合计",
@@ -650,6 +668,7 @@ export const zh: Record<string, string> = {
   "Ventas por pagar": "待付款销售",
   "Ventas recientes": "最近销售",
   "Ventas sin conexión": "离线销售",
+  "Ventas sin depósito": "未入账的销售",
   "Ventas y ganancia neta por día": "每日销售额和净利润",
   "Ventas, utilidad real y lo que más se vende": "销售、实际利润和畅销商品",
   Ver: "查看",
@@ -669,6 +688,7 @@ export const zh: Record<string, string> = {
   "Zona horaria": "时区",
   "caja(s)": "箱",
   debe: "欠款",
+  diferencia: "差额",
   "en el servidor. También completa los datos fiscales en": "到服务器。同时请在以下位置填写税务资料：",
   "impuestos y datos adicionales": "税费和其他信息",
   "mín.": "最低",
@@ -683,6 +703,8 @@ export const zh: Record<string, string> = {
   "{n} clientes": "{n} 位客户",
   "{n} con error.": "{n} 笔出错。",
   "{n} códigos internos asignados": "已分配 {n} 个内部条码",
+  "{n} filas del archivo no son depósitos (cargos, saldos o renglones vacíos) y se omitieron.":
+    "文件中有 {n} 行不是入账（扣款、余额或空行），已跳过。",
   "{n} productos": "{n} 个商品",
   "{n} productos contados · diferencia estimada a costo:": "已盘点 {n} 个商品 · 按成本估算差额：",
   "{n} pts": "{n} 积分",
