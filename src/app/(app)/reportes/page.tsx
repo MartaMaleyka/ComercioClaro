@@ -45,6 +45,7 @@ interface Report {
   byPaymentMethod: { method: string; total: number; count: number }[];
   fees: { items: { method: string; rate: number; amount: number }[]; total: number };
   netAfterFees: number;
+  serviceCommissions?: number;
   trends: {
     date: string;
     sales: number;
@@ -236,7 +237,14 @@ export default function ReportsPage() {
                     <Stat
                       label={tr("Ganancia neta")}
                       value={fmt.money(data.netProfit)}
-                      hint={`Gastos ${fmt.money(data.expenses)}`}
+                      hint={
+                        (data.serviceCommissions ?? 0) > 0
+                          ? tr("Gastos {expenses} · comisiones de recargas {commissions}", {
+                              expenses: fmt.money(data.expenses),
+                              commissions: fmt.money(data.serviceCommissions),
+                            })
+                          : tr("Gastos {expenses}", { expenses: fmt.money(data.expenses) })
+                      }
                       tone={data.netProfit >= 0 ? "positive" : "negative"}
                     />
                   </div>

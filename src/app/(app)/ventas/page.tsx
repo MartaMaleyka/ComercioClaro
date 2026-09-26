@@ -20,6 +20,7 @@ import {
   Smartphone,
   Trash2,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { api, fetcher, isNetworkError } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
@@ -42,6 +43,7 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
+import { ServicesModal } from "@/components/pos/ServicesModal";
 
 interface OnlineOrderData {
   id: string;
@@ -341,6 +343,7 @@ export default function PosPage() {
         }
   );
   const [displayOpen, setDisplayOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(false);
   const [displayRemote, setDisplayRemote] = useDisplayRemote();
 
   const invalidLine = cart.find((l) => {
@@ -782,6 +785,9 @@ export default function PosPage() {
             <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label={t("pos.scan")}>
               <ScanBarcode className="w-5 h-5" />
             </Button>
+            <Button variant="secondary" onClick={() => setServicesOpen(true)} aria-label={tr("Recargas y servicios")}>
+              <Zap className="w-5 h-5" />
+            </Button>
             <Button variant="secondary" onClick={() => setDisplayOpen(true)} aria-label={tr("Pantalla del cliente")}>
               <MonitorSmartphone className="w-5 h-5" />
             </Button>
@@ -891,6 +897,8 @@ export default function PosPage() {
       <Modal open={checkoutOpen} onClose={() => setCheckoutOpen(false)} title={t("pos.currentSale")}>
         {cartPanel}
       </Modal>
+
+      {servicesOpen && <ServicesModal open onClose={() => setServicesOpen(false)} />}
 
       <Modal open={displayOpen} onClose={() => setDisplayOpen(false)} title={tr("Pantalla del cliente")}>
         <div className="space-y-4 text-sm text-slate-600">

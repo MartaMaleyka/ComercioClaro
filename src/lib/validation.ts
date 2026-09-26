@@ -165,6 +165,7 @@ export const businessSchema = z.object({
   cardFeeRate: feeRate.optional(),
   transferFeeRate: feeRate.optional(),
   yappyFeeRate: feeRate.optional(),
+  serviceProviders: z.lazy(() => serviceProvidersSchema).optional(),
 });
 
 export const languageSchema = z.object({ language: z.enum(["es", "zh", "en"]) });
@@ -539,4 +540,24 @@ export const transferSchema = z.object({
     .array(z.object({ productId: id, quantity: positiveQty }))
     .min(1, "Agrega al menos un producto")
     .max(300),
+});
+
+export const serviceKind = z.enum(["RECHARGE", "BILL", "OTHER"]);
+
+export const serviceProvidersSchema = z
+  .array(
+    z.object({
+      name: text(60, "Escribe el nombre del proveedor"),
+      kind: serviceKind,
+      commissionRate: rate,
+    })
+  )
+  .max(40);
+
+export const serviceSaleSchema = z.object({
+  kind: serviceKind,
+  provider: text(60, "Elige el proveedor"),
+  reference: optText(60),
+  amount: positiveMoney,
+  paymentMethod: immediatePaymentMethod.default("CASH"),
 });

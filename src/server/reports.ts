@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { D, money, type Decimal } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 import { customersAging } from "./customers";
+import { serviceCommissions } from "./services";
 import { addDays, dayKey, dayKeysBetween, dayRange, startOfDay, startOfMonth } from "@/lib/dates";
 
 interface Range {
@@ -14,7 +15,7 @@ interface Range {
  * - ingresos = ventas activas − devoluciones
  * - costo de lo vendido = costo registrado al vender − costo devuelto
  * - utilidad bruta = ingresos − costo de lo vendido
- * - utilidad neta = utilidad bruta − gastos
+ * - utilidad neta = utilidad bruta − gastos + comisiones de recargas y servicios
  * Las compras se reportan aparte como salida de dinero (no son costo hasta que se venden).
  */
 export interface FeeRates {
@@ -38,7 +39,7 @@ export function estimateFees(byMethod: { method: string; total: Decimal }[], rat
 
 export async function financialSummary(businessId: string, range: Range, rates: FeeRates = {}) {
   const saleWhere = { businessId, status: "ACTIVE" as const, createdAt: { gte: range.start, lt: range.end } };
-  const [sales, returns, expenses, purchases, byMethod] = await Promise.all([
+  const [sales, returns, expenses, purchases, byMethod, services] = await Promise.all([
     prisma.sale.aggregate({ where: saleWhere, _sum: { total: true, costTotal: true, discount: true }, _count: true }),
     prisma.saleReturn.aggregate({
       where: { businessId, sale: { status: "ACTIVE" }, createdAt: { gte: range.start, lt: range.end } },
@@ -59,13 +60,15 @@ export async function financialSummary(businessId: string, range: Range, rates: 
       _sum: { total: true },
       _count: true,
     }),
+    serviceCommissions(businessId, range),
   ]);
 
   const revenue = D(sales._sum.total).minus(D(returns._sum.total));
   const cogs = D(sales._sum.costTotal).minus(D(returns._sum.costTotal));
   const grossProfit = revenue.minus(cogs);
   const totalExpenses = D(expenses._sum.amount);
-  const netProfit = grossProfit.minus(totalExpenses);
+  // Las comisiones por recargas y servicios son ingreso aunque no sean venta de mercancía.
+  const netProfit = grossProfit.minus(totalExpenses).plus(services.commissions);
   const paymentMethods = byMethod.map((m) => ({ method: m.paymentMethod, total: D(m._sum.total), count: m._count }));
   const fees = estimateFees(paymentMethods, rates);
 
@@ -85,6 +88,9 @@ export async function financialSummary(businessId: string, range: Range, rates: 
     byPaymentMethod: paymentMethods,
     fees,
     netAfterFees: money(netProfit.minus(fees.total)),
+    serviceCommissions: money(services.commissions),
+    servicesCollected: money(services.collected),
+    servicesCount: services.count,
   };
 }
 
@@ -118,8 +124,7 @@ export async function dailyTrends(businessId: string, timeZone: string, fromKey:
       GROUP BY 1`,
   ]);
 
-  const toMap = (rows: DailyRow[]) =>
-    new Map(rows.map((r) => [r.day, { amount: D(r.amount), cost: D(r.cost) }]));
+  const toMap = (rows: DailyRow[]) => new Map(rows.map((r) => [r.day, { amount: D(r.amount), cost: D(r.cost) }]));
   const s = toMap(sales);
   const r = toMap(returns);
   const p = toMap(purchases);
@@ -249,7 +254,14 @@ export async function consolidatedReport(userId: string, query: { period: number
     memberships.map(async ({ business }) => {
       const range = resolveReportRange(business.timezone, query);
       const summary = await financialSummary(business.id, range, business);
-      return { businessId: business.id, name: business.name, currency: business.currency, from: range.fromKey, to: range.toKey, ...summary };
+      return {
+        businessId: business.id,
+        name: business.name,
+        currency: business.currency,
+        from: range.fromKey,
+        to: range.toKey,
+        ...summary,
+      };
     })
   );
   const keys = ["revenue", "cogs", "grossProfit", "expenses", "netProfit", "purchases"] as const;
@@ -266,42 +278,52 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
   const month = { start: startOfMonth(now, business.timezone), end: today.end };
   const soon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  const [todaySummary, monthSummary, lowStock, lowStockCount, inventory, expiring, receivables, openCash, recentSales, totalProducts] =
-    await Promise.all([
-      financialSummary(business.id, today, business),
-      financialSummary(business.id, month, business),
-      prisma.product.findMany({
-        where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
-        orderBy: { stock: "asc" },
-        take: 5,
-        select: { id: true, name: true, stock: true, minStock: true, unit: true },
-      }),
-      prisma.product.count({
-        where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
-      }),
-      prisma.$queryRaw<{ value: Decimal | null }[]>`
+  const [
+    todaySummary,
+    monthSummary,
+    lowStock,
+    lowStockCount,
+    inventory,
+    expiring,
+    receivables,
+    openCash,
+    recentSales,
+    totalProducts,
+  ] = await Promise.all([
+    financialSummary(business.id, today, business),
+    financialSummary(business.id, month, business),
+    prisma.product.findMany({
+      where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
+      orderBy: { stock: "asc" },
+      take: 5,
+      select: { id: true, name: true, stock: true, minStock: true, unit: true },
+    }),
+    prisma.product.count({
+      where: { businessId: business.id, archivedAt: null, stock: { lte: prisma.product.fields.minStock } },
+    }),
+    prisma.$queryRaw<{ value: Decimal | null }[]>`
         SELECT SUM(GREATEST("stock", 0) * "cost") AS value FROM "Product"
         WHERE "businessId" = ${business.id} AND "archivedAt" IS NULL`,
-      prisma.productBatch.findMany({
-        where: { businessId: business.id, remaining: { gt: 0 }, expiresAt: { not: null, lte: soon } },
-        include: { product: { select: { id: true, name: true, unit: true } } },
-        orderBy: { expiresAt: "asc" },
-        take: 5,
-      }),
-      prisma.customer.aggregate({
-        where: { businessId: business.id, balance: { gt: 0 } },
-        _sum: { balance: true },
-        _count: true,
-      }),
-      prisma.cashSession.findFirst({ where: { businessId: business.id, closedAt: null } }),
-      prisma.sale.findMany({
-        where: { businessId: business.id },
-        include: { items: { include: { product: { select: { name: true } } } }, customer: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-      }),
-      prisma.product.count({ where: { businessId: business.id, archivedAt: null } }),
-    ]);
+    prisma.productBatch.findMany({
+      where: { businessId: business.id, remaining: { gt: 0 }, expiresAt: { not: null, lte: soon } },
+      include: { product: { select: { id: true, name: true, unit: true } } },
+      orderBy: { expiresAt: "asc" },
+      take: 5,
+    }),
+    prisma.customer.aggregate({
+      where: { businessId: business.id, balance: { gt: 0 } },
+      _sum: { balance: true },
+      _count: true,
+    }),
+    prisma.cashSession.findFirst({ where: { businessId: business.id, closedAt: null } }),
+    prisma.sale.findMany({
+      where: { businessId: business.id },
+      include: { items: { include: { product: { select: { name: true } } } }, customer: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    prisma.product.count({ where: { businessId: business.id, archivedAt: null } }),
+  ]);
 
   return {
     today: todaySummary,

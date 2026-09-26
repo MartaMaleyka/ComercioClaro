@@ -13,6 +13,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { TranslationFeedbackButton } from "@/components/layout/TranslationFeedbackButton";
+import { ServiceProvidersCard } from "@/components/settings/ServiceProvidersCard";
 import { COUNTRIES, countryConfig } from "@/lib/country";
 import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
@@ -132,7 +133,12 @@ interface BusinessData {
 function BusinessSettings() {
   const { data, mutate } = useSWR<BusinessData>("/api/business", fetcher);
   if (!data) return <ListSkeleton rows={3} />;
-  return <BusinessForm initial={data} onSaved={() => mutate()} />;
+  return (
+    <div className="space-y-4">
+      <BusinessForm initial={data} onSaved={() => mutate()} />
+      <ServiceProvidersCard />
+    </div>
+  );
 }
 
 const MAX_QR_BYTES = 300 * 1024;

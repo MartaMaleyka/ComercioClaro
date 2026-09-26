@@ -13,6 +13,9 @@ import {
   receivePurchaseOrder,
 } from "@/server/purchase-orders";
 import { cancelTransfer, createTransfer, receiveTransfer, transferDestinations } from "@/server/transfers";
+import { cancelServiceSale, createServiceSale, serviceProviders } from "@/server/services";
+import { cashSessionSummary } from "@/server/cash";
+import { financialSummary } from "@/server/reports";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -348,5 +351,62 @@ describe.skipIf(!hasDatabase)("traspasos entre sucursales", () => {
     await cancelTransfer(owner, second.id);
     expect(Number((await prisma.product.findUniqueOrThrow({ where: { id: soda.id } })).stock)).toBe(15);
     await expect(receiveTransfer(dest, second.id)).rejects.toThrow(/no está en tránsito/);
+  });
+});
+
+describe.skipIf(!hasDatabase)("recargas y pago de servicios", () => {
+  beforeEach(resetDatabase);
+
+  it("el efectivo entra a la caja sin ser venta y la comisión suma a la ganancia", async () => {
+    const owner = await panamaOwner({
+      serviceProviders: [{ name: "Tigo", kind: "RECHARGE", commissionRate: 0.05 }],
+    });
+    expect(serviceProviders(await business(owner))).toHaveLength(1);
+    expect(serviceProviders({ country: "PA", serviceProviders: null }).map((p) => p.name)).toContain("+Móvil");
+
+    await expect(
+      createServiceSale(owner, {
+        kind: "RECHARGE",
+        provider: "tigo",
+        reference: "61234567",
+        amount: 10,
+        paymentMethod: "CASH",
+      })
+    ).rejects.toThrow(/Abre la caja/);
+    const session = await openCashSession(owner, { openingAmount: 20, notes: null });
+    const recharge = await createServiceSale(owner, {
+      kind: "OTHER",
+      provider: "tigo",
+      reference: "61234567",
+      amount: 10,
+      paymentMethod: "CASH",
+    });
+    expect(recharge).toMatchObject({ provider: "Tigo", kind: "RECHARGE" });
+    expect(Number(recharge.commission)).toBe(0.5);
+    const bill = await createServiceSale(owner, {
+      kind: "BILL",
+      provider: "Naturgy",
+      reference: "123",
+      amount: 30,
+      paymentMethod: "YAPPY",
+    });
+    expect(Number(bill.commission)).toBe(0);
+
+    let summary = await cashSessionSummary(prisma, session.id);
+    expect(Number(summary.serviceCash)).toBe(10);
+    expect(Number(summary.expected)).toBe(30);
+
+    const range = { start: new Date(Date.now() - 60_000), end: new Date(Date.now() + 60_000) };
+    const finance = await financialSummary(owner.businessId, range);
+    expect(Number(finance.revenue)).toBe(0);
+    expect(Number(finance.serviceCommissions)).toBe(0.5);
+    expect(Number(finance.netProfit)).toBe(0.5);
+
+    await cancelServiceSale(owner, recharge.id);
+    summary = await cashSessionSummary(prisma, session.id);
+    expect(Number(summary.expected)).toBe(20);
+    await expect(cancelServiceSale(owner, recharge.id)).rejects.toThrow(/ya está anulado/);
+    await closeCashSession(owner, { countedAmount: 20, notes: null });
+    await expect(cancelServiceSale(owner, bill.id)).resolves.toMatchObject({ status: "CANCELLED" });
   });
 });
