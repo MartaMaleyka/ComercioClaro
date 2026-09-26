@@ -202,6 +202,11 @@ export default function CustomersPage() {
                       {c.phone ?? "Sin teléfono"}
                       {c.creditLimit > 0 && ` · límite ${fmt.money(c.creditLimit)}`}
                     </p>
+                    {business.loyaltyEnabled && (c.points ?? 0) > 0 && (
+                      <Badge tone="purple" className="mt-1 mr-1">
+                        {c.points} pts
+                      </Badge>
+                    )}
                     {(c.ruc || c.rfc) && (
                       <Badge tone="blue" className="mt-1">
                         {c.ruc ? `RUC ${c.ruc}${c.dv ? ` DV ${c.dv}` : ""}` : `RFC ${c.rfc}`}

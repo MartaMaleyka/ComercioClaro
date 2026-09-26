@@ -1,12 +1,12 @@
 /* Service worker de ComercioClaro: permite abrir la app y vender sin conexión. */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC_CACHE = `static-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
 const DATA_CACHE = `data-${VERSION}`;
 const PRECACHE = ["/offline", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png"];
 
 // Datos que el punto de venta necesita sin conexión (red primero, caché de respaldo).
-const OFFLINE_API = ["/api/products", "/api/customers", "/api/auth/me", "/api/cash", "/api/categories"];
+const OFFLINE_API = ["/api/products", "/api/customers", "/api/auth/me", "/api/cash", "/api/categories", "/api/promotions"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));

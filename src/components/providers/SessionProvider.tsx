@@ -18,6 +18,11 @@ export interface SessionBusiness {
   yappyDirectory: string | null;
   hasYappyQr: boolean;
   usesFreeInvoicer: boolean;
+  einvoiceMode: string;
+  autoInvoice: boolean;
+  yappyMode: string;
+  loyaltyEnabled: boolean;
+  loyaltyPointValue: number;
 }
 
 export interface SessionData {

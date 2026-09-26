@@ -41,6 +41,7 @@ export interface Customer {
   notes: string | null;
   creditLimit: number;
   creditDays: number;
+  points?: number;
   balance: number;
   rfc: string | null;
   legalName: string | null;
@@ -79,6 +80,9 @@ export interface Sale {
   change: number | null;
   paymentReference: string | null;
   dueDate: string | null;
+  pointsEarned?: number;
+  pointsRedeemed?: number;
+  pointsDiscount?: number;
   notes: string | null;
   createdAt: string;
   cancelledAt: string | null;
@@ -86,7 +90,15 @@ export interface Sale {
   customer: { id: string; name: string; phone: string | null } | null;
   items: SaleItem[];
   returns: { id: string; total: number; createdAt: string; reason: string | null; refundMethod: PaymentMethod }[];
-  invoice: { id: string; status: string; uuid: string | null; kind: string } | null;
+  invoice: {
+    id: string;
+    status: string;
+    uuid: string | null;
+    kind: string;
+    error?: string | null;
+    provider?: string;
+    qrUrl?: string | null;
+  } | null;
   receiptText?: string;
 }
 

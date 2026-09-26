@@ -11,8 +11,22 @@ import { formatCurrency, PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import type { listQuerySchema, saleReturnSchema, saleSchema } from "@/lib/validation";
 import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
+import { assertChargeForSale } from "./yappy";
+import { bestPromotion, type PromotionRule } from "@/lib/promotions";
+import type { Promotion } from "@/generated/prisma/client";
 
-export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference"> & { paymentReference?: string | null };
+export function toPromotionRule(p: Promotion): PromotionRule {
+  return {
+    ...p,
+    percent: p.percent?.toNumber() ?? null,
+    bundlePrice: p.bundlePrice?.toNumber() ?? null,
+  };
+}
+
+export type SaleInput = Omit<z.infer<typeof saleSchema>, "paymentReference" | "yappyChargeId"> & {
+  paymentReference?: string | null;
+  yappyChargeId?: string | null;
+};
 export type SaleReturnInput = z.infer<typeof saleReturnSchema>;
 type ListQuery = z.infer<typeof listQuerySchema>;
 
@@ -24,7 +38,7 @@ export const saleInclude = {
   items: { include: { product: { select: { id: true, name: true, unit: true, barcode: true } } } },
   customer: { select: { id: true, name: true, phone: true } },
   returns: { include: { items: true } },
-  invoice: { select: { id: true, status: true, uuid: true, kind: true } },
+  invoice: { select: { id: true, status: true, uuid: true, kind: true, error: true, provider: true, qrUrl: true } },
 } satisfies Prisma.SaleInclude;
 
 const OFFLINE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -57,6 +71,15 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       });
       const productMap = new Map(products.map((p) => [p.id, p]));
 
+      const [business, promotionRows] = await Promise.all([
+        tx.business.findUniqueOrThrow({
+          where: { id: actor.businessId },
+          select: { loyaltyEnabled: true, loyaltyPointsPerUnit: true, loyaltyPointValue: true },
+        }),
+        tx.promotion.findMany({ where: { businessId: actor.businessId, active: true } }),
+      ]);
+      const promotions = promotionRows.map(toPromotionRule);
+
       const lines = input.items.map((item) => {
         const product = productMap.get(item.productId);
         if (!product) throw new AppError(404, "Uno de los productos no existe o está archivado");
@@ -68,13 +91,29 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         // Solo el dueño puede cambiar el precio de lista al vender.
         const unitPrice = item.unitPrice != null && actor.role === "OWNER" ? money(item.unitPrice) : computed;
         const gross = money(quantity.times(unitPrice));
-        const discount = money(Math.min(item.discount ?? 0, gross.toNumber()));
-        return { product, quantity, unitPrice, discount, subtotal: gross.minus(discount) };
+        // Promoción vigente con mayor descuento (2x1, 3 por B/.1, % por producto o categoría).
+        const promo = bestPromotion(promotions, {
+          productId: product.id,
+          categoryId: product.categoryId,
+          quantity: quantity.toNumber(),
+          unitPrice: unitPrice.toNumber(),
+        });
+        const promotionDiscount = money(promo?.discount ?? 0);
+        const discount = money(Math.min((item.discount ?? 0) + promotionDiscount.toNumber(), gross.toNumber()));
+        return {
+          product,
+          quantity,
+          unitPrice,
+          discount,
+          promotionDiscount,
+          promotionId: promo?.promotion.id ?? null,
+          subtotal: gross.minus(discount),
+        };
       });
 
       const subtotal = sum(lines.map((l) => l.subtotal));
       const discount = money(Math.min(input.discount ?? 0, subtotal.toNumber()));
-      const total = subtotal.minus(discount);
+      let total = subtotal.minus(discount);
 
       let customer = null;
       if (input.customerId) {
@@ -82,6 +121,20 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           where: { id: input.customerId, businessId: actor.businessId, archivedAt: null },
         });
         if (!customer) throw notFound("Cliente");
+      }
+
+      // Canje de puntos de lealtad como descuento.
+      let pointsRedeemed = 0;
+      let pointsDiscount = D(0);
+      if (input.redeemPoints && input.redeemPoints > 0) {
+        if (!business.loyaltyEnabled) throw new AppError(400, "El programa de puntos no está activo");
+        if (!customer) throw new AppError(400, "Selecciona el cliente para canjear puntos");
+        if (customer.points < input.redeemPoints) throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
+        const value = D(business.loyaltyPointValue);
+        const maxPoints = value.gt(0) ? total.div(value).floor().toNumber() : 0;
+        pointsRedeemed = Math.min(input.redeemPoints, maxPoints);
+        pointsDiscount = money(value.times(pointsRedeemed));
+        total = total.minus(pointsDiscount);
       }
 
       let dueDate: Date | null = null;
@@ -111,6 +164,12 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         offlineDate && offlineDate.getTime() <= Date.now() && Date.now() - offlineDate.getTime() < OFFLINE_MAX_AGE_MS
           ? offlineDate
           : new Date();
+
+      // Cobro de Yappy confirmado por la pasarela: su número de operación queda como referencia.
+      let yappyCharge = null;
+      if (input.paymentMethod === "YAPPY" && input.yappyChargeId) {
+        yappyCharge = await assertChargeForSale(tx, actor, input.yappyChargeId, total);
+      }
 
       const cashSession = await getOpenSession(tx, actor.businessId);
       const { saleCounter } = await tx.business.update({
@@ -149,7 +208,13 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           costTotal,
           amountReceived,
           change,
-          paymentReference: input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT" ? null : (input.paymentReference ?? null),
+          pointsRedeemed,
+          pointsDiscount,
+          paymentReference: yappyCharge
+            ? (yappyCharge.providerTxId ?? yappyCharge.orderId)
+            : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
+              ? null
+              : (input.paymentReference ?? null),
           dueDate,
           notes: input.notes,
           customerId: customer?.id ?? null,
@@ -163,6 +228,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
               quantity: l.quantity,
               unitPrice: l.unitPrice,
               discount: l.discount,
+              promotionDiscount: l.promotionDiscount,
+              promotionId: l.promotionId,
               subtotal: l.subtotal,
               unitCost: itemCosts.get(l)!,
               taxRate: l.product.taxRate,
@@ -172,6 +239,28 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         },
         include: saleInclude,
       });
+
+      if (yappyCharge) {
+        await tx.yappyCharge.update({ where: { id: yappyCharge.id }, data: { saleId: sale.id } });
+      }
+
+      // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
+      if (customer && business.loyaltyEnabled) {
+        const earned =
+          input.paymentMethod === "CREDIT" ? 0 : total.times(business.loyaltyPointsPerUnit).floor().toNumber();
+        if (pointsRedeemed > 0) {
+          const { count } = await tx.customer.updateMany({
+            where: { id: customer.id, points: { gte: pointsRedeemed } },
+            data: { points: { decrement: pointsRedeemed } },
+          });
+          if (count === 0) throw new AppError(409, "Los puntos del cliente cambiaron; intenta de nuevo");
+        }
+        if (earned > 0) {
+          await tx.customer.update({ where: { id: customer.id }, data: { points: { increment: earned } } });
+          await tx.sale.update({ where: { id: sale.id }, data: { pointsEarned: earned } });
+          sale.pointsEarned = earned;
+        }
+      }
 
       if (input.paymentMethod === "CREDIT" && customer) {
         await tx.customer.update({ where: { id: customer.id }, data: { balance: { increment: total } } });
@@ -299,6 +388,13 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
           });
         }
       }
+    }
+
+    if (sale.customerId && (sale.pointsEarned > 0 || sale.pointsRedeemed > 0)) {
+      await tx.customer.update({
+        where: { id: sale.customerId },
+        data: { points: { increment: sale.pointsRedeemed - sale.pointsEarned } },
+      });
     }
 
     await audit(tx, actor, "sale.cancel", "Sale", sale.id, { folio: sale.folio, reason });
@@ -434,6 +530,8 @@ export function receiptText(
     ...sale.items.map((i) => `${i.quantity.toString()} x ${i.product.name}  ${fmt(i.subtotal)}`),
     "",
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
+    D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,
+    sale.pointsEarned > 0 ? `Ganaste ${sale.pointsEarned} puntos` : null,
     `*Total: ${fmt(sale.total)}*`,
     `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
     sale.status === "CANCELLED" ? "VENTA CANCELADA" : null,

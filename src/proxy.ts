@@ -9,6 +9,8 @@ const publicApi = [
   "/api/auth/reset-password",
   "/api/auth/logout",
   "/api/cron/",
+  "/api/yappy/ipn",
+  "/api/catalog/",
 ];
 
 /**
@@ -21,7 +23,7 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
   const isPublic = isApi
     ? publicApi.some((p) => pathname === p || (p.endsWith("/") && pathname.startsWith(p)))
-    : publicPages.includes(pathname);
+    : publicPages.includes(pathname) || pathname.startsWith("/c/");
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const session = token ? await verifyToken(token) : null;

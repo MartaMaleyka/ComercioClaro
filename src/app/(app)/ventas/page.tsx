@@ -28,6 +28,7 @@ import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
 import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types";
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
 import { countryConfig } from "@/lib/country";
+import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -37,9 +38,11 @@ import { Modal } from "@/components/ui/Modal";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
+import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
 
 interface CartLine {
   productId: string;
+  categoryId: string | null;
   name: string;
   unit: Product["unit"];
   quantity: string;
@@ -74,9 +77,20 @@ function unitPrice(line: CartLine, isOwner: boolean) {
   return line.price;
 }
 
-function lineTotal(line: CartLine, isOwner: boolean) {
+/** Promoción que el servidor aplicará al renglón (misma regla que en el servidor). */
+function linePromotion(line: CartLine, isOwner: boolean, promotions: PromotionRule[]) {
+  return bestPromotion(promotions, {
+    productId: line.productId,
+    categoryId: line.categoryId,
+    quantity: num(line.quantity),
+    unitPrice: unitPrice(line, isOwner),
+  });
+}
+
+function lineTotal(line: CartLine, isOwner: boolean, promotions: PromotionRule[] = []) {
   const gross = round2(num(line.quantity) * unitPrice(line, isOwner));
-  return Math.max(0, round2(gross - Math.min(num(line.discount), gross)));
+  const promo = linePromotion(line, isOwner, promotions)?.discount ?? 0;
+  return Math.max(0, round2(gross - Math.min(num(line.discount) + promo, gross)));
 }
 
 /** Datos con respaldo local: si no hay red se usa la última copia guardada. */
@@ -119,6 +133,11 @@ export default function PosPage() {
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentReference, setPaymentReference] = useState("");
+  const [redeemPoints, setRedeemPoints] = useState("");
+  const { data: promotionList } = useSWR<PromotionRule[]>("/api/promotions", fetcher);
+  // Con la API de Yappy la venta se registra sola al confirmarse el pago.
+  const [yappyManual, setYappyManual] = useState(false);
+  const yappyApi = business.yappyMode === "API" && !yappyManual;
   const { data: yappy } = useSWR<{ directory: string | null; qr: string | null }>(
     paymentMethod === "YAPPY" ? "/api/business/yappy" : null,
     fetcher,
@@ -168,6 +187,7 @@ export default function PosPage() {
         ...current,
         {
           productId: product.id,
+          categoryId: product.categoryId,
           name: product.name,
           unit: product.unit,
           quantity: String(step),
@@ -213,9 +233,18 @@ export default function PosPage() {
     updateLine(line.productId, { quantity: String(next) });
   }
 
-  const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner), 0));
+  const promotions = useMemo(() => promotionList ?? [], [promotionList]);
+  const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner, promotions), 0));
   const discount = Math.min(num(saleDiscount), subtotal);
-  const total = round2(subtotal - discount);
+  const customerForPoints = customers.list?.find((c) => c.id === customerId);
+  const pointValue = business.loyaltyPointValue;
+  const maxRedeem =
+    business.loyaltyEnabled && customerForPoints && pointValue > 0
+      ? Math.min(customerForPoints.points ?? 0, Math.floor((subtotal - discount) / pointValue + 1e-9))
+      : 0;
+  const pointsToRedeem = Math.min(Math.max(0, Math.floor(num(redeemPoints))), maxRedeem);
+  const pointsDiscount = round2(pointsToRedeem * pointValue);
+  const total = round2(subtotal - discount - pointsDiscount);
   const received = num(amountReceived);
   const change = paymentMethod === "CASH" && amountReceived ? round2(received - total) : 0;
   const customer = customers.list?.find((c) => c.id === customerId);
@@ -244,12 +273,14 @@ export default function PosPage() {
     setCustomerId("");
     setNotes("");
     setPaymentReference("");
+    setRedeemPoints("");
+    setYappyManual(false);
     setPaymentMethod("CASH");
     setCheckoutOpen(false);
     searchRef.current?.focus();
   }
 
-  async function charge() {
+  async function charge(yappyChargeId?: string) {
     if (!canCharge) return;
     setSaving(true);
     const payload = {
@@ -264,6 +295,8 @@ export default function PosPage() {
       paymentMethod,
       amountReceived: paymentMethod === "CASH" && amountReceived ? received : null,
       paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
+      yappyChargeId: yappyChargeId ?? null,
+      redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
       notes: notes || null,
       createdAt: new Date().toISOString(),
@@ -332,6 +365,7 @@ export default function PosPage() {
             const fractional = isFractionalUnit(line.unit);
             const price = unitPrice(line, isOwner);
             const wholesale = line.wholesalePrice != null && price === line.wholesalePrice && line.priceOverride === "";
+            const promo = linePromotion(line, isOwner, promotions);
             return (
               <li key={line.productId} className="py-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -344,9 +378,16 @@ export default function PosPage() {
                           {t("pos.wholesale")}
                         </Badge>
                       )}
+                      {promo && (
+                        <Badge tone="purple" className="ml-1">
+                          {promo.promotion.name} −{fmt.money(promo.discount)}
+                        </Badge>
+                      )}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold tabular-nums">{fmt.money(lineTotal(line, isOwner))}</p>
+                  <p className="text-sm font-semibold tabular-nums">
+                    {fmt.money(lineTotal(line, isOwner, promotions))}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1">
@@ -434,7 +475,15 @@ export default function PosPage() {
           ))}
         </div>
 
-        {paymentMethod === "YAPPY" && (
+        {paymentMethod === "YAPPY" && yappyApi && (
+          <YappyApiCharge
+            amount={total}
+            disabled={!canCharge || saving}
+            onPaid={(chargeId) => charge(chargeId)}
+            onManual={() => setYappyManual(true)}
+          />
+        )}
+        {paymentMethod === "YAPPY" && !yappyApi && (
           <div className="rounded-xl bg-slate-50 p-3 flex gap-3 items-center">
             {yappy?.qr && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -457,7 +506,7 @@ export default function PosPage() {
             </div>
           </div>
         )}
-        {(paymentMethod === "YAPPY" || paymentMethod === "CARD" || paymentMethod === "TRANSFER") && (
+        {((paymentMethod === "YAPPY" && !yappyApi) || paymentMethod === "CARD" || paymentMethod === "TRANSFER") && (
           <Input
             label={paymentMethod === "YAPPY" ? t("pos.yappyRef") : t("pos.reference")}
             value={paymentReference}
@@ -495,6 +544,19 @@ export default function PosPage() {
           </p>
         )}
 
+        {business.loyaltyEnabled && customerForPoints && (customerForPoints.points ?? 0) > 0 && (
+          <Input
+            label={t("pos.redeemPoints")}
+            inputMode="numeric"
+            placeholder="0"
+            value={redeemPoints}
+            onChange={(e) => setRedeemPoints(e.target.value)}
+            hint={t("pos.pointsAvailable", {
+              points: customerForPoints.points ?? 0,
+              value: fmt.money((customerForPoints.points ?? 0) * pointValue),
+            })}
+          />
+        )}
         <div className="grid grid-cols-2 gap-2">
           <Input
             label={t("pos.saleDiscount")}
@@ -544,6 +606,12 @@ export default function PosPage() {
               <dd className="tabular-nums">-{fmt.money(discount)}</dd>
             </div>
           )}
+          {pointsDiscount > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <dt>{t("pos.points")}</dt>
+              <dd className="tabular-nums">-{fmt.money(pointsDiscount)}</dd>
+            </div>
+          )}
           <div className="flex justify-between text-lg font-bold text-slate-900">
             <dt>{t("pos.total")}</dt>
             <dd className="tabular-nums">{fmt.money(total)}</dd>
@@ -556,7 +624,13 @@ export default function PosPage() {
           )}
         </dl>
 
-        <Button className="w-full" size="lg" onClick={charge} loading={saving} disabled={!canCharge}>
+        <Button
+          className={cn("w-full", paymentMethod === "YAPPY" && yappyApi && "hidden")}
+          size="lg"
+          onClick={() => charge()}
+          loading={saving}
+          disabled={!canCharge}
+        >
           {t("pos.charge")} {fmt.money(total)}
         </Button>
       </div>

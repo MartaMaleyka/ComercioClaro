@@ -107,41 +107,58 @@ model Membership {
 }
 
 model Business {
-  id                  String   @id @default(cuid())
-  name                String
-  description         String?
-  phone               String?
-  address             String?
+  id                   String   @id @default(cuid())
+  name                 String
+  description          String?
+  phone                String?
+  address              String?
   // País (ISO 3166-1): define impuestos, facturación y formatos por defecto
-  country             String   @default("MX")
-  currency            String   @default("MXN")
+  country              String   @default("MX")
+  currency             String   @default("MXN")
   // Panamá: mostrar montos como B/. (balboa a la par del dólar)
-  showBalboa          Boolean  @default(false)
-  locale              String   @default("es-MX")
-  timezone            String   @default("America/Mexico_City")
-  lowStockEmailAlerts Boolean  @default(false)
+  showBalboa           Boolean  @default(false)
+  locale               String   @default("es-MX")
+  timezone             String   @default("America/Mexico_City")
+  lowStockEmailAlerts  Boolean  @default(false)
   // Datos fiscales Panamá
-  ruc                 String?
-  dv                  String?
+  ruc                  String?
+  dv                   String?
   // Usa el facturador gratuito de la DGI (se vigilan sus límites)
-  usesFreeInvoicer    Boolean  @default(false)
+  usesFreeInvoicer     Boolean  @default(false)
   // Yappy: número o nombre en el directorio y QR estático (data URL)
-  yappyDirectory      String?
-  yappyQr             String?
+  yappyDirectory       String?
+  yappyQr              String?
   // Comisiones por medio de pago (fracción, p. ej. 0.0107 = 1.07%)
-  cardFeeRate         Decimal  @default(0) @db.Decimal(6, 4)
-  transferFeeRate     Decimal  @default(0) @db.Decimal(6, 4)
-  yappyFeeRate        Decimal  @default(0.0107) @db.Decimal(6, 4)
+  cardFeeRate          Decimal  @default(0) @db.Decimal(6, 4)
+  transferFeeRate      Decimal  @default(0) @db.Decimal(6, 4)
+  yappyFeeRate         Decimal  @default(0.0107) @db.Decimal(6, 4)
+  // Yappy: STATIC (QR fijo del comercio) o API (cobro con confirmación automática)
+  yappyMode            String   @default("STATIC")
+  // Factura electrónica: OFF, MANUAL (se registra el CUFE) o PAC (emisión automática)
+  einvoiceMode         String   @default("MANUAL")
+  einvoiceProvider     String?
+  // Emitir la factura de cada venta automáticamente (modo PAC)
+  autoInvoice          Boolean  @default(false)
+  // Contar cada venta como documento para los límites del facturador gratuito
+  invoicePerSale       Boolean  @default(false)
+  // Programa de lealtad
+  loyaltyEnabled       Boolean  @default(false)
+  loyaltyPointsPerUnit Decimal  @default(1) @db.Decimal(8, 2)
+  loyaltyPointValue    Decimal  @default(0.01) @db.Decimal(8, 4)
+  // Catálogo público con pedidos por WhatsApp
+  catalogEnabled       Boolean  @default(false)
+  catalogSlug          String?  @unique
+  catalogWhatsapp      String?
   // Datos fiscales (CFDI 4.0)
-  rfc                 String?
-  legalName           String?
-  taxRegime           String?
-  postalCode          String?
+  rfc                  String?
+  legalName            String?
+  taxRegime            String?
+  postalCode           String?
   // Contadores para folios consecutivos por negocio
-  saleCounter         Int      @default(0)
-  purchaseCounter     Int      @default(0)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  saleCounter          Int      @default(0)
+  purchaseCounter      Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   memberships      Membership[]
   categories       Category[]
@@ -159,14 +176,18 @@ model Business {
   expenses         Expense[]
   invoices         Invoice[]
   auditLogs        AuditLog[]
+  yappyCharges     YappyCharge[]
+  promotions       Promotion[]
+  inventoryCounts  InventoryCount[]
 }
 
 model Category {
-  id         String    @id @default(cuid())
+  id         String      @id @default(cuid())
   name       String
   businessId String
-  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   products   Product[]
+  promotions Promotion[]
 
   @@unique([businessId, name])
 }
@@ -206,6 +227,8 @@ model Product {
   returnItems    SaleReturnItem[]
   batches        ProductBatch[]
   stockMovements StockMovement[]
+  promotions     Promotion[]
+  countLines     InventoryCountLine[]
 
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
@@ -221,6 +244,8 @@ model Customer {
   creditLimit Decimal   @default(0) @db.Decimal(12, 2)
   // Días de crédito para calcular el vencimiento del fiado
   creditDays  Int       @default(15)
+  // Puntos de lealtad acumulados
+  points      Int       @default(0)
   // Saldo pendiente de fiado (se actualiza en la misma transacción que ventas y abonos)
   balance     Decimal   @default(0) @db.Decimal(12, 2)
   rfc         String?
@@ -296,6 +321,11 @@ model Sale {
   paymentReference String?
   // Vencimiento del fiado
   dueDate          DateTime?
+  // Lealtad: puntos ganados y canjeados en la venta
+  pointsEarned     Int           @default(0)
+  pointsRedeemed   Int           @default(0)
+  pointsDiscount   Decimal       @default(0) @db.Decimal(12, 2)
+  yappyCharge      YappyCharge?
   notes            String?
   customerId       String?
   customer         Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -324,19 +354,23 @@ model Sale {
 }
 
 model SaleItem {
-  id               String  @id @default(cuid())
-  quantity         Decimal @db.Decimal(12, 3)
-  returnedQuantity Decimal @default(0) @db.Decimal(12, 3)
-  unitPrice        Decimal @db.Decimal(12, 2)
-  discount         Decimal @default(0) @db.Decimal(12, 2)
-  subtotal         Decimal @db.Decimal(12, 2)
-  unitCost         Decimal @default(0) @db.Decimal(12, 4)
-  taxRate          Decimal @default(0.16) @db.Decimal(5, 4)
-  iepsRate         Decimal @default(0) @db.Decimal(5, 4)
-  saleId           String
-  sale             Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  productId        String
-  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id                String     @id @default(cuid())
+  quantity          Decimal    @db.Decimal(12, 3)
+  returnedQuantity  Decimal    @default(0) @db.Decimal(12, 3)
+  unitPrice         Decimal    @db.Decimal(12, 2)
+  discount          Decimal    @default(0) @db.Decimal(12, 2)
+  subtotal          Decimal    @db.Decimal(12, 2)
+  unitCost          Decimal    @default(0) @db.Decimal(12, 4)
+  taxRate           Decimal    @default(0.16) @db.Decimal(5, 4)
+  iepsRate          Decimal    @default(0) @db.Decimal(5, 4)
+  // Descuento aplicado por una promoción (incluido en discount)
+  promotionDiscount Decimal    @default(0) @db.Decimal(12, 2)
+  promotionId       String?
+  promotion         Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  saleId            String
+  sale              Sale       @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   returnItems SaleReturnItem[]
 
@@ -523,23 +557,29 @@ model Expense {
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  kind        InvoiceKind
-  status      InvoiceStatus @default(PENDING)
-  provider    String
-  providerId  String?
-  uuid        String?
-  total       Decimal       @db.Decimal(12, 2)
-  periodicity String?
-  periodStart DateTime?
-  periodEnd   DateTime?
-  error       String?
-  customerId  String?
-  customer    Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  businessId  String
-  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  kind          InvoiceKind
+  status        InvoiceStatus @default(PENDING)
+  provider      String
+  providerId    String?
+  uuid          String?
+  total         Decimal       @db.Decimal(12, 2)
+  periodicity   String?
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  error         String?
+  // Enlaces del PAC (consulta del CUFE / QR, PDF, XML) y reintentos por contingencia
+  qrUrl         String?
+  pdfUrl        String?
+  xmlUrl        String?
+  attempts      Int           @default(0)
+  nextAttemptAt DateTime?
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   sales Sale[]
 
@@ -558,6 +598,128 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([businessId, createdAt])
+}
+
+enum YappyChargeStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+/**
+ * Cobro de Yappy iniciado desde el punto de venta (confirmación automática).
+ */
+model YappyCharge {
+  id           String            @id @default(cuid())
+  orderId      String            @unique
+  amount       Decimal           @db.Decimal(12, 2)
+  phone        String?
+  status       YappyChargeStatus @default(PENDING)
+  provider     String
+  providerTxId String?
+  error        String?
+  saleId       String?           @unique
+  sale         Sale?             @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  userId       String?
+  businessId   String
+  business     Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  paidAt       DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([businessId, createdAt])
+}
+
+enum PromotionType {
+  PERCENT
+  BUY_X_PAY_Y
+  BUNDLE_PRICE
+}
+
+/**
+ * Promoción aplicada automáticamente al vender (por producto o categoría).
+ */
+model Promotion {
+  id          String        @id @default(cuid())
+  name        String
+  type        PromotionType
+  // PERCENT: porcentaje (0.10 = 10%)
+  percent     Decimal?      @db.Decimal(5, 4)
+  // BUY_X_PAY_Y: lleva X paga Y (p. ej. 2x1: buyQty 2, payQty 1)
+  buyQty      Int?
+  payQty      Int?
+  // BUNDLE_PRICE: bundleQty unidades por bundlePrice (p. ej. 3 por B/.1.00)
+  bundleQty   Int?
+  bundlePrice Decimal?      @db.Decimal(12, 2)
+  productId   String?
+  product     Product?      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean       @default(true)
+  businessId  String
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  saleItems SaleItem[]
+
+  @@index([businessId, active])
+}
+
+enum InventoryCountStatus {
+  OPEN
+  APPLIED
+  CANCELLED
+}
+
+/**
+ * Conteo físico de inventario (se escanea y al final se ajustan las diferencias).
+ */
+model InventoryCount {
+  id         String               @id @default(cuid())
+  status     InventoryCountStatus @default(OPEN)
+  notes      String?
+  userId     String?
+  businessId String
+  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime             @default(now())
+  appliedAt  DateTime?
+
+  lines InventoryCountLine[]
+
+  @@index([businessId, status])
+}
+
+model InventoryCountLine {
+  id        String         @id @default(cuid())
+  counted   Decimal        @db.Decimal(12, 3)
+  countId   String
+  count     InventoryCount @relation(fields: [countId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  updatedAt DateTime       @updatedAt
+
+  @@unique([countId, productId])
+}
+
+/**
+ * Reportes de traducciones incorrectas o faltantes enviados desde la app.
+ */
+model TranslationFeedback {
+  id         String   @id @default(cuid())
+  language   String
+  screen     String
+  original   String
+  suggestion String
+  userId     String
+  businessId String?
+  createdAt  DateTime @default(now())
+
+  @@index([language, createdAt])
 }
 
 model RateLimit {

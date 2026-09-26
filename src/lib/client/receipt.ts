@@ -32,6 +32,7 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
     ),
     "",
     sale.discount > 0 ? `Descuento: -${money(sale.discount)}` : null,
+    sale.pointsDiscount ? `Puntos canjeados (${sale.pointsRedeemed}): -${money(sale.pointsDiscount)}` : null,
     `*Total: ${money(sale.total)}*`,
     `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
     sale.change ? `Cambio: ${money(sale.change)}` : null,

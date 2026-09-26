@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { dayRange, parseDayKey } from "@/lib/dates";
 import { buildItem, PAYMENT_FORM, PUBLIC_RFC, type CfdiItem } from "@/lib/cfdi";
 import type { Actor } from "./inventory";
+import { getPacProvider } from "./einvoice/providers";
 
 const PROVIDER = "facturama";
 
@@ -272,7 +273,9 @@ export async function cancelInvoice(actor: Actor, id: string, motive = "02") {
   const invoice = await prisma.invoice.findFirst({ where: { id, businessId: actor.businessId } });
   if (!invoice) throw notFound("Factura");
   if (invoice.status !== "STAMPED") throw new AppError(409, "Solo se pueden cancelar facturas timbradas");
-  // Las facturas registradas desde la DGI/PAC externo se anulan allá; aquí solo se libera la venta.
+  // Las facturas registradas a mano (CUFE) se anulan en la DGI; aquí solo se libera la venta.
+  const pac = getPacProvider(invoice.provider);
+  if (pac && invoice.providerId) await pac.cancel(invoice.providerId, invoice.uuid ?? "", "Anulación solicitada por el emisor");
   if (invoice.provider === PROVIDER) {
     if (!invoice.providerId) throw new AppError(409, "Solo se pueden cancelar facturas timbradas");
     await facturamaRequest(`/cfdi/${invoice.providerId}?type=issued&motive=${motive}`, { method: "DELETE" });

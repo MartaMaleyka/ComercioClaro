@@ -34,7 +34,7 @@ interface Invoice {
 
 const STATUS: Record<Invoice["status"], { label: string; tone: "green" | "gray" | "red" | "amber" }> = {
   STAMPED: { label: "Timbrada", tone: "green" },
-  PENDING: { label: "Pendiente", tone: "amber" },
+  PENDING: { label: "En contingencia", tone: "amber" },
   CANCELLED: { label: "Cancelada", tone: "gray" },
   ERROR: { label: "Error", tone: "red" },
 };
@@ -62,6 +62,24 @@ export default function InvoicesPage() {
     } catch (err) {
       toast.error(err);
       list.mutate();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function retry() {
+    setBusy(true);
+    try {
+      const r = await api<{ processed: number; stamped: number; pending: number; errors: number }>(
+        "/api/invoices/retry",
+        {
+          body: {},
+        },
+      );
+      toast.success(`Procesadas ${r.processed}: ${r.stamped} emitidas, ${r.pending} pendientes, ${r.errors} con error`);
+      list.mutate();
+    } catch (err) {
+      toast.error(err);
     } finally {
       setBusy(false);
     }
@@ -96,6 +114,17 @@ export default function InvoicesPage() {
             description="Control de facturas electrónicas y de los límites del facturador gratuito"
           />
           <DgiLimitCard />
+          {business.einvoiceMode === "PAC" && (
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <span className="text-slate-600">
+                Facturación automática con PAC{business.autoInvoice ? " en cada venta" : ""}. Las facturas en
+                contingencia se reintentan solas.
+              </span>
+              <Button size="sm" variant="secondary" onClick={retry} loading={busy}>
+                Reintentar pendientes
+              </Button>
+            </div>
+          )}
           <p className="text-sm text-slate-500">
             Emite la factura en el facturador gratuito de la DGI o con tu PAC y luego abre la venta en{" "}
             <Link href="/ventas/historial" className="underline">

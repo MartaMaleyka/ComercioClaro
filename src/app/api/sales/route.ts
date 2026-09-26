@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { handler, parseBody, parseQuery, created } from "@/lib/api";
+import { autoInvoiceSale } from "@/server/einvoice/service";
 import { requireAuth } from "@/lib/auth";
 import { listQuerySchema, saleSchema } from "@/lib/validation";
 import { createSale, listSales } from "@/server/sales";
@@ -15,5 +17,7 @@ export const POST = handler(async (request) => {
   const auth = await requireAuth();
   const input = await parseBody(request, saleSchema);
   const sale = await createSale(auth, input);
+  // Factura electrónica automática (Panamá con PAC) sin demorar el cobro.
+  after(() => autoInvoiceSale(auth, sale.id));
   return created(publicSale(sale, auth.role));
 });

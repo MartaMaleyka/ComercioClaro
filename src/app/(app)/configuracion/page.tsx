@@ -108,6 +108,17 @@ interface BusinessData {
   ruc: string | null;
   dv: string | null;
   usesFreeInvoicer: boolean;
+  einvoiceMode: "OFF" | "MANUAL" | "PAC";
+  einvoiceProvider: string | null;
+  autoInvoice: boolean;
+  invoicePerSale: boolean;
+  yappyMode: "STATIC" | "API";
+  loyaltyEnabled: boolean;
+  loyaltyPointsPerUnit: number;
+  loyaltyPointValue: number;
+  catalogEnabled: boolean;
+  catalogSlug: string | null;
+  catalogWhatsapp: string | null;
   yappyDirectory: string | null;
   yappyQr: string | null;
   cardFeeRate: number;
@@ -129,6 +140,10 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof BusinessData>(k: K, v: BusinessData[K]) => setForm((f) => ({ ...f, [k]: v }));
   const country = countryConfig(form.country);
+  const { data: pacProviders } = useSWR<{ id: string; name: string; configured: boolean }[]>(
+    "/api/invoices/pac-providers",
+    fetcher,
+  );
   // Las comisiones se editan en porcentaje y se guardan como fracción.
   const pct = (v: number) => String(Math.round(v * 10000) / 100);
   const [fees, setFees] = useState({
@@ -255,6 +270,85 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
 
       <Card>
         <CardHeader>
+          <h2 className="font-semibold text-slate-900">Programa de puntos</h2>
+          <p className="text-sm text-slate-500">
+            Tus clientes registrados ganan puntos al comprar y los canjean como descuento.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Checkbox
+            label="Activar puntos de lealtad"
+            checked={form.loyaltyEnabled}
+            onChange={(e) => set("loyaltyEnabled", e.target.checked)}
+          />
+          {form.loyaltyEnabled && (
+            <div className="grid sm:grid-cols-2 gap-3">
+              <Input
+                label="Puntos por cada 1.00 de compra"
+                inputMode="decimal"
+                value={String(form.loyaltyPointsPerUnit)}
+                onChange={(e) => set("loyaltyPointsPerUnit", Number(e.target.value) || 0)}
+              />
+              <Input
+                label="Valor de cada punto al canjear"
+                inputMode="decimal"
+                value={String(form.loyaltyPointValue)}
+                onChange={(e) => set("loyaltyPointValue", Number(e.target.value) || 0)}
+                hint={`Ej.: con 1 punto por 1.00 y valor 0.01, cada compra devuelve 1%.`}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="font-semibold text-slate-900">Catálogo en línea</h2>
+          <p className="text-sm text-slate-500">
+            Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Checkbox
+            label="Publicar catálogo"
+            checked={form.catalogEnabled}
+            onChange={(e) => set("catalogEnabled", e.target.checked)}
+          />
+          {form.catalogEnabled && (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Input
+                  label="Dirección del catálogo"
+                  value={form.catalogSlug ?? ""}
+                  onChange={(e) => set("catalogSlug", e.target.value.toLowerCase())}
+                  placeholder="minisuper-el-dorado"
+                  hint={form.catalogSlug ? `Tu enlace: /c/${form.catalogSlug}` : "Solo minúsculas, números y guiones"}
+                />
+                <Input
+                  label="WhatsApp que recibe los pedidos"
+                  type="tel"
+                  value={form.catalogWhatsapp ?? ""}
+                  onChange={(e) => set("catalogWhatsapp", e.target.value)}
+                  placeholder="6123-4567"
+                />
+              </div>
+              {initial.catalogEnabled && initial.catalogSlug && (
+                <a
+                  href={`/c/${initial.catalogSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm underline text-brand-700 dark:text-brand-300"
+                >
+                  Ver catálogo publicado
+                </a>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <h2 className="font-semibold text-slate-900">Comisiones por forma de pago</h2>
           <p className="text-sm text-slate-500">
             Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.
@@ -313,11 +407,72 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
                 value={form.legalName ?? ""}
                 onChange={(e) => set("legalName", e.target.value)}
               />
-              <Checkbox
-                label="Facturo con el facturador gratuito de la DGI (vigilar los límites de B/.36,000 al año y 100 documentos al mes)"
-                checked={form.usesFreeInvoicer}
-                onChange={(e) => set("usesFreeInvoicer", e.target.checked)}
-              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <h2 className="font-semibold text-slate-900">Factura electrónica (DGI)</h2>
+              <p className="text-sm text-slate-500">
+                Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Select
+                label="¿Cómo facturas?"
+                value={form.einvoiceMode}
+                onChange={(e) => set("einvoiceMode", e.target.value as BusinessData["einvoiceMode"])}
+              >
+                <option value="OFF">No emito factura electrónica todavía</option>
+                <option value="MANUAL">Facturador gratuito o PAC externo (registro el CUFE a mano)</option>
+                <option value="PAC">Automática desde ComercioClaro con un PAC</option>
+              </Select>
+              {form.einvoiceMode === "MANUAL" && (
+                <>
+                  <Checkbox
+                    label="Uso el facturador gratuito de la DGI (vigilar los límites)"
+                    checked={form.usesFreeInvoicer}
+                    onChange={(e) => set("usesFreeInvoicer", e.target.checked)}
+                  />
+                  <Checkbox
+                    label="Emito una factura por cada venta (así el conteo mensual incluye todas las ventas y devoluciones)"
+                    checked={form.invoicePerSale}
+                    onChange={(e) => set("invoicePerSale", e.target.checked)}
+                  />
+                </>
+              )}
+              {form.einvoiceMode === "PAC" && (
+                <>
+                  <Select
+                    label="PAC"
+                    value={form.einvoiceProvider ?? ""}
+                    onChange={(e) => set("einvoiceProvider", e.target.value || null)}
+                  >
+                    <option value="">Selecciona</option>
+                    {pacProviders?.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.configured ? "" : " — falta configurar credenciales"}
+                      </option>
+                    ))}
+                  </Select>
+                  {pacProviders?.find((p) => p.id === form.einvoiceProvider && !p.configured) && (
+                    <p className="text-xs text-amber-700">
+                      Agrega ALANUBE_API_URL y ALANUBE_TOKEN en las variables del servidor. Alanube entrega un sandbox
+                      gratuito al solicitarlo.
+                    </p>
+                  )}
+                  <Checkbox
+                    label="Emitir la factura de cada venta automáticamente"
+                    checked={form.autoInvoice}
+                    onChange={(e) => set("autoInvoice", e.target.checked)}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket
+                    imprime el CUFE y su código QR.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -327,6 +482,19 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               <p className="text-sm text-slate-500">Se muestra en el punto de venta al cobrar con Yappy.</p>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Select
+                label="Modo de cobro"
+                value={form.yappyMode}
+                onChange={(e) => set("yappyMode", e.target.value as BusinessData["yappyMode"])}
+                hint={
+                  form.yappyMode === "API"
+                    ? "El cajero escribe el celular del cliente, el cobro le llega a su app y la venta se registra sola al confirmarse. Requiere Yappy Comercial con API (credenciales en el servidor)."
+                    : "El cliente escanea tu QR y el cajero confirma el pago en la app."
+                }
+              >
+                <option value="STATIC">QR fijo del comercio (confirmación manual)</option>
+                <option value="API">Cobro automático por celular (API de Yappy Comercial)</option>
+              </Select>
               <Input
                 label="Nombre o número en el directorio Yappy"
                 value={form.yappyDirectory ?? ""}

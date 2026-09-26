@@ -25,8 +25,10 @@ import { MovementsModal } from "@/components/inventory/MovementsModal";
 import { ReorderTab } from "@/components/inventory/ReorderTab";
 import { ExpiringTab } from "@/components/inventory/ExpiringTab";
 import { CategoriesTab } from "@/components/inventory/CategoriesTab";
+import { CountTab } from "@/components/inventory/CountTab";
+import { LabelsTab } from "@/components/inventory/LabelsTab";
 
-type Tab = "productos" | "reabastecer" | "caducidad" | "categorias" | "importar";
+type Tab = "productos" | "reabastecer" | "caducidad" | "conteo" | "etiquetas" | "categorias" | "importar";
 
 export default function InventoryPage() {
   return (
@@ -50,6 +52,8 @@ function Inventory() {
     { value: "caducidad", label: "Caducidad" },
     ...(isOwner
       ? [
+          { value: "conteo" as Tab, label: "Conteo físico" },
+          { value: "etiquetas" as Tab, label: "Etiquetas" },
           { value: "categorias" as Tab, label: "Categorías" },
           { value: "importar" as Tab, label: "Importar / exportar" },
         ]
@@ -63,6 +67,8 @@ function Inventory() {
       {tab === "productos" && <ProductsTab />}
       {tab === "reabastecer" && isOwner && <ReorderTab />}
       {tab === "caducidad" && <ExpiringTab />}
+      {tab === "conteo" && isOwner && <CountTab />}
+      {tab === "etiquetas" && isOwner && <LabelsTab />}
       {tab === "categorias" && isOwner && <CategoriesTab />}
       {tab === "importar" && isOwner && <ImportExportTab />}
     </div>

@@ -95,6 +95,21 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function issuePac() {
+    setBusy(true);
+    try {
+      const invoice = await api<{ status: string; error: string | null }>("/api/invoices/pac", { body: { saleId: id } });
+      if (invoice.status === "STAMPED") toast.success("Factura electrónica emitida");
+      else if (invoice.status === "PENDING") toast.info(invoice.error ?? "Factura en contingencia; se reintentará");
+      else toast.error(invoice.error ?? "La factura fue rechazada");
+      mutate();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function registerCufe() {
     const cufe = await confirm({
       title: `Registrar factura de la venta #${sale!.folio}`,
@@ -154,6 +169,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             {sale.invoice?.status === "STAMPED" && (
               <Badge tone="blue">Facturada{sale.invoice.uuid ? ` · ${sale.invoice.uuid.slice(0, 12)}…` : ""}</Badge>
             )}
+            {sale.invoice?.status === "PENDING" && <Badge tone="amber">Factura en contingencia</Badge>}
           </div>
         </div>
         <p className={`text-2xl font-bold tabular-nums ${active ? "text-slate-900" : "line-through text-slate-400"}`}>
@@ -185,9 +201,14 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
                 <FileText className="w-4 h-4" /> Facturar
               </Button>
             )}
-            {!sale.invoice && country.invoicing === "dgi" && (
+            {!sale.invoice && country.invoicing === "dgi" && business.einvoiceMode === "MANUAL" && (
               <Button variant="secondary" size="sm" onClick={registerCufe}>
                 <FileText className="w-4 h-4" /> Registrar CUFE
+              </Button>
+            )}
+            {!sale.invoice && country.invoicing === "dgi" && business.einvoiceMode === "PAC" && (
+              <Button variant="secondary" size="sm" onClick={issuePac} loading={busy}>
+                <FileText className="w-4 h-4" /> Emitir factura electrónica
               </Button>
             )}
             <Button variant="danger" size="sm" onClick={cancel}>
@@ -196,6 +217,13 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           </>
         )}
       </div>
+
+      {sale.invoice?.status === "STAMPED" && sale.invoice.uuid && (
+        <p className="text-xs text-slate-500 break-all">CUFE: {sale.invoice.uuid}</p>
+      )}
+      {sale.invoice?.status === "PENDING" && sale.invoice.error && (
+        <p className="text-sm rounded-xl bg-amber-50 text-amber-800 px-4 py-2">{sale.invoice.error}</p>
+      )}
 
       {!active && sale.cancelReason && (
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-4 py-2">

@@ -144,6 +144,24 @@ export const businessSchema = z.object({
     .nullish()
     .or(z.literal(""))
     .transform((v) => v || null),
+  yappyMode: z.enum(["STATIC", "API"]).optional(),
+  einvoiceMode: z.enum(["OFF", "MANUAL", "PAC"]).optional(),
+  einvoiceProvider: z.enum(["alanube", "simulado"]).nullish(),
+  autoInvoice: z.boolean().optional(),
+  invoicePerSale: z.boolean().optional(),
+  loyaltyEnabled: z.boolean().optional(),
+  loyaltyPointsPerUnit: number.min(0).max(1000).optional(),
+  loyaltyPointValue: number.min(0).max(100).optional(),
+  catalogEnabled: z.boolean().optional(),
+  catalogSlug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^([a-z0-9]+(-[a-z0-9]+)*)?$/, "Usa solo minúsculas, números y guiones")
+    .max(60)
+    .nullish()
+    .transform((v) => v || null),
+  catalogWhatsapp: optText(30),
   cardFeeRate: feeRate.optional(),
   transferFeeRate: feeRate.optional(),
   yappyFeeRate: feeRate.optional(),
@@ -222,6 +240,41 @@ export const stockAdjustmentSchema = z.object({
   notes: optText(300),
 });
 
+// ---------- Promociones ----------
+
+export const promotionSchema = z
+  .object({
+    name: text(80, "El nombre es obligatorio"),
+    type: z.enum(["PERCENT", "BUY_X_PAY_Y", "BUNDLE_PRICE"]),
+    percent: number.gt(0).max(1).nullish(),
+    buyQty: z.coerce.number().int().min(2).max(100).nullish(),
+    payQty: z.coerce.number().int().min(0).max(99).nullish(),
+    bundleQty: z.coerce.number().int().min(2).max(1000).nullish(),
+    bundlePrice: positiveMoney.nullish(),
+    productId: id.nullish(),
+    categoryId: id.nullish(),
+    startsAt: z.coerce.date().nullish(),
+    endsAt: z.coerce.date().nullish(),
+    active: z.boolean().default(true),
+  })
+  .refine((p) => Boolean(p.productId) !== Boolean(p.categoryId), {
+    message: "Elige un producto o una categoría",
+    path: ["productId"],
+  })
+  .refine((p) => p.type !== "PERCENT" || p.percent != null, { message: "Indica el porcentaje", path: ["percent"] })
+  .refine((p) => p.type !== "BUY_X_PAY_Y" || (p.buyQty != null && p.payQty != null && p.payQty < p.buyQty), {
+    message: "Indica cuántos lleva y cuántos paga (paga menos de los que lleva)",
+    path: ["buyQty"],
+  })
+  .refine((p) => p.type !== "BUNDLE_PRICE" || (p.bundleQty != null && p.bundlePrice != null), {
+    message: "Indica la cantidad y el precio del paquete",
+    path: ["bundleQty"],
+  })
+  .refine((p) => !p.startsAt || !p.endsAt || p.startsAt <= p.endsAt, {
+    message: "La fecha final debe ser posterior a la inicial",
+    path: ["endsAt"],
+  });
+
 // ---------- Ventas ----------
 
 export const saleSchema = z.object({
@@ -241,6 +294,8 @@ export const saleSchema = z.object({
   paymentMethod: paymentMethod.default("CASH"),
   amountReceived: moneyInput.nullish(),
   paymentReference: optText(60),
+  yappyChargeId: id.nullish(),
+  redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
   notes: optText(),
   createdAt: z.coerce.date().nullish(),

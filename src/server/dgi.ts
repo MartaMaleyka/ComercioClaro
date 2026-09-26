@@ -5,6 +5,9 @@ import { audit } from "@/lib/audit";
 import { startOfMonth, zonedMidnight, zonedParts } from "@/lib/dates";
 import { DGI_FREE_INVOICER_LIMITS } from "@/lib/country";
 import type { Actor } from "./inventory";
+import { PAC_PROVIDERS } from "./einvoice/providers";
+
+const PANAMA_PROVIDERS = ["dgi", ...Object.keys(PAC_PROVIDERS)];
 
 export const DGI_PROVIDER = "dgi";
 
@@ -20,13 +23,27 @@ function status(ratio: number): LimitStatus {
  * Situación frente a los límites del facturador gratuito de la DGI:
  * ingresos del año calendario (B/.36,000) y documentos emitidos en el mes (100).
  */
-export async function dgiFreeInvoicerStatus(business: { id: string; timezone: string }) {
+export type DocumentCountBasis = "pac" | "perSale" | "registered";
+
+export async function dgiFreeInvoicerStatus(business: {
+  id: string;
+  timezone: string;
+  einvoiceMode?: string;
+  invoicePerSale?: boolean;
+}) {
   const now = new Date();
   const { year } = zonedParts(now, business.timezone);
   const yearStart = zonedMidnight(year, 1, 1, business.timezone);
   const monthStart = startOfMonth(now, business.timezone);
 
-  const [sales, returns, documents, monthSales] = await Promise.all([
+  // Base del conteo de documentos del mes:
+  // - PAC: facturas emitidas por el sistema (exacto).
+  // - perSale: cada venta es una factura y cada devolución una nota de crédito.
+  // - registered: solo las facturas con CUFE registrado.
+  const basis: DocumentCountBasis =
+    business.einvoiceMode === "PAC" ? "pac" : business.invoicePerSale ? "perSale" : "registered";
+
+  const [sales, returns, registeredDocuments, monthSales, monthReturns] = await Promise.all([
     prisma.sale.aggregate({
       where: { businessId: business.id, status: "ACTIVE", createdAt: { gte: yearStart } },
       _sum: { total: true },
@@ -36,10 +53,17 @@ export async function dgiFreeInvoicerStatus(business: { id: string; timezone: st
       _sum: { total: true },
     }),
     prisma.invoice.count({
-      where: { businessId: business.id, provider: DGI_PROVIDER, status: "STAMPED", createdAt: { gte: monthStart } },
+      where: {
+        businessId: business.id,
+        provider: { in: PANAMA_PROVIDERS },
+        status: { in: ["STAMPED", "CANCELLED"] },
+        createdAt: { gte: monthStart },
+      },
     }),
-    prisma.sale.count({ where: { businessId: business.id, status: "ACTIVE", createdAt: { gte: monthStart } } }),
+    prisma.sale.count({ where: { businessId: business.id, createdAt: { gte: monthStart } } }),
+    prisma.saleReturn.count({ where: { businessId: business.id, createdAt: { gte: monthStart } } }),
   ]);
+  const documents = basis === "perSale" ? monthSales + monthReturns : registeredDocuments;
 
   const revenue = money(D(sales._sum.total).minus(D(returns._sum.total))).toNumber();
   const revenueRatio = revenue / DGI_FREE_INVOICER_LIMITS.annualRevenue;
@@ -61,7 +85,9 @@ export async function dgiFreeInvoicerStatus(business: { id: string; timezone: st
     revenueRatio,
     documents,
     documentsRatio,
+    documentsBasis: basis,
     monthSales,
+    monthReturns,
     projectedAnnualRevenue,
     status: overall as LimitStatus,
   };

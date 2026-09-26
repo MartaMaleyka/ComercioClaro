@@ -35,6 +35,11 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
           yappyDirectory: business.yappyDirectory,
           hasYappyQr: Boolean(business.yappyQr),
           usesFreeInvoicer: business.usesFreeInvoicer,
+          einvoiceMode: business.einvoiceMode,
+          autoInvoice: business.autoInvoice,
+          yappyMode: business.yappyMode,
+          loyaltyEnabled: business.loyaltyEnabled,
+          loyaltyPointValue: business.loyaltyPointValue.toNumber(),
         },
         businesses: memberships.map((m) => ({ id: m.business.id, name: m.business.name, role: m.role })),
       }}

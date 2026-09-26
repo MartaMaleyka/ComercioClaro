@@ -14,7 +14,9 @@ interface DgiStatus {
   revenueRatio: number;
   documents: number;
   documentsRatio: number;
+  documentsBasis: "pac" | "perSale" | "registered";
   monthSales: number;
+  monthReturns: number;
   projectedAnnualRevenue: number;
   status: "ok" | "warning" | "exceeded";
 }
@@ -78,10 +80,16 @@ export function DgiLimitCard({ compact = false }: { compact?: boolean }) {
           detail={`A este ritmo cerrarías el año en ${fmt.money(data.projectedAnnualRevenue)}.`}
         />
         <Meter
-          label="Facturas registradas este mes"
+          label="Documentos emitidos este mes"
           value={`${data.documents} / ${data.limits.monthlyDocuments}`}
           ratio={data.documentsRatio}
-          detail={`Llevas ${data.monthSales} ventas este mes; si facturas cada venta, todas cuentan.`}
+          detail={
+            data.documentsBasis === "pac"
+              ? "Conteo exacto: facturas emitidas desde ComercioClaro con tu PAC."
+              : data.documentsBasis === "perSale"
+                ? `Cuenta cada venta (${data.monthSales}) y cada devolución como nota de crédito (${data.monthReturns}).`
+                : `Solo cuenta facturas con CUFE registrado. Llevas ${data.monthSales} ventas este mes; si facturas cada venta, actívalo en Configuración.`
+          }
         />
         {!compact && (
           <p className="text-xs text-slate-500">
