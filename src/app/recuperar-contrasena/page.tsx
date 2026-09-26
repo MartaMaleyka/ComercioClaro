@@ -30,12 +30,11 @@ function ResetForm() {
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      setMessage(data.message);
-      if (data.resetToken) {
-        setMessage(
-          `${data.message} (modo desarrollo: usa este enlace: /recuperar-contrasena?token=${data.resetToken})`
-        );
+      if (!res.ok) {
+        setError(data.error || "No se pudo procesar la solicitud");
+        return;
       }
+      setMessage(data.message);
       setDone(true);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -51,7 +50,7 @@ function ResetForm() {
 
     try {
       const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
@@ -96,7 +95,7 @@ function ResetForm() {
       </div>
 
       {done && message ? (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 text-center">
+        <div className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 text-center">
           <p className="text-slate-700 mb-4">{message}</p>
           <Link href="/login">
             <Button>Ir a iniciar sesión</Button>
@@ -105,10 +104,10 @@ function ResetForm() {
       ) : (
         <form
           onSubmit={token ? handleReset : handleRequest}
-          className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4"
+          className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4"
         >
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
+            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
           )}
           {token ? (
             <Input
@@ -116,9 +115,10 @@ function ResetForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
               required
-              minLength={6}
+              minLength={8}
+              autoComplete="new-password"
             />
           ) : (
             <Input
@@ -141,7 +141,7 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-surface-secondary">
       <Suspense>
         <ResetForm />
       </Suspense>

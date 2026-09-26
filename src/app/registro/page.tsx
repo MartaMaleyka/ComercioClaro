@@ -40,7 +40,7 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/inicio");
       router.refresh();
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -50,7 +50,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-brand-50 to-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-brand-50 to-surface-secondary">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -60,9 +60,9 @@ export default function RegisterPage() {
           <p className="text-slate-600 mt-1">Empieza a organizar tu negocio hoy</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
+            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
           )}
           <Input
             label="Tu nombre"
@@ -91,9 +91,10 @@ export default function RegisterPage() {
             type="password"
             value={form.password}
             onChange={(e) => update("password", e.target.value)}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mínimo 8 caracteres"
             required
-            minLength={6}
+            minLength={8}
+            autoComplete="new-password"
           />
           <Button type="submit" className="w-full" loading={loading}>
             Crear cuenta

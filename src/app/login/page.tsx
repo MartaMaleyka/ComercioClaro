@@ -32,7 +32,9 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      const next = new URLSearchParams(window.location.search).get("next");
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/inicio";
+      router.push(data.user?.mustChangePassword ? "/cambiar-contrasena" : safeNext);
       router.refresh();
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
@@ -42,7 +44,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-white">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-surface-secondary">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -52,9 +54,9 @@ export default function LoginPage() {
           <p className="text-slate-600 mt-1">Inicia sesión en tu cuenta</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
+            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
           )}
           <Input
             label="Correo electrónico"
@@ -62,6 +64,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@correo.com"
+            autoComplete="email"
             required
           />
           <Input
@@ -70,6 +73,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
+            autoComplete="current-password"
             required
           />
           <div className="text-right">
