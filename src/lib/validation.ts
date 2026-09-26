@@ -478,3 +478,11 @@ export const translationFeedbackSchema = z.object({
   original: z.string().trim().min(1, "Escribe el texto que viste").max(500),
   suggestion: z.string().trim().min(1, "Escribe cómo debería decir").max(500),
 });
+
+export const monthQuerySchema = z.object({
+  month: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes inválido")
+    .optional(),
+  format: z.enum(["json", "csv"]).default("json"),
+});
