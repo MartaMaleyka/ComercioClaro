@@ -12,6 +12,7 @@ import type { listQuerySchema, saleReturnSchema, saleSchema } from "@/lib/valida
 import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
+import { productModifiers } from "./catalog";
 import { closeOrderWithSale } from "./online-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
@@ -94,9 +95,16 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         if (product.unit === "PIECE" && !quantity.isInteger()) {
           throw new AppError(400, `${product.name} se vende por pieza; usa cantidades enteras`);
         }
-        const computed = resolveUnitPrice(product, quantity);
+        // Extras elegidos (p. ej. "Queso +0.50"): se validan contra los del producto y suman al precio.
+        const available = productModifiers(product);
+        const modifiers = [...new Set(item.modifierIds ?? [])].map((modifierId) => {
+          const modifier = available.find((m) => m.id === modifierId);
+          if (!modifier) throw new AppError(400, `Un extra de ${product.name} ya no existe; vuelve a agregarlo`);
+          return modifier;
+        });
+        const computed = resolveUnitPrice(product, quantity).plus(sum(modifiers.map((m) => m.price)));
         // Solo el dueño puede cambiar el precio de lista al vender.
-        const unitPrice = item.unitPrice != null && actor.role === "OWNER" ? money(item.unitPrice) : computed;
+        const unitPrice = item.unitPrice != null && actor.role === "OWNER" ? money(item.unitPrice) : money(computed);
         const gross = money(quantity.times(unitPrice));
         // Promoción vigente con mayor descuento (2x1, 3 por B/.1, % por producto o categoría).
         const promo = bestPromotion(promotions, {
@@ -109,6 +117,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         const discount = money(Math.min((item.discount ?? 0) + promotionDiscount.toNumber(), gross.toNumber()));
         return {
           product,
+          modifiers,
           quantity,
           unitPrice,
           discount,
@@ -247,6 +256,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
               discount: l.discount,
               promotionDiscount: l.promotionDiscount,
               promotionId: l.promotionId,
+              ...(l.modifiers.length > 0 ? { modifiers: l.modifiers as unknown as Prisma.InputJsonValue } : {}),
               subtotal: l.subtotal,
               unitCost: itemCosts.get(l)!,
               taxRate: l.product.taxRate,
@@ -527,6 +537,13 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
   });
 }
 
+/** " (+Queso, +Tocino)" para mostrar los extras de un renglón. */
+export function modifierSuffix(modifiers: unknown) {
+  return Array.isArray(modifiers) && modifiers.length > 0
+    ? ` (${modifiers.map((m: { name: string }) => `+${m.name}`).join(", ")})`
+    : "";
+}
+
 /** Texto del ticket para compartir por WhatsApp. */
 export function receiptText(
   sale: Awaited<ReturnType<typeof getSale>>,
@@ -557,7 +574,9 @@ export function receiptText(
     business.phone ? `Tel. ${business.phone}` : null,
     `Ticket #${sale.folio} · ${date}`,
     "",
-    ...sale.items.map((i) => `${i.quantity.toString()} x ${i.product.name}  ${fmt(i.subtotal)}`),
+    ...sale.items.map(
+      (i) => `${i.quantity.toString()} x ${i.product.name}${modifierSuffix(i.modifiers)}  ${fmt(i.subtotal)}`
+    ),
     "",
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
     D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,

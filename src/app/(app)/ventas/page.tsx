@@ -28,7 +28,7 @@ import { useFormat } from "@/lib/client/format";
 import { useT, useText } from "@/lib/client/i18n";
 import { useDebounce, useOnline } from "@/lib/client/hooks";
 import { kvGet, kvSet, queueSale } from "@/lib/client/offline-db";
-import { buildReceiptText, whatsappLink } from "@/lib/client/receipt";
+import { buildReceiptText, modifierText, whatsappLink } from "@/lib/client/receipt";
 import { useDisplayRemote, usePublishDisplay } from "@/lib/client/display";
 import type { Customer, PaymentMethod, Product, Sale } from "@/lib/client/types";
 import { cn, isFractionalUnit, UNIT_LABELS } from "@/lib/utils";
@@ -53,8 +53,17 @@ interface OnlineOrderData {
   items: { productId: string; name: string; quantity: number }[];
 }
 
+interface Modifier {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface CartLine {
+  /** Identifica el renglón: el mismo producto con distintos extras va en renglones separados */
+  key: string;
   productId: string;
+  modifiers: Modifier[];
   categoryId: string | null;
   name: string;
   unit: Product["unit"];
@@ -86,10 +95,36 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 function unitPrice(line: CartLine, isOwner: boolean) {
   if (isOwner && line.priceOverride !== "") return num(line.priceOverride);
   const q = num(line.quantity);
+  const extras = line.modifiers.reduce((acc, m) => acc + m.price, 0);
   if (line.wholesalePrice != null && line.wholesaleMinQty != null && q >= line.wholesaleMinQty)
-    return line.wholesalePrice;
-  return line.price;
+    return round2(line.wholesalePrice + extras);
+  return round2(line.price + extras);
 }
+
+const lineKey = (productId: string, modifiers: Modifier[]) =>
+  [productId, ...modifiers.map((m) => m.id).sort()].join("|");
+
+function toCartLine(product: Product, quantity: number, modifiers: Modifier[] = []): CartLine {
+  return {
+    key: lineKey(product.id, modifiers),
+    productId: product.id,
+    modifiers,
+    categoryId: product.categoryId,
+    name: product.name,
+    unit: product.unit,
+    quantity: String(quantity),
+    stock: product.stock,
+    price: product.price,
+    wholesalePrice: product.wholesalePrice,
+    wholesaleMinQty: product.wholesaleMinQty,
+    priceOverride: "",
+    discount: "",
+  };
+}
+
+/** Cantidad de un producto en todo el carrito (puede estar en varios renglones por sus extras). */
+const qtyInCart = (cart: CartLine[], productId: string) =>
+  cart.filter((l) => l.productId === productId).reduce((acc, l) => acc + num(l.quantity), 0);
 
 /** Promoción que el servidor aplicará al renglón (misma regla que en el servidor). */
 function linePromotion(line: CartLine, isOwner: boolean, promotions: PromotionRule[]) {
@@ -213,19 +248,7 @@ export default function PosPage() {
             missing.push(item.name);
             continue;
           }
-          lines.push({
-            productId: product.id,
-            categoryId: product.categoryId,
-            name: product.name,
-            unit: product.unit,
-            quantity: String(quantity),
-            stock: product.stock,
-            price: product.price,
-            wholesalePrice: product.wholesalePrice,
-            wholesaleMinQty: product.wholesaleMinQty,
-            priceOverride: "",
-            discount: "",
-          });
+          lines.push(toCartLine(product, quantity));
         }
         setCart(lines);
         setOnlineOrder({ id: order.id, number: order.number, customerName: order.customerName });
@@ -239,34 +262,50 @@ export default function PosPage() {
     };
   }, [orderParam, products, router, toast, tr]);
 
-  const addProduct = (product: Product, quantity?: number) => {
+  // Selector de variante y extras (se abre al tocar un grupo de variantes o un producto con extras).
+  const [picker, setPicker] = useState<{ group: string | null; product: Product | null } | null>(null);
+
+  // Las variantes de un mismo grupo se muestran como una sola tarjeta.
+  const gridItems = useMemo(() => {
+    type Item = { kind: "product"; product: Product } | { kind: "group"; group: string; variants: Product[] };
+    const groups = new Map<string, Product[]>();
+    const items: Item[] = [];
+    for (const p of filtered) {
+      if (!p.variantGroup) {
+        items.push({ kind: "product", product: p });
+        continue;
+      }
+      const existing = groups.get(p.variantGroup);
+      if (existing) existing.push(p);
+      else {
+        const variants = [p];
+        groups.set(p.variantGroup, variants);
+        items.push({ kind: "group", group: p.variantGroup, variants });
+      }
+    }
+    return items.map(
+      (i): Item => (i.kind === "group" && i.variants.length === 1 ? { kind: "product", product: i.variants[0] } : i)
+    );
+  }, [filtered]);
+
+  const addProduct = (product: Product, quantity?: number, modifiers?: Modifier[]) => {
+    if (modifiers === undefined && (product.modifiers?.length ?? 0) > 0) {
+      setPicker({ group: null, product });
+      return;
+    }
+    const chosen = modifiers ?? [];
+    const key = lineKey(product.id, chosen);
     const step = quantity ?? 1;
     setCart((current) => {
-      const existing = current.find((c) => c.productId === product.id);
-      const inCart = existing ? num(existing.quantity) : 0;
-      if (inCart + step > product.stock) {
+      if (qtyInCart(current, product.id) + step > product.stock) {
         toast.error(t("pos.onlyStock", { qty: fmt.qty(product.stock, product.unit), name: product.name }));
         return current;
       }
+      const existing = current.find((c) => c.key === key);
       if (existing) {
-        return current.map((c) => (c.productId === product.id ? { ...c, quantity: String(round2(inCart + step)) } : c));
+        return current.map((c) => (c.key === key ? { ...c, quantity: String(round2(num(c.quantity) + step)) } : c));
       }
-      return [
-        ...current,
-        {
-          productId: product.id,
-          categoryId: product.categoryId,
-          name: product.name,
-          unit: product.unit,
-          quantity: String(step),
-          stock: product.stock,
-          price: product.price,
-          wholesalePrice: product.wholesalePrice,
-          wholesaleMinQty: product.wholesaleMinQty,
-          priceOverride: "",
-          discount: "",
-        },
-      ];
+      return [...current, toCartLine(product, step, chosen)];
     });
   };
 
@@ -289,16 +328,16 @@ export default function PosPage() {
     }
   }
 
-  function updateLine(productId: string, patch: Partial<CartLine>) {
-    setCart((c) => c.map((l) => (l.productId === productId ? { ...l, ...patch } : l)));
+  function updateLine(key: string, patch: Partial<CartLine>) {
+    setCart((c) => c.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
   function stepLine(line: CartLine, delta: number) {
     const next = round2(num(line.quantity) + delta);
-    if (next <= 0) return setCart((c) => c.filter((l) => l.productId !== line.productId));
-    if (next > line.stock)
+    if (next <= 0) return setCart((c) => c.filter((l) => l.key !== line.key));
+    if (qtyInCart(cart, line.productId) + delta > line.stock)
       return toast.error(t("pos.onlyStock", { qty: fmt.qty(line.stock, line.unit), name: line.name }));
-    updateLine(line.productId, { quantity: String(next) });
+    updateLine(line.key, { quantity: String(next) });
   }
 
   const promotions = useMemo(() => promotionList ?? [], [promotionList]);
@@ -336,7 +375,7 @@ export default function PosPage() {
       : {
           status: cart.length > 0 ? "cart" : "idle",
           lines: cart.map((l) => ({
-            name: l.name,
+            name: l.name + modifierText(l.modifiers),
             quantity: num(l.quantity),
             unit: l.unit,
             total: lineTotal(l, isOwner, promotions),
@@ -399,6 +438,7 @@ export default function PosPage() {
         productId: l.productId,
         quantity: num(l.quantity),
         discount: num(l.discount),
+        ...(l.modifiers.length > 0 ? { modifierIds: l.modifiers.map((m) => m.id) } : {}),
         ...(isOwner && l.priceOverride !== "" ? { unitPrice: num(l.priceOverride) } : {}),
       })),
       discount,
@@ -431,8 +471,8 @@ export default function PosPage() {
           });
           // Descuenta las existencias en la copia local para no vender lo que ya no hay.
           const updated = products.map((p) => {
-            const line = cart.find((l) => l.productId === p.id);
-            return line ? { ...p, stock: round2(p.stock - num(line.quantity)) } : p;
+            const sold = qtyInCart(cart, p.id);
+            return sold > 0 ? { ...p, stock: round2(p.stock - sold) } : p;
           });
           await kvSet(`catalog:${business.id}`, { items: updated });
           catalog.mutate({ items: updated, nextCursor: null } as never, { revalidate: false });
@@ -479,10 +519,13 @@ export default function PosPage() {
             const wholesale = line.wholesalePrice != null && price === line.wholesalePrice && line.priceOverride === "";
             const promo = linePromotion(line, isOwner, promotions);
             return (
-              <li key={line.productId} className="py-3 space-y-2">
+              <li key={line.key} className="py-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900 truncate">{line.name}</p>
+                    {line.modifiers.length > 0 && (
+                      <p className="text-xs text-slate-600">{line.modifiers.map((m) => `+${m.name}`).join(", ")}</p>
+                    )}
                     <p className="text-xs text-slate-500">
                       {fmt.money(price)} / {UNIT_LABELS[line.unit]}
                       {wholesale && (
@@ -518,7 +561,7 @@ export default function PosPage() {
                       aria-label={`Cantidad de ${line.name}`}
                       inputMode={fractional ? "decimal" : "numeric"}
                       value={line.quantity}
-                      onChange={(e) => updateLine(line.productId, { quantity: e.target.value })}
+                      onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
                       className="w-16 text-center py-1.5 bg-surface border border-slate-200 rounded-lg text-sm"
                     />
                     <button
@@ -535,7 +578,7 @@ export default function PosPage() {
                     inputMode="decimal"
                     placeholder={t("pos.lineDiscount")}
                     value={line.discount}
-                    onChange={(e) => updateLine(line.productId, { discount: e.target.value })}
+                    onChange={(e) => updateLine(line.key, { discount: e.target.value })}
                     className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
                   />
                   {isOwner && (
@@ -544,12 +587,12 @@ export default function PosPage() {
                       inputMode="decimal"
                       placeholder={t("pos.price")}
                       value={line.priceOverride}
-                      onChange={(e) => updateLine(line.productId, { priceOverride: e.target.value })}
+                      onChange={(e) => updateLine(line.key, { priceOverride: e.target.value })}
                       className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
                     />
                   )}
                 </div>
-                {invalidLine?.productId === line.productId && (
+                {invalidLine?.key === line.key && (
                   <p className="text-xs text-red-600">
                     {t("pos.invalidQty")} ({t("pos.available")}: {fmt.qty(line.stock, line.unit)}
                     {!fractional && `, ${t("pos.onlyIntegers")}`})
@@ -900,30 +943,41 @@ export default function PosPage() {
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {filtered.map((p) => {
-                const inCart = cart.find((c) => c.productId === p.id);
-                const out = p.stock <= 0;
+              {gridItems.map((item) => {
+                const isGroup = item.kind === "group";
+                const p = isGroup ? item.variants[0] : item.product;
+                const stock = isGroup ? item.variants.reduce((acc, v) => acc + v.stock, 0) : p.stock;
+                const inCart = isGroup
+                  ? item.variants.reduce((acc, v) => acc + qtyInCart(cart, v.id), 0)
+                  : qtyInCart(cart, p.id);
+                const prices = isGroup ? item.variants.map((v) => v.price) : [p.price];
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                const out = stock <= 0;
                 return (
                   <button
-                    key={p.id}
-                    onClick={() => addProduct(p)}
+                    key={isGroup ? `group:${item.group}` : p.id}
+                    onClick={() => (isGroup ? setPicker({ group: item.group, product: null }) : addProduct(p))}
                     disabled={out}
+                    aria-haspopup={isGroup || (p.modifiers?.length ?? 0) > 0 ? "dialog" : undefined}
                     className={cn(
                       "relative text-left p-3 rounded-xl border bg-surface transition-[color,border-color,transform] motion-safe:active:scale-[0.98] disabled:opacity-50",
-                      inCart ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
+                      inCart > 0 ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
                     )}
                   >
-                    {inCart && (
+                    {inCart > 0 && (
                       <span
                         aria-hidden="true"
                         className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow tabular-nums"
                       >
-                        {fmt.number(Number(inCart.quantity))}
+                        {fmt.number(inCart)}
                       </span>
                     )}
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">{p.name}</p>
+                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">
+                      {isGroup ? item.group : p.name}
+                    </p>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mt-1">
-                      {fmt.money(p.price)}
+                      {minPrice === maxPrice ? fmt.money(minPrice) : `${fmt.money(minPrice)} – ${fmt.money(maxPrice)}`}
                       {p.unit !== "PIECE" && (
                         <span className="text-xs font-normal text-slate-500">/{UNIT_LABELS[p.unit]}</span>
                       )}
@@ -931,11 +985,12 @@ export default function PosPage() {
                     <p
                       className={cn(
                         "text-xs",
-                        out ? "text-red-600" : p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
+                        out ? "text-red-600" : !isGroup && p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
                       )}
                     >
-                      {out ? t("pos.soldOut") : `${fmt.qty(p.stock, p.unit)} ${t("pos.available")}`}
-                      {inCart && <span className="sr-only">{` · ${inCart.quantity} ${t("pos.inCart")}`}</span>}
+                      {out ? t("pos.soldOut") : `${fmt.qty(stock, p.unit)} ${t("pos.available")}`}
+                      {isGroup && ` · ${tr("{n} variantes", { n: item.variants.length })}`}
+                      {inCart > 0 && <span className="sr-only">{` · ${inCart} ${t("pos.inCart")}`}</span>}
                     </p>
                   </button>
                 );
@@ -963,6 +1018,18 @@ export default function PosPage() {
       </Modal>
 
       {servicesOpen && <ServicesModal open onClose={() => setServicesOpen(false)} />}
+      {picker && (
+        <VariantPicker
+          group={picker.group}
+          initialProduct={picker.product}
+          products={products}
+          onClose={() => setPicker(null)}
+          onPick={(product, modifiers) => {
+            setPicker(null);
+            addProduct(product, undefined, modifiers);
+          }}
+        />
+      )}
 
       <Modal open={displayOpen} onClose={() => setDisplayOpen(false)} title={tr("Pantalla del cliente")}>
         <div className="space-y-4 text-sm text-slate-600">
@@ -1055,5 +1122,86 @@ export default function PosPage() {
         )}
       </Modal>
     </div>
+  );
+}
+
+/** Elige la variante (talla, color) y los extras con precio antes de agregar al carrito. */
+function VariantPicker({
+  group,
+  initialProduct,
+  products,
+  onClose,
+  onPick,
+}: {
+  group: string | null;
+  initialProduct: Product | null;
+  products: Product[];
+  onClose: () => void;
+  onPick: (product: Product, modifiers: Modifier[]) => void;
+}) {
+  const tr = useText();
+  const fmt = useFormat();
+  const [product, setProduct] = useState<Product | null>(initialProduct);
+  const [selected, setSelected] = useState<string[]>([]);
+  const variants = group ? products.filter((p) => p.variantGroup === group) : [];
+
+  function choose(variant: Product) {
+    if ((variant.modifiers?.length ?? 0) > 0) setProduct(variant);
+    else onPick(variant, []);
+  }
+
+  const modifiers = product?.modifiers ?? [];
+  const chosen = modifiers.filter((m) => selected.includes(m.id));
+  const price = (product?.price ?? 0) + chosen.reduce((acc, m) => acc + m.price, 0);
+
+  return (
+    <Modal open onClose={onClose} title={product ? product.name : (group ?? "")}>
+      {!product ? (
+        <ul className="grid grid-cols-2 gap-2">
+          {variants.map((v) => (
+            <li key={v.id}>
+              <button
+                type="button"
+                disabled={v.stock <= 0}
+                onClick={() => choose(v)}
+                className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-brand-600 disabled:opacity-50"
+              >
+                <span className="block font-medium text-slate-900">{v.variantLabel ?? v.name}</span>
+                <span className="block text-sm text-brand-700 dark:text-brand-300">{fmt.money(v.price)}</span>
+                <span className="block text-xs text-slate-500">{fmt.qty(v.stock, v.unit)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="space-y-3">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-slate-700 mb-1">{tr("Extras")}</legend>
+            {modifiers.map((m) => (
+              <label
+                key={m.id}
+                className="flex items-center justify-between gap-2 min-h-10 px-3 rounded-lg border border-slate-100"
+              >
+                <span className="flex items-center gap-2 text-sm text-slate-900">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 accent-brand-600"
+                    checked={selected.includes(m.id)}
+                    onChange={(e) =>
+                      setSelected((s) => (e.target.checked ? [...s, m.id] : s.filter((id) => id !== m.id)))
+                    }
+                  />
+                  {m.name}
+                </span>
+                <span className="text-sm tabular-nums text-slate-600">+{fmt.money(m.price)}</span>
+              </label>
+            ))}
+          </fieldset>
+          <Button className="w-full" onClick={() => onPick(product, chosen)}>
+            {tr("Agregar · {price}", { price: fmt.money(price) })}
+          </Button>
+        </div>
+      )}
+    </Modal>
   );
 }

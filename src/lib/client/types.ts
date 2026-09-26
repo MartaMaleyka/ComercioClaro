@@ -31,6 +31,9 @@ export interface Product {
   categoryId: string | null;
   category: { id: string; name: string } | null;
   archivedAt: string | null;
+  variantGroup?: string | null;
+  variantLabel?: string | null;
+  modifiers?: { id: string; name: string; price: number }[] | null;
 }
 
 export interface Customer {
@@ -65,6 +68,7 @@ export interface SaleItem {
   discount: number;
   subtotal: number;
   unitCost?: number;
+  modifiers?: { id: string; name: string; price: number }[] | null;
 }
 
 export interface Sale {

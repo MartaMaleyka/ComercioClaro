@@ -224,6 +224,11 @@ model Product {
   trackExpiry     Boolean     @default(false)
   // Unidades por caja/paquete al comprar (venta suelta)
   packSize        Int?
+  // Variantes: productos del mismo grupo (p. ej. "Camiseta básica") con su etiqueta ("M / Azul")
+  variantGroup    String?
+  variantLabel    String?
+  // Extras que se pueden agregar al vender: [{ id, name, price }]
+  modifiers       Json?
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -249,6 +254,7 @@ model Product {
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
   @@index([categoryId])
+  @@index([businessId, variantGroup])
 }
 
 model Customer {
@@ -387,6 +393,8 @@ model SaleItem {
   // Descuento aplicado por una promoción (incluido en discount)
   promotionDiscount Decimal    @default(0) @db.Decimal(12, 2)
   promotionId       String?
+  // Extras cobrados en el renglón (incluidos en unitPrice): [{ id, name, price }]
+  modifiers         Json?
   promotion         Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   saleId            String
   sale              Sale       @relation(fields: [saleId], references: [id], onDelete: Cascade)

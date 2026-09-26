@@ -17,6 +17,7 @@ import { cancelServiceSale, createServiceSale, serviceProviders } from "@/server
 import { cashSessionSummary } from "@/server/cash";
 import { financialSummary } from "@/server/reports";
 import { findGiftCard, issueGiftCard, voidGiftCard } from "@/server/gift-cards";
+import { createVariants, updateProduct } from "@/server/catalog";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -482,5 +483,46 @@ describe.skipIf(!hasDatabase)("vales", () => {
         saleInput([{ productId: p.id, quantity: 1 }], { paymentMethod: "GIFT_CARD", giftCardCode: "999" })
       )
     ).rejects.toThrow(/No existe/);
+  });
+});
+
+describe.skipIf(!hasDatabase)("variantes y extras", () => {
+  beforeEach(resetDatabase);
+
+  it("crea variantes con el asistente y cobra extras validados en el servidor", async () => {
+    const owner = await panamaOwner();
+    const shirt = await makeProduct(owner, { name: "Camiseta básica", price: 8, cost: 4, stock: 5, taxRate: 0.07 });
+    const variants = await createVariants(owner, shirt.id, { baseLabel: "M", labels: ["S", " L ", "s", ""] });
+    expect(variants.map((v) => v.name)).toEqual(["Camiseta básica S", "Camiseta básica L"]);
+    expect(variants.every((v) => Number(v.stock) === 0 && v.variantGroup === "Camiseta básica")).toBe(true);
+    const base = await prisma.product.findUniqueOrThrow({ where: { id: shirt.id } });
+    expect(base).toMatchObject({ variantGroup: "Camiseta básica", variantLabel: "M" });
+    await expect(createVariants(owner, shirt.id, { baseLabel: "M", labels: ["L"] })).rejects.toThrow(/ya existen/);
+
+    const burger = await makeProduct(owner, { name: "Hamburguesa", price: 5, cost: 2, stock: 10, taxRate: 0.07 });
+    await updateProduct(owner, burger.id, {
+      modifiers: [
+        { id: "queso", name: "Queso", price: 0.5 },
+        { id: "tocino", name: "Tocino", price: 1 },
+      ],
+    });
+    const sale = await createSale(
+      owner,
+      saleInput([
+        { productId: burger.id, quantity: 2, modifierIds: ["queso", "tocino"] } as never,
+        { productId: burger.id, quantity: 1 },
+      ])
+    );
+    const withExtras = sale.items.find((i) => Number(i.unitPrice) === 6.5)!;
+    expect(Number(withExtras.subtotal)).toBe(13);
+    expect(withExtras.modifiers).toEqual([
+      { id: "queso", name: "Queso", price: 0.5 },
+      { id: "tocino", name: "Tocino", price: 1 },
+    ]);
+    expect(Number(sale.total)).toBe(18);
+    expect(Number((await prisma.product.findUniqueOrThrow({ where: { id: burger.id } })).stock)).toBe(7);
+    await expect(
+      createSale(owner, saleInput([{ productId: burger.id, quantity: 1, modifierIds: ["cebolla"] } as never]))
+    ).rejects.toThrow(/extra/);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
-import { ScanBarcode } from "lucide-react";
+import { Plus, ScanBarcode, Trash2 } from "lucide-react";
 import { api } from "@/lib/client/api";
 import type { Category, Product } from "@/lib/client/types";
 import { useToast } from "@/components/providers/ToastProvider";
@@ -41,6 +41,8 @@ const empty = {
   iepsRate: "0",
   satProductKey: "01010101",
   satUnitKey: "H87",
+  variantGroup: "",
+  variantLabel: "",
 };
 
 type FormState = typeof empty;
@@ -66,6 +68,8 @@ function toForm(product: Product | null): FormState {
     iepsRate: String(product.iepsRate),
     satProductKey: product.satProductKey,
     satUnitKey: product.satUnitKey,
+    variantGroup: product.variantGroup ?? "",
+    variantLabel: product.variantLabel ?? "",
   };
 }
 
@@ -94,6 +98,33 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [advanced, setAdvanced] = useState(false);
+  const [variantsOpen, setVariantsOpen] = useState(
+    Boolean(product?.variantGroup || (product?.modifiers?.length ?? 0) > 0)
+  );
+  const [modifiers, setModifiers] = useState(() =>
+    (product?.modifiers ?? []).map((m) => ({ id: m.id, name: m.name, price: String(m.price) }))
+  );
+  const [newVariants, setNewVariants] = useState("");
+  const [baseLabel, setBaseLabel] = useState(product?.variantLabel ?? "");
+  const [creatingVariants, setCreatingVariants] = useState(false);
+
+  async function createVariants() {
+    if (!product) return;
+    setCreatingVariants(true);
+    try {
+      const created = await api<unknown[]>(`/api/products/${product.id}/variants`, {
+        body: { baseLabel: baseLabel || product.name, labels: newVariants.split(",") },
+      });
+      toast.success(
+        tr("{n} variantes creadas. Ajusta su existencia y código en el inventario.", { n: created.length })
+      );
+      onSaved();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setCreatingVariants(false);
+    }
+  }
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -118,6 +149,11 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
       iepsRate: form.iepsRate,
       satProductKey: form.satProductKey,
       satUnitKey: form.satUnitKey,
+      variantGroup: form.variantGroup || null,
+      variantLabel: form.variantLabel || null,
+      modifiers: modifiers
+        .filter((m) => m.name.trim())
+        .map((m) => ({ id: m.id, name: m.name.trim(), price: Number(m.price.replace(",", ".")) || 0 })),
       ...(product ? {} : { stock: form.stock || 0 }),
     };
     try {
@@ -125,7 +161,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
         method: product ? "PUT" : "POST",
         body,
       });
-      toast.success(product ? "Producto actualizado" : "Producto creado");
+      toast.success(product ? tr("Producto actualizado") : tr("Producto creado"));
       onSaved();
     } catch (err) {
       toast.error(err);
@@ -204,7 +240,11 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
               value={form.cost}
               onChange={(e) => set("cost", e.target.value)}
               hint={
-                margin !== null ? `Margen ${margin}%` : product ? "Se recalcula con cada compra (promedio)" : undefined
+                margin !== null
+                  ? tr("Margen {n}%", { n: margin })
+                  : product
+                    ? tr("Se recalcula con cada compra (promedio)")
+                    : undefined
               }
             />
           </div>
@@ -257,6 +297,103 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
             checked={form.trackExpiry}
             onChange={(e) => set("trackExpiry", e.target.checked)}
           />
+
+          <button
+            type="button"
+            aria-expanded={variantsOpen}
+            onClick={() => setVariantsOpen((v) => !v)}
+            className="block text-sm text-brand-700 dark:text-brand-300 underline"
+          >
+            {variantsOpen ? tr("Ocultar") : tr("Mostrar")} {tr("variantes y extras")}
+          </button>
+          {variantsOpen && (
+            <div className="space-y-3 rounded-xl border border-slate-100 p-3">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={tr("Grupo de variantes")}
+                  value={form.variantGroup}
+                  onChange={(e) => set("variantGroup", e.target.value)}
+                  placeholder={tr("Ej. Camiseta básica")}
+                  hint={tr("Los productos del mismo grupo se muestran juntos al vender")}
+                />
+                <Input
+                  label={tr("Variante")}
+                  value={form.variantLabel}
+                  onChange={(e) => set("variantLabel", e.target.value)}
+                  placeholder={tr("Ej. M / Azul")}
+                />
+              </div>
+              {product && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-700">{tr("Crear variantes de este producto")}</p>
+                  <div className="grid grid-cols-[120px_1fr_auto] gap-2 items-end">
+                    <Input
+                      label={tr("Este producto es")}
+                      value={baseLabel}
+                      onChange={(e) => setBaseLabel(e.target.value)}
+                      placeholder={tr("Ej. M")}
+                    />
+                    <Input
+                      label={tr("Nuevas variantes (separadas por coma)")}
+                      value={newVariants}
+                      onChange={(e) => setNewVariants(e.target.value)}
+                      placeholder={tr("Ej. S, L, XL")}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      loading={creatingVariants}
+                      disabled={!newVariants.trim()}
+                      onClick={createVariants}
+                    >
+                      {tr("Crear")}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-slate-700">{tr("Extras con precio")}</legend>
+                {modifiers.map((m, i) => (
+                  <div key={m.id} className="grid grid-cols-[1fr_110px_auto] gap-2 items-end">
+                    <Input
+                      label={tr("Extra")}
+                      value={m.name}
+                      onChange={(e) =>
+                        setModifiers((list) => list.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                      }
+                      placeholder={tr("Ej. Queso")}
+                    />
+                    <Input
+                      label={tr("Precio")}
+                      inputMode="decimal"
+                      value={m.price}
+                      onChange={(e) =>
+                        setModifiers((list) => list.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))
+                      }
+                    />
+                    <button
+                      type="button"
+                      aria-label={tr("Quitar {name}", { name: m.name || tr("Extra") })}
+                      onClick={() => setModifiers((list) => list.filter((_, j) => j !== i))}
+                      className="p-2.5 mb-0.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-slate-100"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() =>
+                    setModifiers((list) => [...list, { id: crypto.randomUUID().slice(0, 8), name: "", price: "" }])
+                  }
+                >
+                  <Plus className="w-4 h-4" aria-hidden="true" /> {tr("Agregar extra")}
+                </Button>
+              </fieldset>
+            </div>
+          )}
 
           <button
             type="button"

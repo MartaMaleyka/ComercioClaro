@@ -220,6 +220,19 @@ const productBase = {
     .regex(/^[A-Z0-9]{2,3}$/, "Clave SAT de unidad inválida")
     .default("H87"),
   categoryId: id.nullish(),
+  variantGroup: optText(150).optional(),
+  variantLabel: optText(60).optional(),
+  modifiers: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).max(40),
+        name: text(60, "Escribe el nombre del extra"),
+        price: moneyInput,
+      })
+    )
+    .max(30, "Máximo 30 extras por producto")
+    .refine((list) => new Set(list.map((m) => m.id)).size === list.length, "Hay extras repetidos")
+    .nullish(),
 };
 
 export const productCreateSchema = z.object({
@@ -287,6 +300,7 @@ export const saleSchema = z.object({
         quantity: positiveQty,
         unitPrice: moneyInput.nullish(),
         discount: moneyInput.default(0),
+        modifierIds: z.array(z.string().max(40)).max(20).optional(),
       })
     )
     .min(1, "Agrega al menos un producto")
@@ -568,4 +582,9 @@ export const giftCardSchema = z.object({
   paymentMethod: immediatePaymentMethod.default("CASH"),
   customerName: optText(100),
   expiresAt: z.coerce.date().nullish(),
+});
+
+export const variantsSchema = z.object({
+  baseLabel: text(60, "Escribe la variante de este producto"),
+  labels: z.array(z.string().trim().max(60)).min(1, "Escribe al menos una variante").max(30),
 });

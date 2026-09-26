@@ -1,6 +1,7 @@
 "use client";
 
 import { useText } from "@/lib/client/i18n";
+import { modifierText } from "@/lib/client/receipt";
 import { use, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
@@ -253,7 +254,10 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
           {sale.items.map((item) => (
             <div key={item.id} className="py-3 flex justify-between gap-3 text-sm">
               <div>
-                <p className="font-medium text-slate-900">{item.product.name}</p>
+                <p className="font-medium text-slate-900">
+                  {item.product.name}
+                  {modifierText(item.modifiers)}
+                </p>
                 <p className="text-xs text-slate-500">
                   {fmt.qty(item.quantity, item.product.unit)} × {fmt.money(item.unitPrice)}
                   {item.discount > 0 && ` · desc. ${fmt.money(item.discount)}`}
