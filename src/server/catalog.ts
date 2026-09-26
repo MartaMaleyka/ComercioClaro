@@ -46,6 +46,7 @@ export async function createProduct(actor: Actor, input: ProductInput) {
         satUnitKey: input.satUnitKey,
         categoryId: input.categoryId ?? null,
         variantGroup: input.variantGroup ?? null,
+        sendToKitchen: input.sendToKitchen ?? false,
         variantLabel: input.variantLabel ?? null,
         ...(input.modifiers?.length ? { modifiers: input.modifiers } : {}),
         businessId: actor.businessId,
@@ -107,6 +108,7 @@ export async function updateProduct(
   }
   if (input.archived !== undefined) data.archivedAt = input.archived ? new Date() : null;
   if (input.variantGroup !== undefined) data.variantGroup = input.variantGroup;
+  if (input.sendToKitchen !== undefined) data.sendToKitchen = input.sendToKitchen;
   if (input.variantLabel !== undefined) data.variantLabel = input.variantLabel;
   if (input.modifiers !== undefined) data.modifiers = input.modifiers?.length ? input.modifiers : Prisma.DbNull;
 
@@ -316,6 +318,7 @@ export async function createVariants(actor: Actor, productId: string, input: { b
             satUnitKey: base.satUnitKey,
             categoryId: base.categoryId,
             ...(base.modifiers ? { modifiers: base.modifiers } : {}),
+            sendToKitchen: base.sendToKitchen,
             businessId: actor.businessId,
           },
         })

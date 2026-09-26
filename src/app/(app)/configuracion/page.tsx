@@ -121,6 +121,7 @@ interface BusinessData {
   loyaltyPointsPerUnit: number;
   loyaltyPointValue: number;
   catalogEnabled: boolean;
+  restaurantMode: boolean;
   catalogSlug: string | null;
   catalogWhatsapp: string | null;
   yappyDirectory: string | null;
@@ -280,6 +281,22 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             label={tr("Enviarme por correo las alertas diarias de bajo inventario y caducidad")}
             checked={form.lowStockEmailAlerts}
             onChange={(e) => set("lowStockEmailAlerts", e.target.checked)}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="font-semibold text-slate-900">{tr("Modo restaurante")}</h2>
+          <p className="text-sm text-slate-500">
+            {tr("Para fondas y cafeterías: cuentas abiertas por mesa y pantalla de cocina.")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Checkbox
+            label={tr("Usar cuentas abiertas y pantalla de cocina")}
+            checked={form.restaurantMode}
+            onChange={(e) => set("restaurantMode", e.target.checked)}
           />
         </CardContent>
       </Card>

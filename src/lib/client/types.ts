@@ -32,6 +32,7 @@ export interface Product {
   category: { id: string; name: string } | null;
   archivedAt: string | null;
   variantGroup?: string | null;
+  sendToKitchen?: boolean;
   variantLabel?: string | null;
   modifiers?: { id: string; name: string; price: number }[] | null;
 }

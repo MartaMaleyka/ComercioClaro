@@ -166,6 +166,7 @@ export const businessSchema = z.object({
   transferFeeRate: feeRate.optional(),
   yappyFeeRate: feeRate.optional(),
   serviceProviders: z.lazy(() => serviceProvidersSchema).optional(),
+  restaurantMode: z.boolean().optional(),
 });
 
 export const languageSchema = z.object({ language: z.enum(["es", "zh", "en"]) });
@@ -221,6 +222,7 @@ const productBase = {
     .default("H87"),
   categoryId: id.nullish(),
   variantGroup: optText(150).optional(),
+  sendToKitchen: z.boolean().optional(),
   variantLabel: optText(60).optional(),
   modifiers: z
     .array(
@@ -311,6 +313,7 @@ export const saleSchema = z.object({
   paymentReference: optText(60),
   yappyChargeId: id.nullish(),
   onlineOrderId: id.nullish(),
+  openOrderId: id.nullish(),
   giftCardCode: optText(40),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
@@ -587,4 +590,24 @@ export const giftCardSchema = z.object({
 export const variantsSchema = z.object({
   baseLabel: text(60, "Escribe la variante de este producto"),
   labels: z.array(z.string().trim().max(60)).min(1, "Escribe al menos una variante").max(30),
+});
+
+export const openOrderSchema = z.object({
+  label: text(60, "Escribe el nombre de la cuenta (p. ej. Mesa 3)"),
+  notes: optText(300),
+  items: z
+    .array(
+      z.object({
+        id: id.nullish(),
+        productId: id,
+        quantity: positiveQty,
+        modifierIds: z.array(z.string().max(40)).max(20).optional(),
+        notes: optText(200),
+      })
+    )
+    .max(200),
+});
+
+export const kitchenStatusSchema = z.object({
+  status: z.enum(["PENDING", "PREPARING", "READY", "SERVED"]),
 });

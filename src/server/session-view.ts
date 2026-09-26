@@ -25,6 +25,7 @@ export async function sessionData(auth: AuthContext): Promise<SessionData> {
       yappyDirectory: business.yappyDirectory,
       hasYappyQr: Boolean(business.yappyQr),
       catalogEnabled: business.catalogEnabled,
+      restaurantMode: business.restaurantMode,
       usesFreeInvoicer: business.usesFreeInvoicer,
       einvoiceMode: business.einvoiceMode,
       autoInvoice: business.autoInvoice,

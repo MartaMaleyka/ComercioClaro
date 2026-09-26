@@ -154,6 +154,9 @@ model Business {
   catalogWhatsapp      String?
   // Recargas y pagos de servicios que se cobran: [{ name, kind, commissionRate }]
   serviceProviders     Json?
+  // Modo restaurante: cuentas abiertas (mesas) y pantalla de cocina
+  restaurantMode       Boolean  @default(false)
+  openOrderCounter     Int      @default(0)
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
@@ -194,6 +197,7 @@ model Business {
   serviceSales     ServiceSale[]
   giftCards        GiftCard[]
   giftCardMoves    GiftCardTransaction[]
+  openOrders       OpenOrder[]
 }
 
 model Category {
@@ -229,6 +233,8 @@ model Product {
   variantLabel    String?
   // Extras que se pueden agregar al vender: [{ id, name, price }]
   modifiers       Json?
+  // En modo restaurante, se envía a la pantalla de cocina al guardarse en una cuenta
+  sendToKitchen   Boolean     @default(false)
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -250,6 +256,7 @@ model Product {
   promotions     Promotion[]
   countLines     InventoryCountLine[]
   orderLines     PurchaseOrderLine[]
+  openOrderItems OpenOrderItem[]
 
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
@@ -350,6 +357,7 @@ model Sale {
   pointsDiscount   Decimal       @default(0) @db.Decimal(12, 2)
   yappyCharge      YappyCharge?
   onlineOrder      OnlineOrder?
+  openOrder        OpenOrder?
   // Vale con el que se pagó la venta
   giftCardId       String?
   giftCard         GiftCard?     @relation(fields: [giftCardId], references: [id], onDelete: SetNull)
@@ -977,6 +985,55 @@ model GiftCardTransaction {
 
   @@index([giftCardId, createdAt])
   @@index([cashSessionId])
+}
+
+enum OpenOrderStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+/**
+ * Cuenta abierta (mesa, para llevar): se agregan productos y se cobra al final.
+ */
+model OpenOrder {
+  id         String          @id @default(cuid())
+  number     Int
+  label      String
+  status     OpenOrderStatus @default(OPEN)
+  notes      String?
+  userId     String?
+  saleId     String?         @unique
+  sale       Sale?           @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  businessId String
+  business   Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  items OpenOrderItem[]
+
+  @@unique([businessId, number])
+  @@index([businessId, status])
+}
+
+model OpenOrderItem {
+  id            String    @id @default(cuid())
+  quantity      Decimal   @db.Decimal(12, 3)
+  // Extras elegidos: [{ id, name, price }]
+  modifiers     Json?
+  notes         String?
+  // Copia de product.sendToKitchen al agregarse
+  sendToKitchen Boolean   @default(false)
+  // PENDING, PREPARING, READY o SERVED
+  kitchenStatus String    @default("PENDING")
+  orderId       String
+  order         OpenOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([orderId])
 }
 
 model RateLimit {

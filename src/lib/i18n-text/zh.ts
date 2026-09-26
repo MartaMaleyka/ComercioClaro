@@ -33,6 +33,7 @@ export const zh: Record<string, string> = {
   Abono: "还款",
   "Abono registrado": "还款已登记",
   "Abonos de clientes": "客户还款",
+  Abrir: "打开",
   "Abrir caja": "开钱箱",
   "Abrir en este equipo": "在本设备打开",
   "Abrió caja": "开了钱箱",
@@ -169,6 +170,7 @@ export const zh: Record<string, string> = {
   "Cobrar en el punto de venta": "在收银台收款",
   "Cobro automático por celular (API de Yappy Comercial)": "手机号自动收款（Yappy 商户 API）",
   "Cobros por": "收款方式",
+  Cocina: "厨房",
   "Comisiones estimadas": "预计手续费",
   "Comisiones por forma de pago": "各付款方式手续费",
   "Comisión (%)": "佣金（%）",
@@ -228,8 +230,12 @@ export const zh: Record<string, string> = {
   "Creó producto": "创建了商品",
   "Creó proveedor": "创建了供应商",
   "Creó sucursal": "创建了分店",
+  Cuenta: "挂单",
   "Cuenta cada venta ({sales}) y cada devolución como nota de crédito ({returns}).":
     "每笔销售（{sales}）和每笔退货作为贷项通知单（{returns}）都计入。",
+  "Cuenta guardada": "挂单已保存",
+  "Cuenta {label} (#{n})": "挂单 {label}（#{n}）",
+  "Cuentas abiertas": "挂单",
   "Cuentas de fiado y datos para factura": "赊账账户和开票资料",
   "Código de barras": "条码",
   "Código del vale": "礼品卡号",
@@ -417,6 +423,9 @@ export const zh: Record<string, string> = {
   Guardar: "保存",
   "Guardar ajuste": "保存调整",
   "Guardar cambios": "保存修改",
+  "Guardar cambios en {label}": "保存 {label} 的修改",
+  "Guardar como cuenta abierta": "保存为挂单",
+  "Guardar cuenta": "保存挂单",
   "Guardar proveedores": "保存供应商",
   "Hacia {name}": "发往 {name}",
   Hasta: "到",
@@ -461,6 +470,7 @@ export const zh: Record<string, string> = {
   "Limpiar búsqueda": "清除搜索",
   Listo: "完成",
   "Listo para entregar": "已备好",
+  "Listo para servir": "可以上菜",
   Litro: "升",
   Llegó: "到货",
   Lleva: "买",
@@ -468,6 +478,8 @@ export const zh: Record<string, string> = {
   "Lo que no llegó queda como faltante y la orden se da por recibida.": "未到货部分记为短缺，订单视为已收货。",
   "Los cajeros pueden vender, manejar caja y clientes, pero no ven costos, reportes ni configuración.":
     "收银员可以销售、管理钱箱和客户，但看不到成本、报表和设置。",
+  "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
+    "需要厨房制作的菜品会发送到厨房显示屏。",
   "Los precios incluyen impuestos. El desglose se calcula al facturar.": "价格已含税。开票时计算明细。",
   "Los precios incluyen impuestos. Los descuentos y puntos se prorratean y las devoluciones restan en el mes en que se hacen.":
     "价格已含税。折扣和积分按比例分摊，退货计入发生当月并予以扣减。",
@@ -492,6 +504,7 @@ export const zh: Record<string, string> = {
   "Mi cuenta": "我的账户",
   Mililitro: "毫升",
   "Modo de cobro": "收款方式",
+  "Modo restaurante": "餐厅模式",
   Moneda: "货币",
   Monto: "金额",
   Mostrar: "显示",
@@ -517,9 +530,11 @@ export const zh: Record<string, string> = {
   "No alcanza para esta venta": "不足以支付本次销售",
   "No aplica": "不适用",
   "No emito factura electrónica todavía": "我还没有开电子发票",
+  "No hay cuentas abiertas.": "没有挂单。",
   "No hay ventas en este periodo.": "此期间没有销售。",
   "No se pudo cargar la información": "无法加载信息",
   Nombre: "名称",
+  "Nombre de la cuenta (p. ej. Mesa 3)": "挂单名称（例如：3号桌）",
   "Nombre del proveedor": "供应商名称",
   "Nombre o número en el directorio Yappy": "Yappy 目录中的名称或号码",
   "Nota:": "备注：",
@@ -572,6 +587,8 @@ export const zh: Record<string, string> = {
   "Para enviar mercancía necesitas otra sucursal. Créala en Configuración → Sucursales.":
     "需要另一家分店才能调拨商品。请在“设置 → 分店”中创建。",
   "Para facturar una venta a un cliente abre la venta en": "要给客户开票，请打开以下位置的销售：",
+  "Para fondas y cafeterías: cuentas abiertas por mesa y pantalla de cocina.":
+    "适用于小餐馆和咖啡店：按桌挂单和厨房显示屏。",
   País: "国家",
   "Pedido #{n}": "订单 #{n}",
   "Pedido en línea #{n} · {name}": "线上订单 #{n} · {name}",
@@ -580,6 +597,7 @@ export const zh: Record<string, string> = {
   "Pedir por WhatsApp": "通过 WhatsApp 订货",
   "Pega el CUFE que te dio el facturador de la DGI o tu PAC al emitir la factura.":
     "粘贴 DGI 开票系统或你的 PAC 开票时给出的 CUFE。",
+  Pendiente: "待制作",
   "Perderá el acceso a este negocio de inmediato.": "将立即失去对本店的访问权限。",
   Periodicidad: "周期",
   Periodo: "期间",
@@ -597,6 +615,8 @@ export const zh: Record<string, string> = {
   "Precio de venta": "售价",
   "Precio del paquete": "套装价格",
   "Precio por cantidad (3 por B/.1.00)": "多件价（B/.1.00 三件）",
+  Preparando: "制作中",
+  Preparar: "开始制作",
   Principal: "总店",
   "Procesadas {processed}: {stamped} emitidas, {pending} pendientes, {errors} con error":
     "已处理 {processed}：开具 {stamped}，待处理 {pending}，出错 {errors}",
@@ -694,6 +714,7 @@ export const zh: Record<string, string> = {
     "将调整 {n} 个商品，使库存等于盘点数量。未盘点的商品不变。",
   "Se muestra en el punto de venta al cobrar con Yappy.": "用 Yappy 收款时在收银台显示。",
   "Se pagó con dinero de la caja": "用钱箱里的钱支付",
+  "Se prepara en cocina (aparece en la pantalla de cocina)": "需厨房制作（显示在厨房显示屏上）",
   "Se recalcula con cada compra (promedio)": "每次进货后重新计算（加权平均）",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
     "商品将从库存中扣除。如已售出，则无法取消。",
@@ -704,6 +725,7 @@ export const zh: Record<string, string> = {
   "Selecciona un cliente con datos fiscales": "请选择有税务资料的客户",
   "Seleccionar todos": "全选",
   Semanal: "每周",
+  Servido: "已上菜",
   "Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)":
     "按箱进货、拆零销售时填写（如每条 20 支香烟、每板 30 个鸡蛋）",
   "Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket imprime el CUFE y su código QR.":
@@ -794,6 +816,7 @@ export const zh: Record<string, string> = {
   "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.":
     "展示商品和价格的公开页面。客户选好商品后通过 WhatsApp 发给你。",
   "Unidades por caja (opcional)": "每箱数量（可选）",
+  "Usar cuentas abiertas y pantalla de cocina": "使用挂单和厨房显示屏",
   "Uso del CFDI": "CFDI 用途",
   "Uso el facturador gratuito de la DGI (vigilar los límites)": "我使用 DGI 免费开票系统（需关注限额）",
   "Usuario agregado": "用户已添加",
@@ -841,6 +864,7 @@ export const zh: Record<string, string> = {
   "Ver todas": "查看全部",
   "Ver todo": "查看全部",
   Vigente: "正常",
+  Volver: "返回",
   WhatsApp: "WhatsApp",
   "WhatsApp que recibe los pedidos": "接收订单的 WhatsApp",
   XML: "XML",
@@ -871,6 +895,8 @@ export const zh: Record<string, string> = {
   "{n} códigos internos asignados": "已分配 {n} 个内部条码",
   "{n} filas del archivo no son depósitos (cargos, saldos o renglones vacíos) y se omitieron.":
     "文件中有 {n} 行不是入账（扣款、余额或空行），已跳过。",
+  "{n} min": "{n} 分钟",
+  "{n} platillos por preparar": "{n} 道菜待制作",
   "{n} productos": "{n} 个商品",
   "{n} productos contados · diferencia estimada a costo:": "已盘点 {n} 个商品 · 按成本估算差额：",
   "{n} pts": "{n} 积分",

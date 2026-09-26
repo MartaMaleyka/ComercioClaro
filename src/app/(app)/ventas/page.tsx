@@ -7,6 +7,7 @@ import useSWR from "swr";
 import {
   AlertTriangle,
   Banknote,
+  ClipboardList,
   CreditCard,
   Gift,
   HandCoins,
@@ -36,6 +37,7 @@ import { countryConfig } from "@/lib/country";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
+import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
@@ -45,6 +47,20 @@ import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
 import { ServicesModal } from "@/components/pos/ServicesModal";
+
+interface OpenOrderData {
+  id: string;
+  number: number;
+  label: string;
+  createdAt: string;
+  items: {
+    id: string;
+    productId: string;
+    quantity: number;
+    modifiers: { id: string; name: string; price: number }[] | null;
+    product: { price: number };
+  }[];
+}
 
 interface OnlineOrderData {
   id: string;
@@ -64,6 +80,8 @@ interface CartLine {
   key: string;
   productId: string;
   modifiers: Modifier[];
+  /** Renglón de una cuenta abierta (se conserva su estado en cocina) */
+  orderItemId?: string;
   categoryId: string | null;
   name: string;
   unit: Product["unit"];
@@ -166,6 +184,7 @@ export default function PosPage() {
   const fmt = useFormat();
   const t = useT();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const catalog = useCachedList<Product>("/api/products?all=true", `catalog:${business.id}`);
   const customers = useCachedList<Customer>("/api/customers", `customers:${business.id}`);
@@ -264,6 +283,72 @@ export default function PosPage() {
 
   // Selector de variante y extras (se abre al tocar un grupo de variantes o un producto con extras).
   const [picker, setPicker] = useState<{ group: string | null; product: Product | null } | null>(null);
+
+  // Modo restaurante: cuentas abiertas (mesas) que se guardan y se cobran al final.
+  const [activeOrder, setActiveOrder] = useState<{ id: string; number: number; label: string } | null>(null);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const { data: openOrders, mutate: mutateOpenOrders } = useSWR<OpenOrderData[]>(
+    business.restaurantMode ? "/api/open-orders" : null,
+    fetcher,
+    { refreshInterval: 15_000 }
+  );
+
+  async function saveOrder() {
+    let label = activeOrder?.label;
+    if (!label) {
+      const answer = await confirm({
+        title: tr("Guardar cuenta"),
+        message: tr("Los platillos que se preparan en cocina se envían a la pantalla de cocina."),
+        inputLabel: tr("Nombre de la cuenta (p. ej. Mesa 3)"),
+        inputRequired: false,
+        confirmLabel: tr("Guardar"),
+      });
+      if (answer === false) return;
+      label = (typeof answer === "string" && answer) || tr("Cuenta");
+    }
+    setSavingOrder(true);
+    try {
+      await api(activeOrder ? `/api/open-orders/${activeOrder.id}` : "/api/open-orders", {
+        method: activeOrder ? "PUT" : "POST",
+        body: {
+          label,
+          notes: null,
+          items: cart.map((l) => ({
+            id: l.orderItemId ?? null,
+            productId: l.productId,
+            quantity: num(l.quantity),
+            ...(l.modifiers.length > 0 ? { modifierIds: l.modifiers.map((m) => m.id) } : {}),
+            notes: null,
+          })),
+        },
+      });
+      toast.success(tr("Cuenta guardada"));
+      mutateOpenOrders();
+      resetSale();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  function openOrder(order: OpenOrderData) {
+    const lines: CartLine[] = [];
+    for (const item of order.items) {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product) continue;
+      const modifiers = item.modifiers ?? [];
+      lines.push({
+        ...toCartLine(product, Number(item.quantity), modifiers),
+        key: `${lineKey(product.id, modifiers)}@${item.id}`,
+        orderItemId: item.id,
+      });
+    }
+    setCart(lines);
+    setActiveOrder({ id: order.id, number: order.number, label: order.label });
+    setOrdersOpen(false);
+  }
 
   // Las variantes de un mismo grupo se muestran como una sola tarjeta.
   const gridItems = useMemo(() => {
@@ -424,6 +509,7 @@ export default function PosPage() {
     setRedeemPoints("");
     setYappyManual(false);
     setOnlineOrder(null);
+    setActiveOrder(null);
     setPaymentMethod("CASH");
     setCheckoutOpen(false);
     searchRef.current?.focus();
@@ -448,6 +534,7 @@ export default function PosPage() {
       yappyChargeId: yappyChargeId ?? null,
       onlineOrderId: onlineOrder?.id ?? null,
       giftCardCode: paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
+      openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
       notes: notes || null,
@@ -506,6 +593,11 @@ export default function PosPage() {
 
   const cartPanel = (
     <div className="space-y-4">
+      {activeOrder && (
+        <p role="status" className="rounded-xl bg-blue-50 text-blue-700 px-3 py-2 text-sm">
+          {tr("Cuenta {label} (#{n})", { label: activeOrder.label, n: activeOrder.number })}
+        </p>
+      )}
       {cart.length === 0 ? (
         <div className="text-center py-8 text-sm text-slate-500">
           <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" aria-hidden="true" />
@@ -838,6 +930,14 @@ export default function PosPage() {
         >
           {t("pos.charge")} {fmt.money(total)}
         </Button>
+        {business.restaurantMode && cart.length > 0 && (
+          <Button variant="secondary" className="w-full" onClick={saveOrder} loading={savingOrder}>
+            <ClipboardList className="w-4 h-4" aria-hidden="true" />
+            {activeOrder
+              ? tr("Guardar cambios en {label}", { label: activeOrder.label })
+              : tr("Guardar como cuenta abierta")}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -892,6 +992,12 @@ export default function PosPage() {
             <Button variant="secondary" onClick={() => setScannerOpen(true)} aria-label={t("pos.scan")}>
               <ScanBarcode className="w-5 h-5" />
             </Button>
+            {business.restaurantMode && (
+              <Button variant="secondary" onClick={() => setOrdersOpen(true)} aria-label={tr("Cuentas abiertas")}>
+                <ClipboardList className="w-5 h-5" />
+                {(openOrders?.length ?? 0) > 0 && <span className="tabular-nums">{openOrders!.length}</span>}
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => setServicesOpen(true)} aria-label={tr("Recargas y servicios")}>
               <Zap className="w-5 h-5" />
             </Button>
@@ -1018,6 +1124,37 @@ export default function PosPage() {
       </Modal>
 
       {servicesOpen && <ServicesModal open onClose={() => setServicesOpen(false)} />}
+      <Modal open={ordersOpen} onClose={() => setOrdersOpen(false)} title={tr("Cuentas abiertas")}>
+        {!openOrders || openOrders.length === 0 ? (
+          <p className="text-sm text-slate-500">{tr("No hay cuentas abiertas.")}</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {openOrders.map((o) => {
+              const estimate = o.items.reduce(
+                (acc, i) =>
+                  acc +
+                  Number(i.quantity) * (Number(i.product.price) + (i.modifiers ?? []).reduce((a, m) => a + m.price, 0)),
+                0
+              );
+              return (
+                <li key={o.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">
+                      {o.label} <span className="text-slate-500 font-normal">#{o.number}</span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {tr("{n} productos", { n: o.items.length })} · {fmt.money(estimate)} · {fmt.dateTime(o.createdAt)}
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => openOrder(o)}>
+                    {tr("Abrir")}
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Modal>
       {picker && (
         <VariantPicker
           group={picker.group}

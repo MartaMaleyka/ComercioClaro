@@ -34,6 +34,7 @@ export const en: Record<string, string> = {
   Abono: "Payment",
   "Abono registrado": "Payment recorded",
   "Abonos de clientes": "Customer payments",
+  Abrir: "Open",
   "Abrir caja": "Open register",
   "Abrir en este equipo": "Open on this device",
   "Abrió caja": "Opened register",
@@ -172,6 +173,7 @@ export const en: Record<string, string> = {
   "Cobrar en el punto de venta": "Charge at the point of sale",
   "Cobro automático por celular (API de Yappy Comercial)": "Automatic charge by phone (Yappy Comercial API)",
   "Cobros por": "Payments by",
+  Cocina: "Kitchen",
   "Comisiones estimadas": "Estimated fees",
   "Comisiones por forma de pago": "Fees by payment method",
   "Comisión (%)": "Commission (%)",
@@ -232,8 +234,12 @@ export const en: Record<string, string> = {
   "Creó producto": "Created product",
   "Creó proveedor": "Created supplier",
   "Creó sucursal": "Created branch",
+  Cuenta: "Tab",
   "Cuenta cada venta ({sales}) y cada devolución como nota de crédito ({returns}).":
     "Counts every sale ({sales}) and every return as a credit note ({returns}).",
+  "Cuenta guardada": "Tab saved",
+  "Cuenta {label} (#{n})": "Tab {label} (#{n})",
+  "Cuentas abiertas": "Open tabs",
   "Cuentas de fiado y datos para factura": "Credit accounts and invoicing details",
   "Código de barras": "Barcode",
   "Código del vale": "Gift card code",
@@ -426,6 +432,9 @@ export const en: Record<string, string> = {
   Guardar: "Save",
   "Guardar ajuste": "Save adjustment",
   "Guardar cambios": "Save changes",
+  "Guardar cambios en {label}": "Save changes to {label}",
+  "Guardar como cuenta abierta": "Save as open tab",
+  "Guardar cuenta": "Save tab",
   "Guardar proveedores": "Save providers",
   "Hacia {name}": "To {name}",
   Hasta: "To",
@@ -470,6 +479,7 @@ export const en: Record<string, string> = {
   "Limpiar búsqueda": "Clear search",
   Listo: "Done",
   "Listo para entregar": "Ready",
+  "Listo para servir": "Ready to serve",
   Litro: "Liter",
   Llegó: "Arrived",
   Lleva: "Buy",
@@ -478,6 +488,8 @@ export const en: Record<string, string> = {
     "Anything that did not arrive is recorded as missing and the order is marked received.",
   "Los cajeros pueden vender, manejar caja y clientes, pero no ven costos, reportes ni configuración.":
     "Cashiers can sell and handle the register and customers, but cannot see costs, reports or settings.",
+  "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
+    "Dishes prepared in the kitchen are sent to the kitchen display.",
   "Los precios incluyen impuestos. El desglose se calcula al facturar.":
     "Prices include taxes. The breakdown is calculated when invoicing.",
   "Los precios incluyen impuestos. Los descuentos y puntos se prorratean y las devoluciones restan en el mes en que se hacen.":
@@ -505,6 +517,7 @@ export const en: Record<string, string> = {
   "Mi cuenta": "My account",
   Mililitro: "Milliliter",
   "Modo de cobro": "Charge mode",
+  "Modo restaurante": "Restaurant mode",
   Moneda: "Currency",
   Monto: "Amount",
   Mostrar: "Show",
@@ -532,9 +545,11 @@ export const en: Record<string, string> = {
   "No alcanza para esta venta": "Not enough for this sale",
   "No aplica": "Not applicable",
   "No emito factura electrónica todavía": "I don't issue e-invoices yet",
+  "No hay cuentas abiertas.": "No open tabs.",
   "No hay ventas en este periodo.": "No sales in this period.",
   "No se pudo cargar la información": "Could not load the information",
   Nombre: "Name",
+  "Nombre de la cuenta (p. ej. Mesa 3)": "Tab name (e.g. Table 3)",
   "Nombre del proveedor": "Supplier name",
   "Nombre o número en el directorio Yappy": "Name or number in the Yappy directory",
   "Nota:": "Note:",
@@ -587,6 +602,8 @@ export const en: Record<string, string> = {
   "Para enviar mercancía necesitas otra sucursal. Créala en Configuración → Sucursales.":
     "To send goods you need another branch. Create it in Settings → Branches.",
   "Para facturar una venta a un cliente abre la venta en": "To invoice a sale to a customer, open the sale in",
+  "Para fondas y cafeterías: cuentas abiertas por mesa y pantalla de cocina.":
+    "For diners and cafés: open tabs per table and a kitchen display.",
   País: "Country",
   "Pedido #{n}": "Order #{n}",
   "Pedido en línea #{n} · {name}": "Online order #{n} · {name}",
@@ -595,6 +612,7 @@ export const en: Record<string, string> = {
   "Pedir por WhatsApp": "Order via WhatsApp",
   "Pega el CUFE que te dio el facturador de la DGI o tu PAC al emitir la factura.":
     "Paste the CUFE the DGI invoicer or your PAC gave you when issuing the invoice.",
+  Pendiente: "Pending",
   "Perderá el acceso a este negocio de inmediato.": "They will lose access to this business immediately.",
   Periodicidad: "Frequency",
   Periodo: "Period",
@@ -612,6 +630,8 @@ export const en: Record<string, string> = {
   "Precio de venta": "Sale price",
   "Precio del paquete": "Bundle price",
   "Precio por cantidad (3 por B/.1.00)": "Price per quantity (3 for B/.1.00)",
+  Preparando: "Preparing",
+  Preparar: "Start",
   Principal: "Main",
   "Procesadas {processed}: {stamped} emitidas, {pending} pendientes, {errors} con error":
     "Processed {processed}: {stamped} issued, {pending} pending, {errors} with errors",
@@ -714,6 +734,7 @@ export const en: Record<string, string> = {
     "{n} products will be adjusted so their stock matches the count. Products not counted do not change.",
   "Se muestra en el punto de venta al cobrar con Yappy.": "Shown at the POS when charging with Yappy.",
   "Se pagó con dinero de la caja": "Paid with money from the register",
+  "Se prepara en cocina (aparece en la pantalla de cocina)": "Prepared in the kitchen (shown on the kitchen display)",
   "Se recalcula con cada compra (promedio)": "Recalculated with every purchase (average)",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
     "The goods will be removed from inventory. If already sold, it cannot be cancelled.",
@@ -724,6 +745,7 @@ export const en: Record<string, string> = {
   "Selecciona un cliente con datos fiscales": "Select a customer with tax details",
   "Seleccionar todos": "Select all",
   Semanal: "Weekly",
+  Servido: "Served",
   "Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)":
     "If you buy by the box and sell loose (e.g. 20 cigarettes per pack, 30 eggs per tray)",
   "Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket imprime el CUFE y su código QR.":
@@ -818,6 +840,7 @@ export const en: Record<string, string> = {
   "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.":
     "A public page with your products and prices. Customers build their order and send it to you on WhatsApp.",
   "Unidades por caja (opcional)": "Units per box (optional)",
+  "Usar cuentas abiertas y pantalla de cocina": "Use open tabs and kitchen display",
   "Uso del CFDI": "CFDI use",
   "Uso el facturador gratuito de la DGI (vigilar los límites)": "I use the DGI free invoicer (watch the limits)",
   "Usuario agregado": "User added",
@@ -865,6 +888,7 @@ export const en: Record<string, string> = {
   "Ver todas": "View all",
   "Ver todo": "View all",
   Vigente: "Current",
+  Volver: "Back",
   WhatsApp: "WhatsApp",
   "WhatsApp que recibe los pedidos": "WhatsApp that receives orders",
   XML: "XML",
@@ -895,6 +919,8 @@ export const en: Record<string, string> = {
   "{n} códigos internos asignados": "{n} internal codes assigned",
   "{n} filas del archivo no son depósitos (cargos, saldos o renglones vacíos) y se omitieron.":
     "{n} rows in the file are not deposits (charges, balances or empty rows) and were skipped.",
+  "{n} min": "{n} min",
+  "{n} platillos por preparar": "{n} dishes to prepare",
   "{n} productos": "{n} products",
   "{n} productos contados · diferencia estimada a costo:": "{n} products counted · estimated difference at cost:",
   "{n} pts": "{n} pts",

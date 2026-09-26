@@ -43,6 +43,7 @@ const empty = {
   satUnitKey: "H87",
   variantGroup: "",
   variantLabel: "",
+  sendToKitchen: false,
 };
 
 type FormState = typeof empty;
@@ -70,6 +71,7 @@ function toForm(product: Product | null): FormState {
     satUnitKey: product.satUnitKey,
     variantGroup: product.variantGroup ?? "",
     variantLabel: product.variantLabel ?? "",
+    sendToKitchen: product.sendToKitchen ?? false,
   };
 }
 
@@ -151,6 +153,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
       satUnitKey: form.satUnitKey,
       variantGroup: form.variantGroup || null,
       variantLabel: form.variantLabel || null,
+      sendToKitchen: form.sendToKitchen,
       modifiers: modifiers
         .filter((m) => m.name.trim())
         .map((m) => ({ id: m.id, name: m.name.trim(), price: Number(m.price.replace(",", ".")) || 0 })),
@@ -292,6 +295,13 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
             onChange={(e) => set("packSize", e.target.value)}
             hint={tr("Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)")}
           />
+          {business.restaurantMode && (
+            <Checkbox
+              label={tr("Se prepara en cocina (aparece en la pantalla de cocina)")}
+              checked={form.sendToKitchen}
+              onChange={(e) => set("sendToKitchen", e.target.checked)}
+            />
+          )}
           <Checkbox
             label={tr("Controlar lotes y fecha de caducidad")}
             checked={form.trackExpiry}

@@ -18,6 +18,7 @@ import { cashSessionSummary } from "@/server/cash";
 import { financialSummary } from "@/server/reports";
 import { findGiftCard, issueGiftCard, voidGiftCard } from "@/server/gift-cards";
 import { createVariants, updateProduct } from "@/server/catalog";
+import { kitchenQueue, listOpenOrders, saveOpenOrder, setKitchenStatus } from "@/server/open-orders";
 import { dayKey } from "@/lib/dates";
 import { hasDatabase, makeProduct, resetDatabase, saleInput } from "../helpers";
 
@@ -524,5 +525,69 @@ describe.skipIf(!hasDatabase)("variantes y extras", () => {
     await expect(
       createSale(owner, saleInput([{ productId: burger.id, quantity: 1, modifierIds: ["cebolla"] } as never]))
     ).rejects.toThrow(/extra/);
+  });
+});
+
+describe.skipIf(!hasDatabase)("cuentas abiertas y cocina", () => {
+  beforeEach(resetDatabase);
+
+  it("guarda la cuenta, manda a cocina solo lo que va a cocina, la actualiza y la cierra al cobrar", async () => {
+    const owner = await panamaOwner({ restaurantMode: true });
+    const soup = await makeProduct(owner, { name: "Sancocho", price: 4, stock: 20, taxRate: 0 });
+    await updateProduct(owner, soup.id, { sendToKitchen: true, modifiers: [{ id: "arroz", name: "Arroz", price: 1 }] });
+    const soda = await makeProduct(owner, { name: "Soda", price: 1, stock: 20, taxRate: 0.07 });
+
+    const order = await saveOpenOrder(owner, {
+      label: "Mesa 3",
+      notes: null,
+      items: [
+        { productId: soup.id, quantity: 2, modifierIds: ["arroz"], notes: "sin culantro" },
+        { productId: soda.id, quantity: 2, notes: null },
+      ],
+    });
+    expect(order).toMatchObject({ number: 1, label: "Mesa 3", status: "OPEN" });
+    let queue = await kitchenQueue(owner.businessId);
+    expect(queue).toHaveLength(1);
+    expect(queue[0].items.map((i) => [i.product.name, Number(i.quantity), i.notes])).toEqual([
+      ["Sancocho", 2, "sin culantro"],
+    ]);
+
+    const soupItem = order.items.find((i) => i.productId === soup.id)!;
+    await setKitchenStatus(owner, soupItem.id, "READY");
+    // Se agrega otro sancocho: nuevo renglón pendiente; el primero conserva su estado.
+    const updated = await saveOpenOrder(
+      owner,
+      {
+        label: "Mesa 3",
+        notes: null,
+        items: [
+          { id: soupItem.id, productId: soup.id, quantity: 2, modifierIds: ["arroz"], notes: "sin culantro" },
+          { productId: soup.id, quantity: 1, notes: null },
+        ],
+      },
+      order.id
+    );
+    expect(updated.items).toHaveLength(2);
+    queue = await kitchenQueue(owner.businessId);
+    expect(queue[0].items.map((i) => i.kitchenStatus)).toEqual(["READY", "PENDING"]);
+    expect(await listOpenOrders(owner.businessId)).toHaveLength(1);
+
+    const sale = await createSale(
+      owner,
+      saleInput(
+        [{ productId: soup.id, quantity: 2, modifierIds: ["arroz"] } as never, { productId: soup.id, quantity: 1 }],
+        { openOrderId: order.id }
+      )
+    );
+    expect(Number(sale.total)).toBe(14);
+    expect(await listOpenOrders(owner.businessId)).toHaveLength(0);
+    await expect(saveOpenOrder(owner, { label: "Mesa 3", notes: null, items: [] }, order.id)).rejects.toThrow(
+      /ya se cobró/
+    );
+    // Lo que aún no se sirve sigue en la pantalla de cocina aunque la cuenta se haya cobrado.
+    expect((await kitchenQueue(owner.businessId))[0].items).toHaveLength(2);
+
+    await cancelSale(owner, sale.id, "Se cobró de más");
+    expect(await listOpenOrders(owner.businessId)).toHaveLength(1);
   });
 });

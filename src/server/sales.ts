@@ -14,6 +14,7 @@ import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
 import { productModifiers } from "./catalog";
 import { closeOrderWithSale } from "./online-orders";
+import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
@@ -28,10 +29,11 @@ export function toPromotionRule(p: Promotion): PromotionRule {
 
 export type SaleInput = Omit<
   z.infer<typeof saleSchema>,
-  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "giftCardCode"
+  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "openOrderId" | "giftCardCode"
 > & {
   paymentReference?: string | null;
   giftCardCode?: string | null;
+  openOrderId?: string | null;
   yappyChargeId?: string | null;
   onlineOrderId?: string | null;
 };
@@ -271,6 +273,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         await tx.yappyCharge.update({ where: { id: yappyCharge.id }, data: { saleId: sale.id } });
       }
       if (input.onlineOrderId) await closeOrderWithSale(tx, actor.businessId, input.onlineOrderId, sale.id);
+      if (input.openOrderId) await closeOpenOrderWithSale(tx, actor.businessId, input.openOrderId, sale.id);
 
       // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
       if (customer && business.loyaltyEnabled) {
@@ -426,6 +429,9 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
       const refunded = sum(sale.returns.filter((r) => r.refundMethod === "GIFT_CARD").map((r) => r.total));
       await refundGiftCard(tx, actor, sale.giftCardId, D(sale.total).minus(refunded), sale.id);
     }
+
+    // Si cerraba una cuenta abierta, la cuenta se reabre para corregirla y cobrarla de nuevo.
+    await tx.openOrder.updateMany({ where: { saleId: sale.id }, data: { status: "OPEN", saleId: null } });
 
     // Si cobraba un pedido en línea, el pedido vuelve a quedar listo para cobrarse de nuevo.
     await tx.onlineOrder.updateMany({ where: { saleId: sale.id }, data: { status: "READY", saleId: null } });

@@ -70,17 +70,125 @@ async function seedMexico() {
   ) as Record<string, string>;
 
   const catalog = [
-    { name: "Coca-Cola 600ml", barcode: "7501055300075", category: "Bebidas", price: 18, cost: 12, stock: 120, minStock: 12, iepsRate: 0.08 },
-    { name: "Agua Bonafont 1L", barcode: "7501055900015", category: "Bebidas", price: 12, cost: 7, stock: 60, minStock: 10 },
-    { name: "Sabritas Original 45g", barcode: "7501011111112", category: "Botanas", price: 18, cost: 11, stock: 80, minStock: 10, iepsRate: 0.08 },
-    { name: "Galletas Marías 170g", barcode: "7501000112345", category: "Botanas", price: 16, cost: 10.5, stock: 60, minStock: 6, taxRate: 0 },
-    { name: "Leche Lala 1L", barcode: "7501020515343", category: "Lácteos", price: 28, cost: 22, stock: 50, minStock: 6, taxRate: 0, trackExpiry: true },
-    { name: "Yoghurt Danone 1kg", barcode: "7501032901234", category: "Lácteos", price: 45, cost: 34, stock: 30, minStock: 4, taxRate: 0, trackExpiry: true },
-    { name: "Pan Bimbo Grande", barcode: "7441029500015", category: "Panadería", price: 48, cost: 36, stock: 40, minStock: 5, taxRate: 0, trackExpiry: true },
-    { name: "Aceite 1-2-3 1L", barcode: "7501039120012", category: "Abarrotes", price: 42, cost: 33, stock: 40, minStock: 4, taxRate: 0 },
-    { name: "Frijol negro", category: "Granel", unit: "KG" as const, price: 38, cost: 26, stock: 60, minStock: 5, taxRate: 0, wholesalePrice: 34, wholesaleMinQty: 5, satUnitKey: "KGM" },
-    { name: "Arroz", category: "Granel", unit: "KG" as const, price: 32, cost: 21, stock: 70, minStock: 5, taxRate: 0, wholesalePrice: 29, wholesaleMinQty: 5, satUnitKey: "KGM" },
-    { name: "Huevo", category: "Granel", unit: "KG" as const, price: 52, cost: 41, stock: 50, minStock: 3, taxRate: 0, satUnitKey: "KGM" },
+    {
+      name: "Coca-Cola 600ml",
+      barcode: "7501055300075",
+      category: "Bebidas",
+      price: 18,
+      cost: 12,
+      stock: 120,
+      minStock: 12,
+      iepsRate: 0.08,
+    },
+    {
+      name: "Agua Bonafont 1L",
+      barcode: "7501055900015",
+      category: "Bebidas",
+      price: 12,
+      cost: 7,
+      stock: 60,
+      minStock: 10,
+    },
+    {
+      name: "Sabritas Original 45g",
+      barcode: "7501011111112",
+      category: "Botanas",
+      price: 18,
+      cost: 11,
+      stock: 80,
+      minStock: 10,
+      iepsRate: 0.08,
+    },
+    {
+      name: "Galletas Marías 170g",
+      barcode: "7501000112345",
+      category: "Botanas",
+      price: 16,
+      cost: 10.5,
+      stock: 60,
+      minStock: 6,
+      taxRate: 0,
+    },
+    {
+      name: "Leche Lala 1L",
+      barcode: "7501020515343",
+      category: "Lácteos",
+      price: 28,
+      cost: 22,
+      stock: 50,
+      minStock: 6,
+      taxRate: 0,
+      trackExpiry: true,
+    },
+    {
+      name: "Yoghurt Danone 1kg",
+      barcode: "7501032901234",
+      category: "Lácteos",
+      price: 45,
+      cost: 34,
+      stock: 30,
+      minStock: 4,
+      taxRate: 0,
+      trackExpiry: true,
+    },
+    {
+      name: "Pan Bimbo Grande",
+      barcode: "7441029500015",
+      category: "Panadería",
+      price: 48,
+      cost: 36,
+      stock: 40,
+      minStock: 5,
+      taxRate: 0,
+      trackExpiry: true,
+    },
+    {
+      name: "Aceite 1-2-3 1L",
+      barcode: "7501039120012",
+      category: "Abarrotes",
+      price: 42,
+      cost: 33,
+      stock: 40,
+      minStock: 4,
+      taxRate: 0,
+    },
+    {
+      name: "Frijol negro",
+      category: "Granel",
+      unit: "KG" as const,
+      price: 38,
+      cost: 26,
+      stock: 60,
+      minStock: 5,
+      taxRate: 0,
+      wholesalePrice: 34,
+      wholesaleMinQty: 5,
+      satUnitKey: "KGM",
+    },
+    {
+      name: "Arroz",
+      category: "Granel",
+      unit: "KG" as const,
+      price: 32,
+      cost: 21,
+      stock: 70,
+      minStock: 5,
+      taxRate: 0,
+      wholesalePrice: 29,
+      wholesaleMinQty: 5,
+      satUnitKey: "KGM",
+    },
+    {
+      name: "Huevo",
+      category: "Granel",
+      unit: "KG" as const,
+      price: 52,
+      cost: 41,
+      stock: 50,
+      minStock: 3,
+      taxRate: 0,
+      satUnitKey: "KGM",
+    },
   ];
 
   const products = [];
@@ -166,7 +274,9 @@ async function seedMexico() {
     }
   }
 
-  await addCustomerPayment(actor, customers[0].id, { amount: 50, method: "CASH", notes: "Abono semanal" }).catch(() => {});
+  await addCustomerPayment(actor, customers[0].id, { amount: 50, method: "CASH", notes: "Abono semanal" }).catch(
+    () => {}
+  );
 
   const expenses = [
     { category: "Renta", amount: 3500, days: 25 },
@@ -176,7 +286,14 @@ async function seedMexico() {
   ];
   for (const e of expenses) {
     await prisma.expense.create({
-      data: { category: e.category, amount: e.amount, paymentMethod: "TRANSFER", date: daysAgo(e.days), userId: owner.id, businessId },
+      data: {
+        category: e.category,
+        amount: e.amount,
+        paymentMethod: "TRANSFER",
+        date: daysAgo(e.days),
+        userId: owner.id,
+        businessId,
+      },
     });
   }
 
@@ -253,17 +370,124 @@ async function seedPanama() {
   ) as Record<string, string>;
 
   const catalog = [
-    { name: "Arroz Blue Ribbon 5 lb", barcode: "7451001000011", category: "Abarrotes", price: 3.95, cost: 3.1, stock: 180, minStock: 10, taxRate: 0 },
-    { name: "Frijoles rojos 1 lb", barcode: "7451001000028", category: "Abarrotes", price: 1.35, cost: 0.95, stock: 240, minStock: 12, taxRate: 0 },
-    { name: "Aceite Clover 1 L", barcode: "7451001000035", category: "Abarrotes", price: 3.25, cost: 2.6, stock: 90, minStock: 6, taxRate: 0 },
-    { name: "Coca-Cola 2 L", barcode: "7451001000042", category: "Bebidas", price: 2.1, cost: 1.55, stock: 216, minStock: 12, taxRate: 0.07 },
-    { name: "Agua Cristalina 600 ml", barcode: "7451001000059", category: "Bebidas", price: 0.75, cost: 0.4, stock: 288, minStock: 24, taxRate: 0.07, packSize: 24 },
-    { name: "Cerveza Panamá lata", barcode: "7451001000066", category: "Cervezas", price: 1.0, cost: 0.68, stock: 432, minStock: 24, taxRate: 0.1, packSize: 24, wholesalePrice: 0.9, wholesaleMinQty: 12 },
-    { name: "Cerveza Balboa lata", barcode: "7451001000073", category: "Cervezas", price: 1.1, cost: 0.75, stock: 288, minStock: 24, taxRate: 0.1, packSize: 24 },
-    { name: "Cigarrillo suelto", barcode: "7451001000080", category: "Cigarrillos", price: 0.35, cost: 0.24, stock: 600, minStock: 40, taxRate: 0.15, packSize: 20 },
-    { name: "Leche Estrella Azul 1 L", barcode: "7451001000097", category: "Lácteos y huevos", price: 1.65, cost: 1.3, stock: 120, minStock: 12, taxRate: 0, trackExpiry: true },
-    { name: "Huevo (unidad)", barcode: "7451001000103", category: "Lácteos y huevos", price: 0.2, cost: 0.14, stock: 540, minStock: 60, taxRate: 0, packSize: 30 },
-    { name: "Detergente Ace 1 kg", barcode: "7451001000110", category: "Limpieza", price: 3.6, cost: 2.75, stock: 60, minStock: 5, taxRate: 0.07 },
+    {
+      name: "Arroz Blue Ribbon 5 lb",
+      barcode: "7451001000011",
+      category: "Abarrotes",
+      price: 3.95,
+      cost: 3.1,
+      stock: 180,
+      minStock: 10,
+      taxRate: 0,
+    },
+    {
+      name: "Frijoles rojos 1 lb",
+      barcode: "7451001000028",
+      category: "Abarrotes",
+      price: 1.35,
+      cost: 0.95,
+      stock: 240,
+      minStock: 12,
+      taxRate: 0,
+    },
+    {
+      name: "Aceite Clover 1 L",
+      barcode: "7451001000035",
+      category: "Abarrotes",
+      price: 3.25,
+      cost: 2.6,
+      stock: 90,
+      minStock: 6,
+      taxRate: 0,
+    },
+    {
+      name: "Coca-Cola 2 L",
+      barcode: "7451001000042",
+      category: "Bebidas",
+      price: 2.1,
+      cost: 1.55,
+      stock: 216,
+      minStock: 12,
+      taxRate: 0.07,
+    },
+    {
+      name: "Agua Cristalina 600 ml",
+      barcode: "7451001000059",
+      category: "Bebidas",
+      price: 0.75,
+      cost: 0.4,
+      stock: 288,
+      minStock: 24,
+      taxRate: 0.07,
+      packSize: 24,
+    },
+    {
+      name: "Cerveza Panamá lata",
+      barcode: "7451001000066",
+      category: "Cervezas",
+      price: 1.0,
+      cost: 0.68,
+      stock: 432,
+      minStock: 24,
+      taxRate: 0.1,
+      packSize: 24,
+      wholesalePrice: 0.9,
+      wholesaleMinQty: 12,
+    },
+    {
+      name: "Cerveza Balboa lata",
+      barcode: "7451001000073",
+      category: "Cervezas",
+      price: 1.1,
+      cost: 0.75,
+      stock: 288,
+      minStock: 24,
+      taxRate: 0.1,
+      packSize: 24,
+    },
+    {
+      name: "Cigarrillo suelto",
+      barcode: "7451001000080",
+      category: "Cigarrillos",
+      price: 0.35,
+      cost: 0.24,
+      stock: 600,
+      minStock: 40,
+      taxRate: 0.15,
+      packSize: 20,
+    },
+    {
+      name: "Leche Estrella Azul 1 L",
+      barcode: "7451001000097",
+      category: "Lácteos y huevos",
+      price: 1.65,
+      cost: 1.3,
+      stock: 120,
+      minStock: 12,
+      taxRate: 0,
+      trackExpiry: true,
+    },
+    {
+      name: "Huevo (unidad)",
+      barcode: "7451001000103",
+      category: "Lácteos y huevos",
+      price: 0.2,
+      cost: 0.14,
+      stock: 540,
+      minStock: 60,
+      taxRate: 0,
+      packSize: 30,
+    },
+    {
+      name: "Detergente Ace 1 kg",
+      barcode: "7451001000110",
+      category: "Limpieza",
+      price: 3.6,
+      cost: 2.75,
+      stock: 60,
+      minStock: 5,
+      taxRate: 0.07,
+    },
   ];
 
   const products = [];
@@ -295,8 +519,12 @@ async function seedPanama() {
   });
 
   const customers = await Promise.all([
-    prisma.customer.create({ data: { name: "Señora Maritza", phone: "6555-1234", creditLimit: 60, creditDays: 15, businessId } }),
-    prisma.customer.create({ data: { name: "Don Aurelio", phone: "6555-9876", creditLimit: 40, creditDays: 15, businessId } }),
+    prisma.customer.create({
+      data: { name: "Señora Maritza", phone: "6555-1234", creditLimit: 60, creditDays: 15, businessId },
+    }),
+    prisma.customer.create({
+      data: { name: "Don Aurelio", phone: "6555-9876", creditLimit: 40, creditDays: 15, businessId },
+    }),
   ]);
 
   const random = rng(7);
@@ -347,14 +575,28 @@ async function seedPanama() {
     { category: "Internet / teléfono", amount: 42, days: 6 },
   ]) {
     await prisma.expense.create({
-      data: { category: e.category, amount: e.amount, paymentMethod: "TRANSFER", date: daysAgo(e.days), userId: owner.id, businessId },
+      data: {
+        category: e.category,
+        amount: e.amount,
+        paymentMethod: "TRANSFER",
+        date: daysAgo(e.days),
+        userId: owner.id,
+        businessId,
+      },
     });
   }
 
   // Funciones de la ronda 5: promoción de cerveza, puntos de lealtad y catálogo por WhatsApp.
   const beer = products.find((p) => p.name === "Cerveza Panamá lata")!;
   await prisma.promotion.create({
-    data: { name: "6 Cerveza Panamá por B/.5.00", type: "BUNDLE_PRICE", bundleQty: 6, bundlePrice: 5, productId: beer.id, businessId },
+    data: {
+      name: "6 Cerveza Panamá por B/.5.00",
+      type: "BUNDLE_PRICE",
+      bundleQty: 6,
+      bundlePrice: 5,
+      productId: beer.id,
+      businessId,
+    },
   });
   await prisma.business.update({
     where: { id: businessId },
@@ -374,9 +616,106 @@ async function seedPanama() {
   console.log("   Catálogo público: /c/minisuper-el-dorado");
 }
 
+const FONDA_EMAIL = "demo.fonda@comercioclaro.com";
+
+/** Fonda panameña en modo restaurante: cuentas por mesa, cocina, extras y variantes. */
+async function seedFonda() {
+  const existing = await prisma.user.findUnique({ where: { email: FONDA_EMAIL } });
+  if (existing) return;
+  const owner = await prisma.user.create({
+    data: {
+      email: FONDA_EMAIL,
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      name: "Rosa Pérez",
+      memberships: {
+        create: {
+          role: "OWNER",
+          business: {
+            create: {
+              name: "Fonda La Chiricana",
+              description: "Comida típica panameña",
+              address: "Calle 50, Bella Vista, Panamá",
+              country: "PA",
+              currency: "USD",
+              locale: "es-PA",
+              timezone: "America/Panama",
+              showBalboa: true,
+              restaurantMode: true,
+              yappyDirectory: "@fondachiricana",
+            },
+          },
+        },
+      },
+    },
+    include: { memberships: true },
+  });
+  const businessId = owner.memberships[0].businessId;
+  const actor = { userId: owner.id, businessId, role: "OWNER" as const };
+  const base = {
+    description: null,
+    sku: null,
+    barcode: null,
+    unit: "PIECE" as const,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    minStock: 5,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    satUnitKey: "H87",
+    categoryId: null,
+  };
+  const dishes = [
+    {
+      name: "Sancocho",
+      price: 4.5,
+      cost: 1.8,
+      stock: 60,
+      taxRate: 0,
+      modifiers: [{ id: "arroz", name: "Arroz", price: 1 }],
+    },
+    {
+      name: "Pollo guisado con arroz",
+      price: 5,
+      cost: 2,
+      stock: 60,
+      taxRate: 0,
+      modifiers: [
+        { id: "tajadas", name: "Tajadas", price: 1 },
+        { id: "ensalada", name: "Ensalada de papa", price: 0.75 },
+      ],
+    },
+    { name: "Carimañola", price: 0.75, cost: 0.25, stock: 100, taxRate: 0, modifiers: null },
+  ];
+  for (const d of dishes) {
+    await createProduct(actor, { ...base, ...d, sendToKitchen: true });
+  }
+  for (const [label, price] of [
+    ["Pequeña", 1],
+    ["Grande", 1.75],
+  ] as const) {
+    await createProduct(actor, {
+      ...base,
+      name: `Chicha de maracuyá ${label.toLowerCase()}`,
+      price,
+      cost: 0.3,
+      stock: 80,
+      taxRate: 0.07,
+      variantGroup: "Chicha de maracuyá",
+      variantLabel: label,
+    });
+  }
+  await createProduct(actor, { ...base, name: "Soda en lata", price: 1, cost: 0.55, stock: 120, taxRate: 0.07 });
+  await openCashSession(actor, { openingAmount: 40, notes: "Fondo inicial" });
+  console.log("✅ Demostración de fonda (modo restaurante) creada");
+  console.log(`   Dueña: ${FONDA_EMAIL} / ${DEMO_PASSWORD}`);
+}
+
 async function main() {
   await seedMexico();
   await seedPanama();
+  await seedFonda();
 }
 
 main()

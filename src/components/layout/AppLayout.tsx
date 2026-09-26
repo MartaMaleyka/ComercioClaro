@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Building2,
+  ChefHat,
   ChevronDown,
   Coins,
   FileText,
@@ -65,6 +66,13 @@ const navItems: NavItem[] = [
   },
   { href: "/inventario", label: "nav.inventory" as MessageKey, icon: Package, roles: ["OWNER", "CASHIER"] },
   { href: "/vales", label: "nav.giftCards" as MessageKey, icon: Gift, roles: ["OWNER", "CASHIER"] },
+  {
+    href: "/cocina",
+    label: "nav.kitchen" as MessageKey,
+    icon: ChefHat,
+    roles: ["OWNER", "CASHIER"],
+    when: (b) => b.restaurantMode,
+  },
   { href: "/clientes", label: "nav.customers" as MessageKey, icon: Users, roles: ["OWNER", "CASHIER"] },
   { href: "/compras", label: "nav.purchases" as MessageKey, icon: ShoppingBag, roles: ["OWNER"] },
   { href: "/promociones", label: "nav.promotions" as MessageKey, icon: Tag, roles: ["OWNER"] },
