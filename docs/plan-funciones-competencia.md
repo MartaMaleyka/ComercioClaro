@@ -95,4 +95,10 @@ Criterios que aplican a todas las fases:
 - Pagos divididos (varias formas de pago en una venta): cambia el modelo de ventas, la caja y los reportes. Es la siguiente mejora natural después de los vales.
 
 ## Estado
-Todas las fases implementadas en la rama `claude/competitive-features`. Pruebas en `tests/integration/competencia.test.ts`, `tests/unit/competencia.test.ts` y `e2e/competencia.spec.ts`.
+Las diez fases están implementadas en la rama `claude/competitive-features`.
+
+- Pruebas de integración: `tests/integration/competencia.test.ts` (una por fase).
+- Pruebas unitarias de la lectura del estado de cuenta y la conciliación: `tests/unit/competencia.test.ts`.
+- Pruebas de punta a punta de los flujos principales: `e2e/competencia.spec.ts`.
+- Las pantallas nuevas pasan la revisión de accesibilidad: `e2e/accessibility.spec.ts`.
+- Demo de restaurante: `demo.fonda@comercioclaro.com` / `demo1234`.
