@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CASH_DENOMINATIONS } from "./cash";
 import { isValidTimeZone } from "./dates";
 
 const MAX_MONEY = 99_999_999;
@@ -58,7 +59,7 @@ const dv = z
   .regex(/^(\d{1,2})?$/, "DV inválido")
   .nullish()
   .transform((v) => v || null);
-export const productUnit = z.enum(["PIECE", "KG", "G", "L", "ML", "M"], { error: "Unidad inválida" });
+export const productUnit = z.enum(["PIECE", "KG", "G", "L", "ML", "M", "LB", "OZ", "GAL"], { error: "Unidad inválida" });
 export const adjustmentReason = z.enum(["COUNT", "WASTE", "EXPIRED", "THEFT", "DAMAGED", "OTHER"], {
   error: "Motivo inválido",
 });
@@ -167,6 +168,10 @@ export const businessSchema = z.object({
   yappyFeeRate: feeRate.optional(),
   serviceProviders: z.lazy(() => serviceProvidersSchema).optional(),
   restaurantMode: z.boolean().optional(),
+  region: z.enum(["CAPITAL", "INTERIOR"]).nullish(),
+  offlineDays: z.coerce.number().int().min(1, "Mínimo 1 día").max(60, "Máximo 60 días").optional(),
+  seniorDiscountRate: rate.optional(),
+  deliveryZones: z.lazy(() => deliveryZonesSchema).optional(),
 });
 
 export const languageSchema = z.object({ language: z.enum(["es", "zh", "en"]) });
@@ -223,6 +228,8 @@ const productBase = {
   categoryId: id.nullish(),
   variantGroup: optText(150).optional(),
   sendToKitchen: z.boolean().optional(),
+  trackStock: z.boolean().optional(),
+  seniorEligible: z.boolean().optional(),
   variantLabel: optText(60).optional(),
   modifiers: z
     .array(
@@ -317,6 +324,8 @@ export const saleSchema = z.object({
   giftCardCode: optText(40),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
+  senior: z.boolean().default(false),
+  seniorId: optText(30),
   notes: optText(),
   createdAt: z.coerce.date().nullish(),
 });
@@ -383,6 +392,10 @@ export const customerSchema = z.object({
   notes: optText(),
   creditLimit: moneyInput.default(0),
   creditDays: z.coerce.number().int().min(0).max(365).default(15),
+  creditTerm: z.enum(["DAYS", "QUINCENA", "FIXED"]).default("DAYS"),
+  creditDueDate: z.coerce.date().nullish(),
+  isSenior: z.boolean().default(false),
+  seniorId: optText(30),
   ruc,
   dv,
   rfc: z
@@ -423,7 +436,21 @@ export const cashMovementSchema = z.object({
   reason: text(200, "Indica el motivo"),
 });
 
-export const cashCloseSchema = z.object({ countedAmount: moneyInput, notes: optText() });
+export const cashCloseSchema = z.object({
+  countedAmount: moneyInput,
+  notes: optText(),
+  countBreakdown: z
+    .array(
+      z.object({
+        value: z.coerce
+          .number()
+          .refine((v) => (CASH_DENOMINATIONS as readonly number[]).includes(v), "Denominación inválida"),
+        count: z.coerce.number().int().min(0).max(100_000),
+      })
+    )
+    .max(CASH_DENOMINATIONS.length)
+    .nullish(),
+});
 
 export const expenseSchema = z.object({
   category: text(60, "La categoría es obligatoria"),
@@ -513,6 +540,7 @@ export const onlineOrderSchema = z.object({
   notes: optText(300),
   fulfillment: z.enum(["PICKUP", "DELIVERY"]).default("PICKUP"),
   address: optText(300),
+  deliveryZone: optText(60),
   items: z
     .array(z.object({ productId: id, quantity: z.coerce.number().gt(0).max(999) }))
     .min(1, "Agrega al menos un producto")
@@ -568,6 +596,16 @@ export const serviceProvidersSchema = z
       name: text(60, "Escribe el nombre del proveedor"),
       kind: serviceKind,
       commissionRate: rate,
+    })
+  )
+  .max(40);
+
+export const deliveryZonesSchema = z
+  .array(
+    z.object({
+      name: text(60, "Escribe el nombre de la zona"),
+      fee: moneyInput,
+      productId: id.nullish(),
     })
   )
   .max(40);

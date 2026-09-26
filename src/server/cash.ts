@@ -144,7 +144,18 @@ export async function addCashMovement(actor: Actor, input: { type: "IN" | "OUT";
   });
 }
 
-export async function closeCashSession(actor: Actor, input: { countedAmount: number; notes: string | null }) {
+export async function closeCashSession(
+  actor: Actor,
+  input: { countedAmount: number; notes: string | null; countBreakdown?: { value: number; count: number }[] | null }
+) {
+  // Conteo por billetes y monedas: debe sumar lo mismo que el efectivo contado.
+  const breakdown = input.countBreakdown?.filter((d) => d.count > 0) ?? null;
+  if (breakdown) {
+    const total = sum(breakdown.map((d) => D(d.value).times(d.count)));
+    if (!money(total).eq(money(input.countedAmount))) {
+      throw new AppError(400, "El conteo por billetes y monedas no coincide con el efectivo contado");
+    }
+  }
   return prisma.$transaction(async (tx) => {
     await lockBusiness(tx, actor.businessId);
     const session = await getOpenSession(tx, actor.businessId);
@@ -161,6 +172,7 @@ export async function closeCashSession(actor: Actor, input: { countedAmount: num
         expectedAmount: summary.expected,
         difference: counted.minus(summary.expected),
         notes: [session.notes, input.notes].filter(Boolean).join("\n") || null,
+        ...(breakdown?.length ? { countBreakdown: breakdown } : {}),
       },
     });
     await audit(tx, actor, "cash.close", "CashSession", session.id, {

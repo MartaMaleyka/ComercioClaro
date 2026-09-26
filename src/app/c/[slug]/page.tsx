@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { toPromotionRule } from "@/server/sales";
+import { deliveryZones } from "@/server/delivery";
 import { describePromotion, isPromotionActive } from "@/lib/promotions";
 import { formatCurrency } from "@/lib/utils";
 import { CatalogClient, type CatalogProduct } from "./CatalogClient";
@@ -19,6 +20,7 @@ async function load(slug: string) {
       locale: true,
       showBalboa: true,
       catalogWhatsapp: true,
+      deliveryZones: true,
     },
   });
   return business;
@@ -40,15 +42,17 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   const business = await load(slug);
   if (!business) notFound();
 
+  const zones = deliveryZones(business);
   const [products, promotions] = await Promise.all([
     prisma.product.findMany({
-      where: { businessId: business.id, archivedAt: null },
+      where: { businessId: business.id, archivedAt: null, id: { notIn: zones.map((z) => z.productId) } },
       select: {
         id: true,
         name: true,
         price: true,
         unit: true,
         stock: true,
+        trackStock: true,
         categoryId: true,
         category: { select: { name: true } },
       },
@@ -68,7 +72,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
       price: p.price.toNumber(),
       unit: p.unit,
       category: p.category?.name ?? "Otros",
-      available: p.stock.gt(0),
+      available: !p.trackStock || p.stock.gt(0),
       promotion: promo ? `${promo.name} · ${describePromotion(promo, money)}` : null,
     };
   });
@@ -85,6 +89,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
         locale: business.locale,
         showBalboa: business.showBalboa,
       }}
+      zones={zones.map((z) => ({ name: z.name, fee: z.fee }))}
       products={items}
     />
   );

@@ -33,6 +33,27 @@ Plan y alcance en [`docs/plan-panama.md`](docs/plan-panama.md).
 - **Compra por caja, venta suelta** (unidades por empaque) y **pedido al distribuidor por WhatsApp** desde "Qué comprar".
 - **Interfaz en chino simplificado e inglés en todas las pantallas**, elegible por usuario, con botón **Reportar traducción** (el dueño ve los reportes en Configuración → Bitácora). ([captura](docs/screenshots/clientes-zh.png))
 
+### Capital e interior de Panamá
+
+Investigación, plan y fuentes en [`docs/plan-panama-regiones.md`](docs/plan-panama-regiones.md).
+
+- **Libra, onza y galón** como unidades de venta a granel. En Panamá, la libra aparece primero.
+- **Descuento de jubilado (Ley 6 de 1987)**:
+  - Porcentaje por tipo de negocio: 25% restaurante, 15% comida rápida, 20% farmacia.
+  - Marca por producto y botón **Jubilado** en el punto de venta; se guarda solo el número de cédula o carné.
+  - No se suma a una promoción: se aplica el que más le conviene al cliente.
+  - Reporte mensual con CSV para Acodeco.
+- **Fiado a la quincena o a la cosecha**:
+  - Plazo por cliente: días, próxima quincena (15 o fin de mes) o una fecha fija.
+  - El tablero muestra lo que vence esta quincena.
+- **Corte de caja por billetes y monedas** (de $100 a 1¢). El detalle queda guardado.
+- **Interior sin señal**: días configurables para vender sin conexión (7 en la capital, 30 en el interior) y aviso cuando una venta lleva más de un día sin enviarse.
+- **Entregas en la capital**:
+  - Zonas de entrega con su costo. El catálogo pide la zona y un punto de referencia.
+  - El cargo llega al punto de venta como un servicio.
+  - Productos de servicio sin existencias.
+- **Perfil capital o interior** en Configuración, que aplica los valores recomendados.
+
 ### Más ventas y control
 
 - **Promociones**: porcentaje, lleva X paga Y (2x1) y precio por cantidad (3 por B/.1.00), por producto o categoría, con vigencia. El punto de venta las aplica solo.
@@ -83,7 +104,11 @@ Abre [http://localhost:3000](http://localhost:3000).
 | Dueño (Panamá)  | `demo.pa@comercioclaro.com`   | `demo1234` |
 | Cajero (Panamá, interfaz en chino) | `cajero.pa@comercioclaro.com` | `demo1234` |
 
-La demo de Panamá incluye una promoción de cerveza, puntos de lealtad y el catálogo público en `/c/minisuper-el-dorado`. La fonda `demo.fonda@comercioclaro.com` (contraseña `demo1234`) está en modo restaurante, con extras, variantes y pantalla de cocina.
+Otras demos de Panamá (todas con la contraseña `demo1234`):
+
+- **Capital** (`demo.pa@comercioclaro.com`): promoción de cerveza, puntos de lealtad y catálogo público con zonas de entrega en `/c/minisuper-el-dorado`.
+- **Fonda** (`demo.fonda@comercioclaro.com`): modo restaurante, con extras, variantes, pantalla de cocina y 25% de descuento de jubilado.
+- **Interior** (`demo.interior@comercioclaro.com`): abarrotería de Las Tablas con venta por libra y fiado a la quincena y a la cosecha.
 
 ## Scripts
 

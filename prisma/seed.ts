@@ -6,6 +6,8 @@ import { createPurchase } from "../src/server/purchases";
 import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
 import { openCashSession } from "../src/server/cash";
+import { syncDeliveryZones } from "../src/server/delivery";
+import type { Prisma } from "../src/generated/prisma/client";
 
 const DEMO_EMAIL = "demo@comercioclaro.com";
 const DEMO_PASSWORD = "demo1234";
@@ -605,7 +607,22 @@ async function seedPanama() {
       catalogEnabled: true,
       catalogSlug: "minisuper-el-dorado",
       catalogWhatsapp: "61234567",
+      region: "CAPITAL",
+      offlineDays: 7,
     },
+  });
+  // Capital: entrega a domicilio con costo por corregimiento.
+  const zones = await prisma.$transaction((tx) =>
+    syncDeliveryZones(tx, businessId, [
+      { name: "El Dorado", fee: 1.5 },
+      { name: "Betania", fee: 2 },
+      { name: "Bethania · Villa de las Fuentes", fee: 2.5 },
+      { name: "San Francisco", fee: 3 },
+    ])
+  );
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { deliveryZones: zones as unknown as Prisma.InputJsonValue },
   });
 
   await openCashSession(actor, { openingAmount: 50, notes: "Fondo inicial" });
@@ -642,6 +659,9 @@ async function seedFonda() {
               showBalboa: true,
               restaurantMode: true,
               yappyDirectory: "@fondachiricana",
+              region: "CAPITAL",
+              // Ley 6 de 1987: 25% a jubilados en restaurantes.
+              seniorDiscountRate: 0.25,
             },
           },
         },
@@ -712,10 +732,105 @@ async function seedFonda() {
   console.log(`   Dueña: ${FONDA_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
+const INTERIOR_EMAIL = "demo.interior@comercioclaro.com";
+
+/** Abarrotería del interior: venta por libra, fiado a la quincena y a la cosecha, y efectivo. */
+async function seedInterior() {
+  const existing = await prisma.user.findUnique({ where: { email: INTERIOR_EMAIL } });
+  if (existing) return;
+  const owner = await prisma.user.create({
+    data: {
+      email: INTERIOR_EMAIL,
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      name: "Yamileth Batista",
+      memberships: {
+        create: {
+          role: "OWNER",
+          business: {
+            create: {
+              name: "Abarrotería Los Santos",
+              description: "Abarrotería de pueblo",
+              address: "Calle principal, Las Tablas, Los Santos",
+              country: "PA",
+              currency: "USD",
+              locale: "es-PA",
+              timezone: "America/Panama",
+              showBalboa: true,
+              region: "INTERIOR",
+              offlineDays: 30,
+            },
+          },
+        },
+      },
+    },
+    include: { memberships: true },
+  });
+  const businessId = owner.memberships[0].businessId;
+  const actor = { userId: owner.id, businessId, role: "OWNER" as const };
+  const base = {
+    description: null,
+    sku: null,
+    barcode: null,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    categoryId: null,
+  };
+  const products = [];
+  for (const p of [
+    { name: "Arroz (libra)", unit: "LB" as const, price: 0.55, cost: 0.42, stock: 300, minStock: 50, taxRate: 0 },
+    { name: "Frijol chiricano (libra)", unit: "LB" as const, price: 1.25, cost: 0.95, stock: 80, minStock: 15, taxRate: 0 },
+    { name: "Azúcar (libra)", unit: "LB" as const, price: 0.6, cost: 0.45, stock: 120, minStock: 20, taxRate: 0 },
+    { name: "Queso blanco (libra)", unit: "LB" as const, price: 3.25, cost: 2.4, stock: 25, minStock: 5, taxRate: 0 },
+    { name: "Aceite (galón)", unit: "PIECE" as const, price: 9.5, cost: 7.8, stock: 12, minStock: 3, taxRate: 0 },
+    { name: "Sardina en lata", unit: "PIECE" as const, price: 1.1, cost: 0.8, stock: 60, minStock: 12, taxRate: 0 },
+    { name: "Soda 2 L", unit: "PIECE" as const, price: 2.1, cost: 1.5, stock: 36, minStock: 6, taxRate: 0.07 },
+  ]) {
+    products.push(await createProduct(actor, { ...base, satUnitKey: p.unit === "LB" ? "LBR" : "H87", ...p }));
+  }
+  const harvest = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 3, 15));
+  const [worker, farmer] = await Promise.all([
+    prisma.customer.create({
+      data: { name: "Chelo (jornalero)", creditLimit: 40, creditTerm: "QUINCENA", businessId },
+    }),
+    prisma.customer.create({
+      data: { name: "Don Nando (productor)", creditLimit: 150, creditTerm: "FIXED", creditDueDate: harvest, businessId },
+    }),
+  ]);
+  const [rice, beans, , cheese] = products;
+  await createSale(actor, {
+    items: [
+      { productId: rice.id, quantity: 5, discount: 0 },
+      { productId: beans.id, quantity: 2, discount: 0 },
+    ],
+    discount: 0,
+    paymentMethod: "CREDIT",
+    customerId: worker.id,
+    notes: null,
+  });
+  await createSale(actor, {
+    items: [
+      { productId: rice.id, quantity: 25, discount: 0 },
+      { productId: cheese.id, quantity: 1.5, discount: 0 },
+    ],
+    discount: 0,
+    paymentMethod: "CREDIT",
+    customerId: farmer.id,
+    notes: null,
+  });
+  await openCashSession(actor, { openingAmount: 30, notes: "Fondo inicial" });
+  console.log("✅ Demostración del interior creada (libras, fiado a la quincena y a la cosecha)");
+  console.log(`   Dueña: ${INTERIOR_EMAIL} / ${DEMO_PASSWORD}`);
+}
+
 async function main() {
   await seedMexico();
   await seedPanama();
   await seedFonda();
+  await seedInterior();
 }
 
 main()

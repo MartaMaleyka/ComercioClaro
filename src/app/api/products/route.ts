@@ -28,7 +28,10 @@ export const GET = handler(async (request) => {
   };
   if (q.barcode) where.barcode = q.barcode;
   if (q.categoryId) where.categoryId = q.categoryId;
-  if (q.lowStock === "true") where.stock = { lte: prisma.product.fields.minStock };
+  if (q.lowStock === "true") {
+    where.stock = { lte: prisma.product.fields.minStock };
+    where.trackStock = true;
+  }
   if (q.search) {
     where.OR = [
       { name: { contains: q.search, mode: "insensitive" } },

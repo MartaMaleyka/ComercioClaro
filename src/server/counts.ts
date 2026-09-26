@@ -47,6 +47,7 @@ export async function recordCount(
     },
   });
   if (!product) throw new AppError(404, input.barcode ? `No hay producto con el código ${input.barcode}` : "Producto no encontrado");
+  if (!product.trackStock) throw new AppError(400, `${product.name} no lleva existencias`);
   const quantity = qty(input.quantity);
   if (product.unit === "PIECE" && !quantity.isInteger()) throw new AppError(400, `${product.name} se cuenta por pieza`);
 

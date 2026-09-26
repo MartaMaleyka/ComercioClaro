@@ -35,14 +35,23 @@ export function OfflineSync() {
       return {
         pending: p.filter((s) => s.businessId === business.id),
         failed: f.filter((s) => s.businessId === business.id),
+        checkedAt: Date.now(),
       };
     } catch {
       // IndexedDB no disponible (modo privado): la venta sin conexión no aplica.
-      return { pending: [] as PendingSale[], failed: [] as PendingSale[] };
+      return { pending: [] as PendingSale[], failed: [] as PendingSale[], checkedAt: 0 };
     }
   });
   const pending = data?.pending ?? [];
   const failed = data?.failed ?? [];
+  // En el interior la señal puede faltar por días: se avisa cuánto lleva guardada la venta más antigua
+  // y cuánto falta para que el servidor deje de respetar su fecha.
+  const oldest = pending.reduce<string | null>(
+    (acc, s) => (acc === null || s.createdAt < acc ? s.createdAt : acc),
+    null
+  );
+  const ageDays = oldest && data ? Math.floor((data.checkedAt - new Date(oldest).getTime()) / 86_400_000) : 0;
+  const daysLeft = business.offlineDays - ageDays;
 
   const sync = useCallback(async () => {
     if (syncing.current || !navigator.onLine) return;
@@ -92,6 +101,18 @@ export function OfflineSync() {
           {pending.length > 0 && tr("{n} venta(s) pendiente(s) de enviar. ", { n: pending.length })}
           {failed.length > 0 && (
             <span className="text-red-700 font-medium">{tr("{n} con error.", { n: failed.length })}</span>
+          )}
+          {ageDays >= 1 && (
+            <span className={daysLeft <= 2 ? "text-red-700 font-medium" : "text-amber-700 font-medium"}>
+              {daysLeft > 0
+                ? tr("La más antigua lleva {days} día(s) sin enviarse; conéctate en menos de {left} día(s).", {
+                    days: ageDays,
+                    left: daysLeft,
+                  })
+                : tr("La más antigua lleva {days} día(s) sin enviarse: se registrará con la fecha de envío.", {
+                    days: ageDays,
+                  })}
+            </span>
           )}
         </span>
         <span className="flex gap-3">

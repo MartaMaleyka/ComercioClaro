@@ -38,6 +38,10 @@ enum ProductUnit {
   L
   ML
   M
+  // Panamá vende por libra; onza y galón para granel y líquidos
+  LB
+  OZ
+  GAL
 }
 
 enum StockMovementType {
@@ -157,6 +161,14 @@ model Business {
   // Modo restaurante: cuentas abiertas (mesas) y pantalla de cocina
   restaurantMode       Boolean  @default(false)
   openOrderCounter     Int      @default(0)
+  // Perfil regional (Panamá): CAPITAL o INTERIOR; ajusta valores recomendados
+  region               String?
+  // Días que se aceptan ventas hechas sin conexión al sincronizar
+  offlineDays          Int      @default(7)
+  // Descuento obligatorio de jubilados (Ley 6 de 1987), p. ej. 0.25 en restaurantes
+  seniorDiscountRate   Decimal  @default(0) @db.Decimal(5, 4)
+  // Zonas de entrega: [{ name, fee, productId }]
+  deliveryZones        Json?
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
@@ -235,6 +247,10 @@ model Product {
   modifiers       Json?
   // En modo restaurante, se envía a la pantalla de cocina al guardarse en una cuenta
   sendToKitchen   Boolean     @default(false)
+  // Si es false no se controla la existencia (servicios, cargos de entrega)
+  trackStock      Boolean     @default(true)
+  // Aplica el descuento de jubilado (en farmacias, solo medicamentos)
+  seniorEligible  Boolean     @default(true)
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -265,29 +281,36 @@ model Product {
 }
 
 model Customer {
-  id          String    @id @default(cuid())
-  name        String
-  phone       String?
-  email       String?
-  notes       String?
-  creditLimit Decimal   @default(0) @db.Decimal(12, 2)
+  id            String    @id @default(cuid())
+  name          String
+  phone         String?
+  email         String?
+  notes         String?
+  creditLimit   Decimal   @default(0) @db.Decimal(12, 2)
   // Días de crédito para calcular el vencimiento del fiado
-  creditDays  Int       @default(15)
+  creditDays    Int       @default(15)
+  // DAYS (creditDays), QUINCENA (15 o fin de mes) o FIXED (fecha fija, p. ej. la cosecha)
+  creditTerm    String    @default("DAYS")
+  creditDueDate DateTime?
+  // Jubilado o pensionado: se le aplica el descuento de ley
+  isSenior      Boolean   @default(false)
+  // Número de cédula o carné (no se guarda foto del documento)
+  seniorId      String?
   // Puntos de lealtad acumulados
-  points      Int       @default(0)
+  points        Int       @default(0)
   // Saldo pendiente de fiado (se actualiza en la misma transacción que ventas y abonos)
-  balance     Decimal   @default(0) @db.Decimal(12, 2)
-  rfc         String?
-  legalName   String?
-  taxRegime   String?
-  postalCode  String?
-  ruc         String?
-  dv          String?
-  businessId  String
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  archivedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  balance       Decimal   @default(0) @db.Decimal(12, 2)
+  rfc           String?
+  legalName     String?
+  taxRegime     String?
+  postalCode    String?
+  ruc           String?
+  dv            String?
+  businessId    String
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  archivedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   sales    Sale[]
   payments CustomerPayment[]
@@ -355,6 +378,9 @@ model Sale {
   pointsEarned     Int           @default(0)
   pointsRedeemed   Int           @default(0)
   pointsDiscount   Decimal       @default(0) @db.Decimal(12, 2)
+  // Descuento de jubilado aplicado (Ley 6) y cédula o carné presentado
+  seniorDiscount   Decimal       @default(0) @db.Decimal(12, 2)
+  seniorId         String?
   yappyCharge      YappyCharge?
   onlineOrder      OnlineOrder?
   openOrder        OpenOrder?
@@ -400,6 +426,8 @@ model SaleItem {
   iepsRate          Decimal    @default(0) @db.Decimal(5, 4)
   // Descuento aplicado por una promoción (incluido en discount)
   promotionDiscount Decimal    @default(0) @db.Decimal(12, 2)
+  // Descuento de jubilado del renglón (incluido en discount)
+  seniorDiscount    Decimal    @default(0) @db.Decimal(12, 2)
   promotionId       String?
   // Extras cobrados en el renglón (incluidos en unitPrice): [{ id, name, price }]
   modifiers         Json?
@@ -545,6 +573,8 @@ model CashSession {
   expectedAmount Decimal?  @db.Decimal(12, 2)
   countedAmount  Decimal?  @db.Decimal(12, 2)
   difference     Decimal?  @db.Decimal(12, 2)
+  // Conteo por denominación: { "100": 2, "0.25": 12, ... }
+  countBreakdown Json?
   notes          String?
   openedById     String
   closedById     String?
@@ -799,6 +829,8 @@ model OnlineOrder {
   // PICKUP (recoge en tienda) o DELIVERY (a domicilio)
   fulfillment  String            @default("PICKUP")
   address      String?
+  deliveryZone String?
+  deliveryFee  Decimal           @default(0) @db.Decimal(12, 2)
   // [{ productId, name, unit, quantity, price }] con el precio al momento del pedido
   items        Json
   total        Decimal           @db.Decimal(12, 2)

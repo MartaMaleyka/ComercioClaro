@@ -16,6 +16,7 @@ import { productModifiers } from "./catalog";
 import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
+import { creditDueDate } from "@/lib/credit-terms";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
 
@@ -29,8 +30,10 @@ export function toPromotionRule(p: Promotion): PromotionRule {
 
 export type SaleInput = Omit<
   z.infer<typeof saleSchema>,
-  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "openOrderId" | "giftCardCode"
+  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "openOrderId" | "giftCardCode" | "senior" | "seniorId"
 > & {
+  senior?: boolean;
+  seniorId?: string | null;
   paymentReference?: string | null;
   giftCardCode?: string | null;
   openOrderId?: string | null;
@@ -51,7 +54,7 @@ export const saleInclude = {
   invoice: { select: { id: true, status: true, uuid: true, kind: true, error: true, provider: true, qrUrl: true } },
 } satisfies Prisma.SaleInclude;
 
-const OFFLINE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Precio que aplica según la cantidad (mayoreo si alcanza el mínimo). */
 export function resolveUnitPrice(
@@ -84,11 +87,33 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       const [business, promotionRows] = await Promise.all([
         tx.business.findUniqueOrThrow({
           where: { id: actor.businessId },
-          select: { loyaltyEnabled: true, loyaltyPointsPerUnit: true, loyaltyPointValue: true },
+          select: {
+            loyaltyEnabled: true,
+            loyaltyPointsPerUnit: true,
+            loyaltyPointValue: true,
+            seniorDiscountRate: true,
+            offlineDays: true,
+            timezone: true,
+          },
         }),
         tx.promotion.findMany({ where: { businessId: actor.businessId, active: true } }),
       ]);
       const promotions = promotionRows.map(toPromotionRule);
+
+      let customer = null;
+      if (input.customerId) {
+        customer = await tx.customer.findFirst({
+          where: { id: input.customerId, businessId: actor.businessId, archivedAt: null },
+        });
+        if (!customer) throw notFound("Cliente");
+      }
+
+      // Descuento de jubilado (Ley 6 de 1987): por el botón del punto de venta o por el cliente registrado.
+      const senior = input.senior || Boolean(customer?.isSenior);
+      const seniorRate = D(business.seniorDiscountRate);
+      if (senior && seniorRate.lte(0)) {
+        throw new AppError(400, "Configura el porcentaje de descuento de jubilado en Configuración");
+      }
 
       const lines = input.items.map((item) => {
         const product = productMap.get(item.productId);
@@ -115,8 +140,19 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           quantity: quantity.toNumber(),
           unitPrice: unitPrice.toNumber(),
         });
-        const promotionDiscount = money(promo?.discount ?? 0);
-        const discount = money(Math.min((item.discount ?? 0) + promotionDiscount.toNumber(), gross.toNumber()));
+        let promotionDiscount = money(promo?.discount ?? 0);
+        let promotionId = promo?.promotion.id ?? null;
+        // El de jubilado no se suma a la promoción: se aplica el que más le conviene al cliente.
+        let seniorDiscount = senior && product.seniorEligible ? money(gross.times(seniorRate)) : D(0);
+        if (seniorDiscount.gt(promotionDiscount)) {
+          promotionDiscount = D(0);
+          promotionId = null;
+        } else {
+          seniorDiscount = D(0);
+        }
+        const discount = money(
+          Math.min((item.discount ?? 0) + promotionDiscount.plus(seniorDiscount).toNumber(), gross.toNumber())
+        );
         return {
           product,
           modifiers,
@@ -124,7 +160,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           unitPrice,
           discount,
           promotionDiscount,
-          promotionId: promo?.promotion.id ?? null,
+          seniorDiscount,
+          promotionId,
           subtotal: gross.minus(discount),
         };
       });
@@ -132,14 +169,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       const subtotal = sum(lines.map((l) => l.subtotal));
       const discount = money(Math.min(input.discount ?? 0, subtotal.toNumber()));
       let total = subtotal.minus(discount);
-
-      let customer = null;
-      if (input.customerId) {
-        customer = await tx.customer.findFirst({
-          where: { id: input.customerId, businessId: actor.businessId, archivedAt: null },
-        });
-        if (!customer) throw notFound("Cliente");
-      }
+      const seniorDiscount = money(sum(lines.map((l) => l.seniorDiscount)));
 
       // Canje de puntos de lealtad como descuento.
       let pointsRedeemed = 0;
@@ -159,7 +189,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       let dueDate: Date | null = null;
       if (input.paymentMethod === "CREDIT") {
         if (!customer) throw new AppError(400, "Selecciona el cliente para vender fiado");
-        dueDate = new Date(Date.now() + customer.creditDays * 24 * 60 * 60 * 1000);
+        dueDate = creditDueDate(customer, new Date(), business.timezone);
         const limit = D(customer.creditLimit);
         if (limit.gt(0) && D(customer.balance).plus(total).gt(limit)) {
           throw new AppError(
@@ -180,7 +210,9 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       // La fecha del dispositivo solo se respeta en ventas hechas sin conexión (con clientRequestId).
       const offlineDate = input.clientRequestId ? input.createdAt : null;
       const createdAt =
-        offlineDate && offlineDate.getTime() <= Date.now() && Date.now() - offlineDate.getTime() < OFFLINE_MAX_AGE_MS
+        offlineDate &&
+        offlineDate.getTime() <= Date.now() &&
+        Date.now() - offlineDate.getTime() < business.offlineDays * DAY_MS
           ? offlineDate
           : new Date();
 
@@ -208,6 +240,11 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       const ordered = [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id));
       const itemCosts = new Map<(typeof lines)[number], Decimal>();
       for (const line of ordered) {
+        // Servicios (entrega a domicilio y similares): no llevan existencias.
+        if (!line.product.trackStock) {
+          itemCosts.set(line, D(line.product.cost));
+          continue;
+        }
         const updated = await applyStockChange(tx, actor, {
           productId: line.product.id,
           delta: line.quantity.neg(),
@@ -235,6 +272,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           change,
           pointsRedeemed,
           pointsDiscount,
+          seniorDiscount,
+          seniorId: senior ? (input.seniorId ?? customer?.seniorId ?? null) : null,
           giftCardId: giftCard?.id ?? null,
           paymentReference: yappyCharge
             ? (yappyCharge.providerTxId ?? yappyCharge.orderId)
@@ -257,6 +296,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
               unitPrice: l.unitPrice,
               discount: l.discount,
               promotionDiscount: l.promotionDiscount,
+              seniorDiscount: l.seniorDiscount,
               promotionId: l.promotionId,
               ...(l.modifiers.length > 0 ? { modifiers: l.modifiers as unknown as Prisma.InputJsonValue } : {}),
               subtotal: l.subtotal,
@@ -302,6 +342,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         total: total.toNumber(),
         paymentMethod: input.paymentMethod,
         discount: discount.toNumber(),
+        ...(senior ? { seniorDiscount: seniorDiscount.toNumber() } : {}),
       });
       return sale;
     });
@@ -376,7 +417,7 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
 
     for (const item of [...sale.items].sort((a, b) => a.productId.localeCompare(b.productId))) {
       const pending = D(item.quantity).minus(item.returnedQuantity);
-      if (pending.lte(0)) continue;
+      if (pending.lte(0) || !item.product.trackStock) continue;
       await applyStockChange(tx, actor, {
         productId: item.productId,
         delta: pending,
@@ -496,6 +537,7 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
         data: { returnedQuantity: { increment: line.quantity } },
       });
       if (count === 0) throw new AppError(409, "La devolución excede lo vendido");
+      if (!line.item.product.trackStock) continue;
       await applyStockChange(tx, actor, {
         productId: line.item.productId,
         delta: line.quantity,
@@ -584,6 +626,9 @@ export function receiptText(
       (i) => `${i.quantity.toString()} x ${i.product.name}${modifierSuffix(i.modifiers)}  ${fmt(i.subtotal)}`
     ),
     "",
+    D(sale.seniorDiscount).gt(0)
+      ? `Descuento de jubilado${sale.seniorId ? ` (${sale.seniorId})` : ""}: -${fmt(sale.seniorDiscount)}`
+      : null,
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
     D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,
     sale.pointsEarned > 0 ? `Ganaste ${sale.pointsEarned} puntos` : null,

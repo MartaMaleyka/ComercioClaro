@@ -8,6 +8,12 @@ import { useFormat } from "@/lib/client/format";
 import { useT, useText } from "@/lib/client/i18n";
 import type { CashSession } from "@/lib/client/types";
 import { countryConfig } from "@/lib/country";
+import {
+  DenominationCount,
+  denominationBreakdown,
+  denominationTotal,
+  type DenominationCounts,
+} from "@/components/cash/DenominationCount";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -50,6 +56,10 @@ export default function CashPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [counted, setCounted] = useState("");
   const [closeNotes, setCloseNotes] = useState("");
+  const [denominations, setDenominations] = useState<DenominationCounts>({});
+  // En Panamá (dólares) el corte se cuenta por billetes y monedas.
+  const countByDenomination = business.currency === "USD";
+  const breakdown = denominationBreakdown(denominations);
   const [busy, setBusy] = useState(false);
   const [closedResult, setClosedResult] = useState<Summary | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
@@ -91,10 +101,15 @@ export default function CashPage() {
     e.preventDefault();
     run(async () => {
       const result = await api<Summary>("/api/cash/close", {
-        body: { countedAmount: Number(counted), notes: closeNotes || null },
+        body: {
+          countedAmount: Number(counted),
+          notes: closeNotes || null,
+          countBreakdown: breakdown.length > 0 ? breakdown : null,
+        },
       });
       setCloseOpen(false);
       setCounted("");
+      setDenominations({});
       setCloseNotes("");
       setClosedResult(result);
       mutate();
@@ -291,13 +306,26 @@ export default function CashPage() {
       <Modal open={closeOpen} onClose={() => setCloseOpen(false)} title={t("cash.closeTitle")}>
         <form onSubmit={close} className="space-y-3">
           <p className="text-sm text-slate-600">{t("cash.closeHint")}</p>
+          {countByDenomination && (
+            <DenominationCount
+              counts={denominations}
+              onChange={(next) => {
+                setDenominations(next);
+                setCounted(String(denominationTotal(next)));
+              }}
+            />
+          )}
           <Input
             label={t("cash.counted")}
             inputMode="decimal"
             value={counted}
-            onChange={(e) => setCounted(e.target.value)}
+            onChange={(e) => {
+              setCounted(e.target.value);
+              // Si se escribe el total a mano, el conteo por billetes deja de valer.
+              setDenominations({});
+            }}
             required
-            autoFocus
+            autoFocus={!countByDenomination}
           />
           <Input
             label={t("common.notes")}
@@ -364,6 +392,14 @@ export default function CashPage() {
               </dd>
             </div>
           </dl>
+        )}
+        {detailData.data?.session.countBreakdown && (
+          <p className="mt-3 text-xs text-slate-500">
+            {tr("Conteo")}:{" "}
+            {detailData.data.session.countBreakdown
+              .map((d) => `${d.count} × ${d.value >= 1 ? `$${d.value}` : `${Math.round(d.value * 100)}¢`}`)
+              .join(" · ")}
+          </p>
         )}
       </Modal>
     </div>

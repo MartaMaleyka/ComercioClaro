@@ -188,7 +188,7 @@ export async function reorderSuggestions(businessId: string, coverDays = 14) {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [products, sold] = await Promise.all([
     prisma.product.findMany({
-      where: { businessId, archivedAt: null },
+      where: { businessId, archivedAt: null, trackStock: true },
       include: { category: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),

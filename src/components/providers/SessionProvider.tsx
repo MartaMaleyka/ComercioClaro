@@ -25,6 +25,11 @@ export interface SessionBusiness {
   yappyMode: string;
   loyaltyEnabled: boolean;
   loyaltyPointValue: number;
+  /** Descuento de jubilado (Ley 6 en Panamá); 0 = no se ofrece */
+  seniorDiscountRate: number;
+  /** Días que se aceptan ventas guardadas sin conexión */
+  offlineDays: number;
+  region: string | null;
 }
 
 export interface SessionData {

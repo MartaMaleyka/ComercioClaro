@@ -14,6 +14,7 @@ import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { TranslationFeedbackButton } from "@/components/layout/TranslationFeedbackButton";
 import { ServiceProvidersCard } from "@/components/settings/ServiceProvidersCard";
+import { DeliveryZonesCard, type DeliveryZone } from "@/components/settings/DeliveryZonesCard";
 import { COUNTRIES, countryConfig } from "@/lib/country";
 import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
@@ -129,7 +130,26 @@ interface BusinessData {
   cardFeeRate: number;
   transferFeeRate: number;
   yappyFeeRate: number;
+  region: "CAPITAL" | "INTERIOR" | null;
+  offlineDays: number;
+  seniorDiscountRate: number;
+  deliveryZones: DeliveryZone[] | null;
 }
+
+/** Porcentajes de la Ley 6 de 1987 según el tipo de negocio. */
+const SENIOR_PRESETS = [
+  { value: 0, label: "No ofrezco descuento de jubilado" },
+  { value: 0.25, label: "25% · restaurante o fonda (consumo individual)" },
+  { value: 0.15, label: "15% · comida rápida" },
+  { value: 0.2, label: "20% · farmacia (medicamentos)" },
+  { value: 0.1, label: "10% · otros comercios" },
+];
+
+/** Valores recomendados según dónde está el negocio. */
+const REGION_DEFAULTS = {
+  CAPITAL: { offlineDays: 7 },
+  INTERIOR: { offlineDays: 30 },
+} as const;
 
 function BusinessSettings() {
   const { data, mutate } = useSWR<BusinessData>("/api/business", fetcher);
@@ -137,6 +157,7 @@ function BusinessSettings() {
   return (
     <div className="space-y-4">
       <BusinessForm initial={data} onSaved={() => mutate()} />
+      <DeliveryZonesCard initial={data.deliveryZones ?? []} />
       <ServiceProvidersCard />
     </div>
   );
@@ -191,6 +212,8 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
         method: "PUT",
         body: {
           ...form,
+          // Las zonas se guardan en su propia tarjeta.
+          deliveryZones: undefined,
           cardFeeRate: (Number(fees.card) || 0) / 100,
           transferFeeRate: (Number(fees.transfer) || 0) / 100,
           yappyFeeRate: (Number(fees.yappy) || 0) / 100,
@@ -282,6 +305,66 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             checked={form.lowStockEmailAlerts}
             onChange={(e) => set("lowStockEmailAlerts", e.target.checked)}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <h2 className="font-semibold text-slate-900">
+            {country.code === "PA" ? tr("Capital o interior") : tr("Venta sin conexión")}
+          </h2>
+          {country.code === "PA" && (
+            <p className="text-sm text-slate-500">
+              {tr(
+                "En la capital se paga con Yappy y se pide a domicilio; en el interior se paga en efectivo, se fía a la quincena y la señal se cae por días."
+              )}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {country.code === "PA" && (
+            <Select
+              label={tr("¿Dónde está el negocio?")}
+              value={form.region ?? ""}
+              onChange={(e) => {
+                const region = (e.target.value || null) as BusinessData["region"];
+                setForm((f) => ({ ...f, region, ...(region ? REGION_DEFAULTS[region] : {}) }));
+              }}
+              hint={tr("Al elegirlo se ajustan los días de venta sin conexión.")}
+            >
+              <option value="">{tr("Sin definir")}</option>
+              <option value="CAPITAL">{tr("Ciudad de Panamá, San Miguelito, Panamá Oeste o Colón")}</option>
+              <option value="INTERIOR">{tr("Interior o comarca")}</option>
+            </Select>
+          )}
+          <Input
+            label={tr("Días que se aceptan ventas hechas sin conexión")}
+            type="number"
+            min={1}
+            max={60}
+            value={String(form.offlineDays)}
+            onChange={(e) => set("offlineDays", Number(e.target.value) || 1)}
+            hint={tr("Las ventas guardadas en el equipo conservan su fecha si se sincronizan dentro de este plazo.")}
+          />
+          {country.code === "PA" && (
+            <Select
+              label={tr("Descuento de jubilado (Ley 6)")}
+              value={String(form.seniorDiscountRate)}
+              onChange={(e) => set("seniorDiscountRate", Number(e.target.value))}
+              hint={tr("Se aplica con el botón Jubilado en el punto de venta y queda en el reporte mensual.")}
+            >
+              {[
+                ...SENIOR_PRESETS,
+                ...(SENIOR_PRESETS.some((p) => p.value === form.seniorDiscountRate)
+                  ? []
+                  : [{ value: form.seniorDiscountRate, label: `${Math.round(form.seniorDiscountRate * 100)}%` }]),
+              ].map((p) => (
+                <option key={p.value} value={String(p.value)}>
+                  {tr(p.label)}
+                </option>
+              ))}
+            </Select>
+          )}
         </CardContent>
       </Card>
 

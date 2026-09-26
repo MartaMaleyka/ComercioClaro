@@ -1,6 +1,6 @@
 // Tipos de las respuestas de la API (Decimal ya convertido a number y fechas a ISO).
 
-export type Unit = "PIECE" | "KG" | "G" | "L" | "ML" | "M";
+export type Unit = "PIECE" | "KG" | "G" | "L" | "ML" | "M" | "LB" | "OZ" | "GAL";
 export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT" | "YAPPY" | "GIFT_CARD";
 
 export interface Category {
@@ -33,6 +33,8 @@ export interface Product {
   archivedAt: string | null;
   variantGroup?: string | null;
   sendToKitchen?: boolean;
+  trackStock?: boolean;
+  seniorEligible?: boolean;
   variantLabel?: string | null;
   modifiers?: { id: string; name: string; price: number }[] | null;
 }
@@ -45,6 +47,10 @@ export interface Customer {
   notes: string | null;
   creditLimit: number;
   creditDays: number;
+  creditTerm?: "DAYS" | "QUINCENA" | "FIXED";
+  creditDueDate?: string | null;
+  isSenior?: boolean;
+  seniorId?: string | null;
   points?: number;
   balance: number;
   rfc: string | null;
@@ -88,6 +94,8 @@ export interface Sale {
   pointsEarned?: number;
   pointsRedeemed?: number;
   pointsDiscount?: number;
+  seniorDiscount?: number;
+  seniorId?: string | null;
   notes: string | null;
   createdAt: string;
   cancelledAt: string | null;
@@ -155,6 +163,8 @@ export interface CashSession {
   countedAmount: number | null;
   difference: number | null;
   notes: string | null;
+  /** Conteo del corte por billetes y monedas */
+  countBreakdown?: { value: number; count: number }[] | null;
   openedAt: string;
   closedAt: string | null;
 }

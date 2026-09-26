@@ -93,6 +93,8 @@ interface CartLine {
   /** Precio fijado a mano (solo dueño) */
   priceOverride: string;
   discount: string;
+  /** Aplica el descuento de jubilado */
+  seniorEligible: boolean;
 }
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Banknote }[] = [
@@ -103,6 +105,8 @@ const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof Bankn
   { value: "CREDIT", label: "Fiado", icon: HandCoins },
   { value: "GIFT_CARD", label: "Vale", icon: Gift },
 ];
+
+const UNLIMITED = 1_000_000_000;
 
 const num = (v: string | number) => {
   const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
@@ -137,6 +141,7 @@ function toCartLine(product: Product, quantity: number, modifiers: Modifier[] = 
     wholesaleMinQty: product.wholesaleMinQty,
     priceOverride: "",
     discount: "",
+    seniorEligible: product.seniorEligible !== false,
   };
 }
 
@@ -154,10 +159,22 @@ function linePromotion(line: CartLine, isOwner: boolean, promotions: PromotionRu
   });
 }
 
-function lineTotal(line: CartLine, isOwner: boolean, promotions: PromotionRule[] = []) {
+/**
+ * Descuento automático del renglón (misma regla que el servidor): la promoción o el de jubilado,
+ * el que sea mayor, sin sumarlos.
+ */
+function lineAutoDiscount(line: CartLine, isOwner: boolean, promotions: PromotionRule[], seniorRate: number) {
   const gross = round2(num(line.quantity) * unitPrice(line, isOwner));
-  const promo = linePromotion(line, isOwner, promotions)?.discount ?? 0;
-  return Math.max(0, round2(gross - Math.min(num(line.discount) + promo, gross)));
+  const promo = linePromotion(line, isOwner, promotions);
+  const senior = seniorRate > 0 && line.seniorEligible ? round2(gross * seniorRate) : 0;
+  return senior > (promo?.discount ?? 0)
+    ? { gross, promotion: null, promo: 0, senior }
+    : { gross, promotion: promo, promo: promo?.discount ?? 0, senior: 0 };
+}
+
+function lineTotal(line: CartLine, isOwner: boolean, promotions: PromotionRule[] = [], seniorRate = 0) {
+  const { gross, promo, senior } = lineAutoDiscount(line, isOwner, promotions, seniorRate);
+  return Math.max(0, round2(gross - Math.min(num(line.discount) + promo + senior, gross)));
 }
 
 /** Datos con respaldo local: si no hay red se usa la última copia guardada. */
@@ -210,6 +227,8 @@ export default function PosPage() {
   const [giftBalance, setGiftBalance] = useState<{ code: string; balance: number; status: string } | null>(null);
   const online = useOnline();
   const [redeemPoints, setRedeemPoints] = useState("");
+  const [senior, setSenior] = useState(false);
+  const [seniorId, setSeniorId] = useState("");
   const { data: promotionList } = useSWR<PromotionRule[]>("/api/promotions", fetcher);
   // Con la API de Yappy la venta se registra sola al confirmarse el pago.
   const [yappyManual, setYappyManual] = useState(false);
@@ -229,7 +248,11 @@ export default function PosPage() {
   } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const products = useMemo(() => catalog.list ?? [], [catalog.list]);
+  // Los servicios (entrega, etc.) no llevan existencias: nunca se agotan en el punto de venta.
+  const products = useMemo(
+    () => (catalog.list ?? []).map((p) => (p.trackStock === false ? { ...p, stock: UNLIMITED } : p)),
+    [catalog.list]
+  );
   const categories = useMemo(() => {
     const map = new Map<string, string>();
     products.forEach((p) => p.category && map.set(p.category.id, p.category.name));
@@ -426,7 +449,13 @@ export default function PosPage() {
   }
 
   const promotions = useMemo(() => promotionList ?? [], [promotionList]);
-  const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner, promotions), 0));
+  const customerSelected = customers.list?.find((c) => c.id === customerId);
+  const seniorActive = business.seniorDiscountRate > 0 && (senior || Boolean(customerSelected?.isSenior));
+  const seniorRate = seniorActive ? business.seniorDiscountRate : 0;
+  const seniorDiscount = round2(
+    cart.reduce((acc, l) => acc + lineAutoDiscount(l, isOwner, promotions, seniorRate).senior, 0)
+  );
+  const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner, promotions, seniorRate), 0));
   const discount = Math.min(num(saleDiscount), subtotal);
   const customerForPoints = customers.list?.find((c) => c.id === customerId);
   const pointValue = business.loyaltyPointValue;
@@ -463,8 +492,11 @@ export default function PosPage() {
             name: l.name + modifierText(l.modifiers),
             quantity: num(l.quantity),
             unit: l.unit,
-            total: lineTotal(l, isOwner, promotions),
-            promotion: linePromotion(l, isOwner, promotions)?.promotion.name ?? null,
+            total: lineTotal(l, isOwner, promotions, seniorRate),
+            promotion:
+              lineAutoDiscount(l, isOwner, promotions, seniorRate).senior > 0
+                ? tr("Jubilado")
+                : (linePromotion(l, isOwner, promotions)?.promotion.name ?? null),
           })),
           subtotal,
           discount: Math.max(0, round2(grossTotal - total)),
@@ -507,6 +539,8 @@ export default function PosPage() {
     setGiftCode("");
     setGiftBalance(null);
     setRedeemPoints("");
+    setSenior(false);
+    setSeniorId("");
     setYappyManual(false);
     setOnlineOrder(null);
     setActiveOrder(null);
@@ -537,6 +571,8 @@ export default function PosPage() {
       openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
+      senior: seniorActive,
+      seniorId: seniorActive ? seniorId.trim() || null : null,
       notes: notes || null,
       createdAt: new Date().toISOString(),
     };
@@ -609,7 +645,8 @@ export default function PosPage() {
             const fractional = isFractionalUnit(line.unit);
             const price = unitPrice(line, isOwner);
             const wholesale = line.wholesalePrice != null && price === line.wholesalePrice && line.priceOverride === "";
-            const promo = linePromotion(line, isOwner, promotions);
+            const auto = lineAutoDiscount(line, isOwner, promotions, seniorRate);
+            const promo = auto.promotion;
             return (
               <li key={line.key} className="py-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">
@@ -630,10 +667,15 @@ export default function PosPage() {
                           {promo.promotion.name} −{fmt.money(promo.discount)}
                         </Badge>
                       )}
+                      {auto.senior > 0 && (
+                        <Badge tone="purple" className="ml-1">
+                          {tr("Jubilado")} −{fmt.money(auto.senior)}
+                        </Badge>
+                      )}
                     </p>
                   </div>
                   <p className="text-sm font-semibold tabular-nums">
-                    {fmt.money(lineTotal(line, isOwner, promotions))}
+                    {fmt.money(lineTotal(line, isOwner, promotions, seniorRate))}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -841,6 +883,26 @@ export default function PosPage() {
           </p>
         )}
 
+        {business.seniorDiscountRate > 0 && (
+          <div className="rounded-xl border border-slate-200 p-3 space-y-2">
+            <Checkbox
+              label={tr("Jubilado o pensionado ({rate}%)", { rate: round2(business.seniorDiscountRate * 100) })}
+              checked={seniorActive}
+              disabled={Boolean(customerSelected?.isSenior)}
+              onChange={(e) => setSenior(e.target.checked)}
+            />
+            {seniorActive && (
+              <Input
+                label={tr("Cédula o carné del jubilado")}
+                value={seniorId || customerSelected?.seniorId || ""}
+                onChange={(e) => setSeniorId(e.target.value)}
+                maxLength={30}
+                hint={tr("Solo el número; la ley no permite fotografiar el carné.")}
+              />
+            )}
+          </div>
+        )}
+
         {business.loyaltyEnabled && customerForPoints && (customerForPoints.points ?? 0) > 0 && (
           <Input
             label={t("pos.redeemPoints")}
@@ -897,6 +959,12 @@ export default function PosPage() {
             <dt>{t("pos.subtotal")}</dt>
             <dd className="tabular-nums">{fmt.money(subtotal)}</dd>
           </div>
+          {seniorDiscount > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <dt>{tr("Incluye descuento de jubilado")}</dt>
+              <dd className="tabular-nums">-{fmt.money(seniorDiscount)}</dd>
+            </div>
+          )}
           {discount > 0 && (
             <div className="flex justify-between text-slate-600">
               <dt>{t("pos.discount")}</dt>
@@ -1094,7 +1162,11 @@ export default function PosPage() {
                         out ? "text-red-600" : !isGroup && p.stock <= p.minStock ? "text-amber-600" : "text-slate-500"
                       )}
                     >
-                      {out ? t("pos.soldOut") : `${fmt.qty(stock, p.unit)} ${t("pos.available")}`}
+                      {out
+                        ? t("pos.soldOut")
+                        : !isGroup && p.trackStock === false
+                          ? tr("Servicio")
+                          : `${fmt.qty(stock, p.unit)} ${t("pos.available")}`}
                       {isGroup && ` · ${tr("{n} variantes", { n: item.variants.length })}`}
                       {inCart > 0 && <span className="sr-only">{` · ${inCart} ${t("pos.inCart")}`}</span>}
                     </p>

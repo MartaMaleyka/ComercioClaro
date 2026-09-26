@@ -6,8 +6,11 @@ import { prisma, type Tx } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import type { onlineOrderSchema } from "@/lib/validation";
 import type { Actor } from "./inventory";
+import { deliveryProductName, deliveryZones } from "./delivery";
 
-export type OnlineOrderInput = z.infer<typeof onlineOrderSchema>;
+export type OnlineOrderInput = Omit<z.infer<typeof onlineOrderSchema>, "deliveryZone"> & {
+  deliveryZone?: string | null;
+};
 
 export interface OnlineOrderItem {
   productId: string;
@@ -32,30 +35,53 @@ const NEXT: Record<OnlineOrderStatus, OnlineOrderStatus[]> = {
 export async function createOnlineOrder(slug: string, input: OnlineOrderInput) {
   const business = await prisma.business.findFirst({
     where: { catalogSlug: slug, catalogEnabled: true },
-    select: { id: true },
+    select: { id: true, deliveryZones: true },
   });
   if (!business) throw notFound("Catálogo");
+  const zones = deliveryZones(business);
+  const zone =
+    input.fulfillment === "DELIVERY" && zones.length > 0
+      ? zones.find((z) => z.name.toLowerCase() === (input.deliveryZone ?? "").toLowerCase())
+      : undefined;
+  if (input.fulfillment === "DELIVERY" && zones.length > 0 && !zone) {
+    throw new AppError(400, "Elige la zona de entrega");
+  }
 
   return prisma.$transaction(async (tx) => {
-    const ids = [...new Set(input.items.map((i) => i.productId))];
+    const zoneIds = new Set(zones.map((z) => z.productId));
+    const ids = [...new Set(input.items.map((i) => i.productId))].filter((id) => !zoneIds.has(id));
     const products = await tx.product.findMany({
       where: { id: { in: ids }, businessId: business.id, archivedAt: null },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
     const items: OnlineOrderItem[] = [];
     for (const item of input.items) {
+      // El cargo de entrega lo pone el servidor según la zona.
+      if (zoneIds.has(item.productId)) continue;
       const product = byId.get(item.productId);
       if (!product) throw new AppError(404, "Uno de los productos ya no está disponible");
       const quantity = qty(item.quantity);
       if (product.unit === "PIECE" && !quantity.isInteger())
         throw new AppError(400, `${product.name} se pide por pieza`);
-      if (D(product.stock).lt(quantity)) throw new AppError(409, `No hay suficiente ${product.name}`);
+      if (product.trackStock && D(product.stock).lt(quantity))
+        throw new AppError(409, `No hay suficiente ${product.name}`);
       items.push({
         productId: product.id,
         name: product.name,
         unit: product.unit,
         quantity: quantity.toNumber(),
         price: D(product.price).toNumber(),
+      });
+    }
+    if (items.length === 0) throw new AppError(400, "Agrega al menos un producto");
+    // El cargo de entrega va como un renglón más: al cobrarlo en el punto de venta queda en la venta.
+    if (zone) {
+      items.push({
+        productId: zone.productId,
+        name: deliveryProductName(zone.name),
+        unit: "PIECE",
+        quantity: 1,
+        price: zone.fee,
       });
     }
     const total = money(sum(items.map((i) => D(i.price).times(i.quantity))));
@@ -72,6 +98,8 @@ export async function createOnlineOrder(slug: string, input: OnlineOrderInput) {
         notes: input.notes,
         fulfillment: input.fulfillment,
         address: input.fulfillment === "DELIVERY" ? input.address : null,
+        deliveryZone: zone?.name ?? null,
+        deliveryFee: zone ? money(zone.fee) : 0,
         items: items as unknown as Prisma.InputJsonValue,
         total,
         businessId: business.id,

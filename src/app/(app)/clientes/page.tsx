@@ -46,6 +46,10 @@ const emptyForm = {
   notes: "",
   creditLimit: "0",
   creditDays: "15",
+  creditTerm: "DAYS" as "DAYS" | "QUINCENA" | "FIXED",
+  creditDueDate: "",
+  isSenior: false,
+  seniorId: "",
   ruc: "",
   dv: "",
   rfc: "",
@@ -94,6 +98,10 @@ export default function CustomersPage() {
             notes: c.notes ?? "",
             creditLimit: String(c.creditLimit),
             creditDays: String(c.creditDays),
+            creditTerm: c.creditTerm ?? "DAYS",
+            creditDueDate: c.creditDueDate ? c.creditDueDate.slice(0, 10) : "",
+            isSenior: c.isSenior ?? false,
+            seniorId: c.seniorId ?? "",
             ruc: c.ruc ?? "",
             dv: c.dv ?? "",
             rfc: c.rfc ?? "",
@@ -112,7 +120,13 @@ export default function CustomersPage() {
     try {
       await api(editing ? `/api/customers/${editing.id}` : "/api/customers", {
         method: editing ? "PUT" : "POST",
-        body: { ...form, creditLimit: Number(form.creditLimit) || 0, creditDays: Number(form.creditDays) || 0 },
+        body: {
+          ...form,
+          creditLimit: Number(form.creditLimit) || 0,
+          creditDays: Number(form.creditDays) || 0,
+          creditDueDate: form.creditTerm === "FIXED" && form.creditDueDate ? form.creditDueDate : null,
+          seniorId: form.isSenior ? form.seniorId || null : null,
+        },
       });
       toast.success(tr("Cliente guardado"));
       setEditing(undefined);
@@ -310,13 +324,50 @@ export default function CustomersPage() {
                 onChange={(e) => setForm({ ...form, creditLimit: e.target.value })}
                 hint={tr("0 = sin límite")}
               />
-              <Input
-                label={tr("Días de crédito")}
-                inputMode="numeric"
-                value={form.creditDays}
-                onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
-                hint={tr("Plazo para pagar cada venta fiada")}
+              <Select
+                label={tr("Paga el fiado")}
+                value={form.creditTerm}
+                onChange={(e) => setForm({ ...form, creditTerm: e.target.value as typeof form.creditTerm })}
+              >
+                <option value="DAYS">{tr("A un plazo en días")}</option>
+                <option value="QUINCENA">{tr("En la quincena (15 y fin de mes)")}</option>
+                <option value="FIXED">{tr("En una fecha fija (cosecha, pago del mes)")}</option>
+              </Select>
+              {form.creditTerm === "DAYS" && (
+                <Input
+                  label={tr("Días de crédito")}
+                  inputMode="numeric"
+                  value={form.creditDays}
+                  onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
+                  hint={tr("Plazo para pagar cada venta fiada")}
+                />
+              )}
+              {form.creditTerm === "FIXED" && (
+                <Input
+                  label={tr("Fecha de pago")}
+                  type="date"
+                  value={form.creditDueDate}
+                  onChange={(e) => setForm({ ...form, creditDueDate: e.target.value })}
+                  hint={tr("Si la fecha pasa, se usan los días de crédito hasta que la cambies")}
+                />
+              )}
+            </div>
+          )}
+          {business.seniorDiscountRate > 0 && (
+            <div className="grid grid-cols-2 gap-3 items-end">
+              <Checkbox
+                label={tr("Jubilado o pensionado")}
+                checked={form.isSenior}
+                onChange={(e) => setForm({ ...form, isSenior: e.target.checked })}
               />
+              {form.isSenior && (
+                <Input
+                  label={tr("Cédula o carné del jubilado")}
+                  value={form.seniorId}
+                  maxLength={30}
+                  onChange={(e) => setForm({ ...form, seniorId: e.target.value })}
+                />
+              )}
             </div>
           )}
           <Textarea
