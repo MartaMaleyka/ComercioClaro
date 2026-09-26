@@ -16,6 +16,7 @@ import { TranslationFeedbackButton } from "@/components/layout/TranslationFeedba
 import { ServiceProvidersCard } from "@/components/settings/ServiceProvidersCard";
 import { DeliveryZonesCard, type DeliveryZone } from "@/components/settings/DeliveryZonesCard";
 import { COUNTRIES, countryConfig } from "@/lib/country";
+import type { FeatureKey } from "@/lib/features";
 import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -29,7 +30,7 @@ type Tab = "perfil" | "negocio" | "usuarios" | "sucursales" | "bitacora";
 
 export default function SettingsPage() {
   const tr = useText();
-  const { role } = useSession();
+  const { role, business } = useSession();
   const isOwner = role === "OWNER";
   const [tab, setTab] = useState<Tab>(isOwner ? "negocio" : "perfil");
   const tabs: { value: Tab; label: string }[] = isOwner
@@ -37,7 +38,7 @@ export default function SettingsPage() {
         { value: "negocio", label: tr("Negocio") },
         { value: "perfil", label: tr("Mi cuenta") },
         { value: "usuarios", label: tr("Usuarios") },
-        { value: "sucursales", label: tr("Sucursales") },
+        ...(business.features.includes("branches") ? [{ value: "sucursales" as Tab, label: tr("Sucursales") }] : []),
         { value: "bitacora", label: tr("Bitácora") },
       ]
     : [{ value: "perfil", label: tr("Mi cuenta") }];
@@ -153,12 +154,13 @@ const REGION_DEFAULTS = {
 
 function BusinessSettings() {
   const { data, mutate } = useSWR<BusinessData>("/api/business", fetcher);
+  const { business } = useSession();
   if (!data) return <ListSkeleton rows={3} />;
   return (
     <div className="space-y-4">
       <BusinessForm initial={data} onSaved={() => mutate()} />
-      <DeliveryZonesCard initial={data.deliveryZones ?? []} />
-      <ServiceProvidersCard />
+      {business.features.includes("catalog") && <DeliveryZonesCard initial={data.deliveryZones ?? []} />}
+      {business.features.includes("services") && <ServiceProvidersCard />}
     </div>
   );
 }
@@ -171,6 +173,8 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
   const [form, setForm] = useState<BusinessData>(initial);
   const [saving, setSaving] = useState(false);
   const set = <K extends keyof BusinessData>(k: K, v: BusinessData[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const features = useSession().business.features;
+  const has = (feature: FeatureKey) => features.includes(feature);
   const country = countryConfig(form.country);
   const { data: pacProviders } = useSWR<{ id: string; name: string; configured: boolean }[]>(
     "/api/invoices/pac-providers",
@@ -368,104 +372,110 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-slate-900">{tr("Modo restaurante")}</h2>
-          <p className="text-sm text-slate-500">
-            {tr("Para fondas y cafeterías: cuentas abiertas por mesa y pantalla de cocina.")}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <Checkbox
-            label={tr("Usar cuentas abiertas y pantalla de cocina")}
-            checked={form.restaurantMode}
-            onChange={(e) => set("restaurantMode", e.target.checked)}
-          />
-        </CardContent>
-      </Card>
+      {has("restaurant") && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-slate-900">{tr("Modo restaurante")}</h2>
+            <p className="text-sm text-slate-500">
+              {tr("Para fondas y cafeterías: cuentas abiertas por mesa y pantalla de cocina.")}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Checkbox
+              label={tr("Usar cuentas abiertas y pantalla de cocina")}
+              checked={form.restaurantMode}
+              onChange={(e) => set("restaurantMode", e.target.checked)}
+            />
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-slate-900">{tr("Programa de puntos")}</h2>
-          <p className="text-sm text-slate-500">
-            {tr("Tus clientes registrados ganan puntos al comprar y los canjean como descuento.")}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Checkbox
-            label={tr("Activar puntos de lealtad")}
-            checked={form.loyaltyEnabled}
-            onChange={(e) => set("loyaltyEnabled", e.target.checked)}
-          />
-          {form.loyaltyEnabled && (
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Input
-                label={tr("Puntos por cada 1.00 de compra")}
-                inputMode="decimal"
-                value={String(form.loyaltyPointsPerUnit)}
-                onChange={(e) => set("loyaltyPointsPerUnit", Number(e.target.value) || 0)}
-              />
-              <Input
-                label={tr("Valor de cada punto al canjear")}
-                inputMode="decimal"
-                value={String(form.loyaltyPointValue)}
-                onChange={(e) => set("loyaltyPointValue", Number(e.target.value) || 0)}
-                hint={tr("Ej.: con 1 punto por 1.00 y valor 0.01, cada compra devuelve 1%.")}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <h2 className="font-semibold text-slate-900">{tr("Catálogo en línea")}</h2>
-          <p className="text-sm text-slate-500">
-            {tr(
-              "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp."
-            )}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Checkbox
-            label={tr("Publicar catálogo")}
-            checked={form.catalogEnabled}
-            onChange={(e) => set("catalogEnabled", e.target.checked)}
-          />
-          {form.catalogEnabled && (
-            <>
+      {has("loyalty") && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-slate-900">{tr("Programa de puntos")}</h2>
+            <p className="text-sm text-slate-500">
+              {tr("Tus clientes registrados ganan puntos al comprar y los canjean como descuento.")}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Checkbox
+              label={tr("Activar puntos de lealtad")}
+              checked={form.loyaltyEnabled}
+              onChange={(e) => set("loyaltyEnabled", e.target.checked)}
+            />
+            {form.loyaltyEnabled && (
               <div className="grid sm:grid-cols-2 gap-3">
                 <Input
-                  label={tr("Dirección del catálogo")}
-                  value={form.catalogSlug ?? ""}
-                  onChange={(e) => set("catalogSlug", e.target.value.toLowerCase())}
-                  placeholder={"minisuper-el-dorado"}
-                  hint={
-                    form.catalogSlug ? `Tu enlace: /c/${form.catalogSlug}` : tr("Solo minúsculas, números y guiones")
-                  }
+                  label={tr("Puntos por cada 1.00 de compra")}
+                  inputMode="decimal"
+                  value={String(form.loyaltyPointsPerUnit)}
+                  onChange={(e) => set("loyaltyPointsPerUnit", Number(e.target.value) || 0)}
                 />
                 <Input
-                  label={tr("WhatsApp que recibe los pedidos")}
-                  type="tel"
-                  value={form.catalogWhatsapp ?? ""}
-                  onChange={(e) => set("catalogWhatsapp", e.target.value)}
-                  placeholder="6123-4567"
+                  label={tr("Valor de cada punto al canjear")}
+                  inputMode="decimal"
+                  value={String(form.loyaltyPointValue)}
+                  onChange={(e) => set("loyaltyPointValue", Number(e.target.value) || 0)}
+                  hint={tr("Ej.: con 1 punto por 1.00 y valor 0.01, cada compra devuelve 1%.")}
                 />
               </div>
-              {initial.catalogEnabled && initial.catalogSlug && (
-                <a
-                  href={`/c/${initial.catalogSlug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm underline text-brand-700 dark:text-brand-300"
-                >
-                  {tr("Ver catálogo publicado")}
-                </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {has("catalog") && (
+        <Card>
+          <CardHeader>
+            <h2 className="font-semibold text-slate-900">{tr("Catálogo en línea")}</h2>
+            <p className="text-sm text-slate-500">
+              {tr(
+                "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp."
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Checkbox
+              label={tr("Publicar catálogo")}
+              checked={form.catalogEnabled}
+              onChange={(e) => set("catalogEnabled", e.target.checked)}
+            />
+            {form.catalogEnabled && (
+              <>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input
+                    label={tr("Dirección del catálogo")}
+                    value={form.catalogSlug ?? ""}
+                    onChange={(e) => set("catalogSlug", e.target.value.toLowerCase())}
+                    placeholder={"minisuper-el-dorado"}
+                    hint={
+                      form.catalogSlug ? `Tu enlace: /c/${form.catalogSlug}` : tr("Solo minúsculas, números y guiones")
+                    }
+                  />
+                  <Input
+                    label={tr("WhatsApp que recibe los pedidos")}
+                    type="tel"
+                    value={form.catalogWhatsapp ?? ""}
+                    onChange={(e) => set("catalogWhatsapp", e.target.value)}
+                    placeholder="6123-4567"
+                  />
+                </div>
+                {initial.catalogEnabled && initial.catalogSlug && (
+                  <a
+                    href={`/c/${initial.catalogSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm underline text-brand-700 dark:text-brand-300"
+                  >
+                    {tr("Ver catálogo publicado")}
+                  </a>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -545,7 +555,9 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               >
                 <option value="OFF">{tr("No emito factura electrónica todavía")}</option>
                 <option value="MANUAL">{tr("Facturador gratuito o PAC externo (registro el CUFE a mano)")}</option>
-                <option value="PAC">{tr("Automática desde ComercioClaro con un PAC")}</option>
+                {(has("einvoice") || form.einvoiceMode === "PAC") && (
+                  <option value="PAC">{tr("Automática desde ComercioClaro con un PAC")}</option>
+                )}
               </Select>
               {form.einvoiceMode === "MANUAL" && (
                 <>
@@ -619,7 +631,9 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
                 }
               >
                 <option value="STATIC">{tr("QR fijo del comercio (confirmación manual)")}</option>
-                <option value="API">{tr("Cobro automático por celular (API de Yappy Comercial)")}</option>
+                {(has("yappyApi") || form.yappyMode === "API") && (
+                  <option value="API">{tr("Cobro automático por celular (API de Yappy Comercial)")}</option>
+                )}
               </Select>
               <Input
                 label={tr("Nombre o número en el directorio Yappy")}

@@ -1,10 +1,11 @@
 import { handler, parseBody } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { kitchenStatusSchema } from "@/lib/validation";
 import { setKitchenStatus } from "@/server/open-orders";
 
 export const PATCH = handler<{ id: string }>(async (request, { params }) => {
   const auth = await requireAuth();
+  requireFeature(auth, "restaurant");
   const { status } = await parseBody(request, kitchenStatusSchema);
   return setKitchenStatus(auth, (await params).id, status);
 });

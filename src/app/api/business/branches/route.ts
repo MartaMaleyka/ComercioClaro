@@ -1,5 +1,5 @@
 import { handler, parseBody, created } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { branchSchema } from "@/lib/validation";
 import { createBranch, listMemberships } from "@/server/account";
 
@@ -11,6 +11,7 @@ export const GET = handler(async () => {
 
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "branches");
   const input = await parseBody(request, branchSchema);
   return created(await createBranch(auth, input));
 });

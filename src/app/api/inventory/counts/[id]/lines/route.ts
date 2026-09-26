@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { handler, parseBody } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { recordCount, removeCountLine } from "@/server/counts";
 
 const schema = z
@@ -14,12 +14,14 @@ const schema = z
 
 export const POST = handler<{ id: string }>(async (request, { params }) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "inventoryCounts");
   const { id } = await params;
   return recordCount(auth, id, await parseBody(request, schema));
 });
 
 export const DELETE = handler<{ id: string }>(async (request, { params }) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "inventoryCounts");
   const { id } = await params;
   const productId = request.nextUrl.searchParams.get("productId") ?? "";
   await removeCountLine(auth, id, productId);

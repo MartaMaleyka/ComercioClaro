@@ -7,6 +7,7 @@ import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
 import { openCashSession } from "../src/server/cash";
 import { syncDeliveryZones } from "../src/server/delivery";
+import { FEATURE_KEYS } from "../src/lib/features";
 import type { Prisma } from "../src/generated/prisma/client";
 
 const DEMO_EMAIL = "demo@comercioclaro.com";
@@ -835,12 +836,138 @@ async function seedInterior() {
   console.log("✅ Demostración del interior creada (libras, fiado a la quincena y a la cosecha)");
 }
 
+const ADMIN_EMAIL = "admin@comercioclaro.com";
+
+/** Planes de ejemplo (en dólares, para Panamá). El super admin los cambia en /admin/planes. */
+const PLANS = [
+  {
+    code: "basico",
+    name: "Básico",
+    description: "Para el kiosco o la abarrotería que empieza.",
+    priceMonthly: 9.99,
+    priceYearly: 99,
+    maxUsers: 2,
+    maxBranches: 1,
+    maxProducts: 500,
+    features: ["promotions", "export"],
+    sortOrder: 1,
+  },
+  {
+    code: "pro",
+    name: "Pro",
+    description: "Minisúper con catálogo en línea, Yappy automático y vales.",
+    priceMonthly: 19.99,
+    priceYearly: 199,
+    maxUsers: 5,
+    maxBranches: 2,
+    maxProducts: null,
+    features: [
+      "promotions",
+      "loyalty",
+      "catalog",
+      "yappyApi",
+      "customerDisplay",
+      "giftCards",
+      "services",
+      "purchaseOrders",
+      "advancedReports",
+      "variants",
+      "inventoryCounts",
+      "export",
+    ],
+    isDefault: true,
+    sortOrder: 2,
+  },
+  {
+    code: "empresarial",
+    name: "Empresarial",
+    description: "Varias sucursales, restaurante, factura electrónica y conciliación.",
+    priceMonthly: 39.99,
+    priceYearly: 399,
+    maxUsers: null,
+    maxBranches: null,
+    maxProducts: null,
+    features: FEATURE_KEYS,
+    sortOrder: 3,
+  },
+];
+
+/** Planes, super admin y la suscripción de cada negocio de demostración. */
+async function seedPlatform() {
+  const plans: Record<string, string> = {};
+  for (const plan of PLANS) {
+    const { code, ...data } = plan;
+    const saved = await prisma.plan.upsert({
+      where: { code },
+      create: { code, ...data, features: [...data.features] },
+      update: {},
+    });
+    plans[code] = saved.id;
+  }
+
+  if (!(await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } }))) {
+    await prisma.user.create({
+      data: {
+        email: ADMIN_EMAIL,
+        name: "Administración ComercioClaro",
+        passwordHash: await hashPassword(DEMO_PASSWORD),
+        isSuperAdmin: true,
+      },
+    });
+  }
+  const admin = await prisma.user.findUniqueOrThrow({ where: { email: ADMIN_EMAIL } });
+
+  const day = 24 * 60 * 60 * 1000;
+  const subscriptions = [
+    { name: "Miscelánea La Esperanza", plan: "pro", status: "ACTIVE" as const, days: 25, price: 19.99 },
+    { name: "Minisúper El Dorado", plan: "empresarial", status: "ACTIVE" as const, days: 20, price: 39.99 },
+    { name: "Fonda La Chiricana", plan: "empresarial", status: "ACTIVE" as const, days: 12, price: 39.99 },
+    { name: "Abarrotería Los Santos", plan: "basico", status: "TRIAL" as const, days: 10, price: 0 },
+  ];
+  const { owner } = await demoUsers();
+  for (const sub of subscriptions) {
+    const business = await prisma.business.findFirst({
+      where: { name: sub.name, planId: null, memberships: { some: { userId: owner.id } } },
+    });
+    // Solo se asigna una vez: después lo administra el super admin.
+    if (!business) continue;
+    const until = new Date(Date.now() + sub.days * day);
+    await prisma.business.update({
+      where: { id: business.id },
+      data: {
+        planId: plans[sub.plan],
+        status: sub.status,
+        ...(sub.status === "TRIAL" ? { trialEndsAt: until } : { paidUntil: until }),
+      },
+    });
+    if (sub.price > 0) {
+      const start = new Date(until);
+      start.setUTCMonth(start.getUTCMonth() - 1);
+      await prisma.subscriptionPayment.create({
+        data: {
+          businessId: business.id,
+          planId: plans[sub.plan],
+          amount: sub.price,
+          method: "YAPPY",
+          reference: `DEMO-${business.id.slice(-6).toUpperCase()}`,
+          periodStart: start,
+          periodEnd: until,
+          createdById: admin.id,
+        },
+      });
+    }
+  }
+  console.log("✅ Planes y administración de la plataforma");
+  console.log(`   Super admin: ${ADMIN_EMAIL} / ${DEMO_PASSWORD} (panel en /admin)`);
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
   await seedPanama();
   await seedFonda();
   await seedInterior();
+  await seedPlatform();
 }
 
 main()

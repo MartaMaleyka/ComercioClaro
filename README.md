@@ -54,6 +54,23 @@ Investigación, plan y fuentes en [`docs/plan-panama-regiones.md`](docs/plan-pan
   - Productos de servicio sin existencias.
 - **Perfil capital o interior** en Configuración, que aplica los valores recomendados.
 
+### Super admin: planes, precios y funciones
+
+Detalle en [`docs/plan-super-admin.md`](docs/plan-super-admin.md).
+
+- **Panel `/admin`** para quien administra la plataforma.
+  - Ingreso mensual recurrente y lo cobrado.
+  - Negocios por estado y por plan.
+  - Pruebas por terminar y pagos vencidos.
+- **Planes** con precio mensual y anual, días de prueba, límites (usuarios, sucursales, productos) y funciones incluidas. Se muestran en la página de precios de la portada.
+- **Por negocio:**
+  - Asignar plan, ciclo de cobro, prueba y vigencia.
+  - Suspender con motivo, sin borrar datos.
+  - Activar o desactivar funciones solo para ese negocio.
+  - Registrar pagos y entrar como soporte.
+- **Usuarios:** administradores, bloqueo, cierre de sesiones y contraseña temporal.
+- **Bitácora** de todo lo que hace el super admin.
+
 ### Más ventas y control
 
 - **Promociones**: porcentaje, lleva X paga Y (2x1) y precio por cantidad (3 por B/.1.00), por producto o categoría, con vigencia. El punto de venta las aplica solo.
@@ -101,8 +118,9 @@ Abre [http://localhost:3000](http://localhost:3000).
 | ------ | -------------------------- | ---------- |
 | Dueño  | `demo@comercioclaro.com`   | `demo1234` |
 | Cajero | `cajero@comercioclaro.com` | `demo1234` |
+| Super admin | `admin@comercioclaro.com` | `demo1234` |
 
-Las dos cuentas tienen acceso a los cuatro negocios de ejemplo. Se cambia de negocio con el selector bajo el nombre del negocio, en la parte superior:
+El Dueño y el Cajero tienen acceso a los cuatro negocios de ejemplo. Se cambia de negocio con el selector bajo el nombre del negocio, en la parte superior:
 
 - **Miscelánea La Esperanza** (México): con la que se entra al iniciar sesión.
 - **Minisúper El Dorado** (Panamá, capital): promoción de cerveza, puntos de lealtad y catálogo público con zonas de entrega en `/c/minisuper-el-dorado`.
@@ -110,6 +128,8 @@ Las dos cuentas tienen acceso a los cuatro negocios de ejemplo. Se cambia de neg
 - **Abarrotería Los Santos** (Panamá, interior): venta por libra y fiado a la quincena y a la cosecha.
 
 La interfaz en chino o inglés se elige en Configuración → Mi cuenta.
+
+El super admin entra al panel `/admin`. En producción, el primero se nombra con `npm run admin:grant -- correo@dominio.com`.
 
 Si tu base tiene las cuentas de demostración anteriores (`demo.pa@`, `cajero.pa@`, `demo.fonda@`, `demo.interior@`), `npm run db:seed` agrega sus negocios al Dueño y al Cajero sin borrar nada.
 
@@ -126,6 +146,7 @@ Si tu base tiene las cuentas de demostración anteriores (`demo.pa@`, `cajero.pa
 | `npm run db:migrate` | Crea/aplica migraciones en desarrollo                       |
 | `npm run db:deploy`  | Aplica migraciones en producción                            |
 | `npm run db:seed`    | Datos de demostración                                       |
+| `npm run admin:grant -- correo` | Nombra administrador de la plataforma (super admin) |
 
 Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba). Sin esa variable solo corren las unitarias.
 
@@ -134,6 +155,7 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 1. Base de datos PostgreSQL administrada (Neon, Supabase, RDS...).
 2. Variables de entorno: `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; sin ella la app no inicia ni valida sesiones) y `APP_URL`. Opcionales: `RESEND_API_KEY` y `EMAIL_FROM` (correos), `CRON_SECRET` (alertas), `FACTURAMA_USER`, `FACTURAMA_PASSWORD` y `FACTURAMA_SANDBOX` (CFDI México), `ALANUBE_API_URL` y `ALANUBE_TOKEN` (PAC Panamá), `YAPPY_PROVIDER=bg`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_DOMAIN` y `YAPPY_API_URL` (Yappy Comercial). Ver `.env.example`.
 3. `npm run db:deploy && npm run build && npm start`.
+   Después, nombra al primer super admin con `npm run admin:grant -- correo@dominio.com` y crea los planes en `/admin/planes`. Mientras no haya planes, todos los negocios tienen todas las funciones.
 4. Tareas programadas (`vercel.json`): `GET /api/cron/low-stock` una vez al día y `GET /api/cron/einvoice` cada 15 minutos para reintentar las facturas en contingencia (en Vercel, un cron más frecuente que diario requiere el plan Pro). En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
 
 ## Tecnologías

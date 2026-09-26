@@ -106,6 +106,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
   const tr = useText();
   const toast = useToast();
   const { business } = useSession();
+  const canVariants = business.features.includes("variants");
   const country = countryConfig(business.country);
   const [form, setForm] = useState<FormState>(() => {
     const initial = toForm(product);
@@ -336,15 +337,17 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
             onChange={(e) => set("trackExpiry", e.target.checked)}
           />
 
-          <button
-            type="button"
-            aria-expanded={variantsOpen}
-            onClick={() => setVariantsOpen((v) => !v)}
-            className="block text-sm text-brand-700 dark:text-brand-300 underline"
-          >
-            {variantsOpen ? tr("Ocultar") : tr("Mostrar")} {tr("variantes y extras")}
-          </button>
-          {variantsOpen && (
+          {canVariants && (
+            <button
+              type="button"
+              aria-expanded={variantsOpen}
+              onClick={() => setVariantsOpen((v) => !v)}
+              className="block text-sm text-brand-700 dark:text-brand-300 underline"
+            >
+              {variantsOpen ? tr("Ocultar") : tr("Mostrar")} {tr("variantes y extras")}
+            </button>
+          )}
+          {variantsOpen && canVariants && (
             <div className="space-y-3 rounded-xl border border-slate-100 p-3">
               <div className="grid grid-cols-2 gap-3">
                 <Input

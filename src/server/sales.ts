@@ -17,6 +17,7 @@ import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
 import { creditDueDate } from "@/lib/credit-terms";
+import { featureLabel, type FeatureKey } from "@/lib/features";
 import { bestPromotion, type PromotionRule } from "@/lib/promotions";
 import type { Promotion } from "@/generated/prisma/client";
 
@@ -45,6 +46,8 @@ type ListQuery = z.infer<typeof listQuerySchema>;
 
 export interface SalesActor extends Actor {
   role: Role;
+  /** Funciones del plan; sin indicar, todas (seed y pruebas) */
+  features?: FeatureKey[];
 }
 
 export const saleInclude = {
@@ -76,6 +79,11 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
     if (existing) return existing;
   }
 
+  const canUse = (feature: FeatureKey) => !actor.features || actor.features.includes(feature);
+  if (input.paymentMethod === "GIFT_CARD" && !canUse("giftCards")) {
+    throw new AppError(403, `Tu plan no incluye ${featureLabel("giftCards")}.`);
+  }
+
   try {
     return await prisma.$transaction(async (tx) => {
       const productIds = [...new Set(input.items.map((i) => i.productId))];
@@ -96,8 +104,12 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
             timezone: true,
           },
         }),
-        tx.promotion.findMany({ where: { businessId: actor.businessId, active: true } }),
+        // Sin la función de promociones en el plan, no se aplican.
+        canUse("promotions")
+          ? tx.promotion.findMany({ where: { businessId: actor.businessId, active: true } })
+          : Promise.resolve([]),
       ]);
+      const loyaltyEnabled = business.loyaltyEnabled && canUse("loyalty");
       const promotions = promotionRows.map(toPromotionRule);
 
       let customer = null;
@@ -175,7 +187,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       let pointsRedeemed = 0;
       let pointsDiscount = D(0);
       if (input.redeemPoints && input.redeemPoints > 0) {
-        if (!business.loyaltyEnabled) throw new AppError(400, "El programa de puntos no está activo");
+        if (!loyaltyEnabled) throw new AppError(400, "El programa de puntos no está activo");
         if (!customer) throw new AppError(400, "Selecciona el cliente para canjear puntos");
         if (customer.points < input.redeemPoints)
           throw new AppError(400, `${customer.name} solo tiene ${customer.points} puntos`);
@@ -316,7 +328,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       if (input.openOrderId) await closeOpenOrderWithSale(tx, actor.businessId, input.openOrderId, sale.id);
 
       // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
-      if (customer && business.loyaltyEnabled) {
+      if (customer && loyaltyEnabled) {
         const earned =
           input.paymentMethod === "CREDIT" ? 0 : total.times(business.loyaltyPointsPerUnit).floor().toNumber();
         if (pointsRedeemed > 0) {

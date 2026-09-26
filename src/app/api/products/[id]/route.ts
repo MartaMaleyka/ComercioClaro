@@ -1,5 +1,5 @@
 import { handler, parseBody } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, withoutVariants } from "@/lib/auth";
 import { notFound } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { productUpdateSchema } from "@/lib/validation";
@@ -23,7 +23,7 @@ export const GET = handler<{ id: string }>(async (_request, { params }) => {
 export const PUT = handler<{ id: string }>(async (request, { params }) => {
   const auth = await requireAuth("OWNER");
   const { id } = await params;
-  const input = await parseBody(request, productUpdateSchema);
+  const input = withoutVariants(auth, await parseBody(request, productUpdateSchema));
   return updateProduct(auth, id, input);
 });
 

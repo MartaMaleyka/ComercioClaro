@@ -1,5 +1,5 @@
 import { handler, parseBody, created } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { AppError } from "@/lib/errors";
@@ -10,6 +10,7 @@ const include = { product: { select: { id: true, name: true } }, category: { sel
 /** Promociones del negocio (el punto de venta las usa para mostrar el descuento). */
 export const GET = handler(async () => {
   const auth = await requireAuth();
+  requireFeature(auth, "promotions");
   return prisma.promotion.findMany({
     where: { businessId: auth.businessId },
     include,
@@ -19,6 +20,7 @@ export const GET = handler(async () => {
 
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "promotions");
   const input = await parseBody(request, promotionSchema);
   if (input.productId) {
     const product = await prisma.product.findFirst({ where: { id: input.productId, businessId: auth.businessId } });

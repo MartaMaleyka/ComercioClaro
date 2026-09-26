@@ -11,7 +11,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
 import { whatsappLink } from "@/lib/client/receipt";
 import { UNIT_LABELS } from "@/lib/utils";
-import { useSession } from "@/components/providers/SessionProvider";
+import { useSession, useFeature } from "@/components/providers/SessionProvider";
 import { fetcher } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -54,6 +54,7 @@ export function ReorderTab() {
   const { business } = useSession();
   const { data, error, mutate } = useSWR<Suggestion[]>("/api/inventory/reorder", fetcher);
   const [creating, setCreating] = useState<string | null>(null);
+  const canOrder = useFeature("purchaseOrders");
 
   /** Crea una orden de compra con las sugerencias del proveedor, redondeadas a cajas completas. */
   async function createOrder(supplier: string | null, items: Suggestion[]) {
@@ -122,14 +123,16 @@ export function ReorderTab() {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-500">{supplier || tr("Sin proveedor")}</h2>
             <div className="flex items-center gap-3">
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={creating === supplier}
-                onClick={() => createOrder(supplier || null, items)}
-              >
-                <ClipboardList className="w-4 h-4" aria-hidden="true" /> {tr("Crear orden de compra")}
-              </Button>
+              {canOrder && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={creating === supplier}
+                  onClick={() => createOrder(supplier || null, items)}
+                >
+                  <ClipboardList className="w-4 h-4" aria-hidden="true" /> {tr("Crear orden de compra")}
+                </Button>
+              )}
               <a
                 href={whatsappLink(
                   [

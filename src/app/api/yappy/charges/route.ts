@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { handler, parseBody, created } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { createYappyCharge } from "@/server/yappy";
 
@@ -12,6 +12,7 @@ const schema = z.object({
 /** Envía una solicitud de cobro Yappy al celular del cliente. */
 export const POST = handler(async (request) => {
   const auth = await requireAuth();
+  requireFeature(auth, "yappyApi");
   await rateLimit(`yappy:${auth.businessId}`, 60, 60);
   const input = await parseBody(request, schema);
   return created(await createYappyCharge(auth, input));

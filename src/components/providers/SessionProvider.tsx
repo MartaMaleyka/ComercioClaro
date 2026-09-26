@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { AccessState, FeatureKey } from "@/lib/features";
 
 export interface SessionBusiness {
   id: string;
@@ -30,10 +31,16 @@ export interface SessionBusiness {
   /** Días que se aceptan ventas guardadas sin conexión */
   offlineDays: number;
   region: string | null;
+  /** Funciones del plan activas en el negocio */
+  features: FeatureKey[];
+  plan: { name: string; code: string } | null;
+  access: AccessState;
 }
 
 export interface SessionData {
-  user: { id: string; name: string; email: string; language: string };
+  user: { id: string; name: string; email: string; language: string; isSuperAdmin: boolean };
+  /** El super admin está dentro del negocio como soporte */
+  support: boolean;
   role: "OWNER" | "CASHIER";
   business: SessionBusiness;
   businesses: { id: string; name: string; role: "OWNER" | "CASHIER" }[];
@@ -49,6 +56,11 @@ export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error("useSession debe usarse dentro de SessionProvider");
   return ctx;
+}
+
+/** ¿El plan del negocio incluye la función? */
+export function useFeature(feature: FeatureKey) {
+  return useSession().business.features.includes(feature);
 }
 
 export function useIsOwner() {

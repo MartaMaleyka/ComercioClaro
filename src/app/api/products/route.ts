@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
 import { handler, parseBody, parseQuery, created } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, withoutVariants } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { productCreateSchema } from "@/lib/validation";
 import { createProduct } from "@/server/catalog";
@@ -63,6 +63,6 @@ export const GET = handler(async (request) => {
 
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
-  const input = await parseBody(request, productCreateSchema);
+  const input = withoutVariants(auth, await parseBody(request, productCreateSchema));
   return created(await createProduct(auth, input));
 });

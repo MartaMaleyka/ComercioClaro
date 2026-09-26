@@ -66,7 +66,15 @@ export function OfflineSync() {
           sent++;
         } catch (err) {
           if (isNetworkError(err)) break;
-          if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401) {
+          // 401 (sesión vencida) y 403 (negocio suspendido o prueba vencida) no son errores de la venta:
+          // se queda pendiente hasta que se pueda enviar.
+          if (
+            err instanceof ApiError &&
+            err.status >= 400 &&
+            err.status < 500 &&
+            err.status !== 401 &&
+            err.status !== 403
+          ) {
             await moveToFailed(sale, err.message);
           } else break;
         }

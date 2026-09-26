@@ -1,5 +1,5 @@
 import { handler, parseQuery } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
 import { serialize } from "@/lib/decimal";
 import { listQuerySchema } from "@/lib/validation";
@@ -9,6 +9,8 @@ import { exportBackup, exportCsv, EXPORT_TYPES, type ExportType } from "@/server
 export const GET = handler<{ type: string }>(async (request, { params }) => {
   const auth = await requireAuth("OWNER");
   const { type } = await params;
+  // El respaldo completo siempre está disponible: los datos son del negocio.
+  if (type !== "backup") requireFeature(auth, "export");
   const stamp = new Date().toISOString().slice(0, 10);
 
   if (type === "backup") {

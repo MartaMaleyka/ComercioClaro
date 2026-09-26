@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { productCreateSchema } from "@/lib/validation";
 import { applyStockChange, type Actor } from "./inventory";
 import { countryConfig } from "@/lib/country";
+import { assertWithinLimit } from "./limits";
 
 export type ProductInput = z.infer<typeof productCreateSchema>;
 
@@ -26,6 +27,7 @@ export async function createProduct(actor: Actor, input: ProductInput) {
   await assertCategory(actor.businessId, input.categoryId);
   const taxRate = input.taxRate ?? (await defaultTaxRate(actor.businessId));
   return prisma.$transaction(async (tx) => {
+    await assertWithinLimit(tx, actor, "products");
     const product = await tx.product.create({
       data: {
         name: input.name,
@@ -303,6 +305,7 @@ export async function createVariants(actor: Actor, productId: string, input: { b
   if (labels.length === 0) throw new AppError(400, "Esas variantes ya existen");
 
   return prisma.$transaction(async (tx) => {
+    await assertWithinLimit(tx, actor, "products", labels.length);
     if (!base.variantGroup) {
       await tx.product.update({
         where: { id: base.id },

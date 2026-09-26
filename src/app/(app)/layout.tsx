@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { getAuth } from "@/lib/auth";
+import { getAuth, getSuperAdmin } from "@/lib/auth";
+import { BlockedBusiness } from "@/components/layout/BlockedBusiness";
 import { sessionData } from "@/server/session-view";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SessionProvider } from "@/components/providers/SessionProvider";
@@ -8,14 +9,19 @@ import { ConfirmProvider } from "@/components/providers/ConfirmProvider";
 
 export default async function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const auth = await getAuth();
-  if (!auth) redirect("/login");
+  if (!auth) {
+    // Super admin sin negocio activo: va al panel de administración.
+    if (await getSuperAdmin()) redirect("/admin");
+    redirect("/login");
+  }
   if (auth.user.mustChangePassword) redirect("/cambiar-contrasena");
+  const blocked = auth.access.blocked && !auth.support;
 
   return (
     <SessionProvider value={await sessionData(auth)}>
       <ToastProvider>
         <ConfirmProvider>
-          <AppLayout>{children}</AppLayout>
+          {blocked ? <BlockedBusiness /> : <AppLayout>{children}</AppLayout>}
         </ConfirmProvider>
       </ToastProvider>
     </SessionProvider>
