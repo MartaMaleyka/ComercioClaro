@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   BarChart3,
+  FileText,
+  HandCoins,
   Package,
   ShoppingCart,
   Store,
@@ -10,7 +12,7 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-surface-secondary">
       <header className="px-4 py-6 max-w-5xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center">
@@ -41,9 +43,8 @@ export default function LandingPage() {
             <span className="text-brand-600">claro y bajo control</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-8">
-            Deja atrás el cuaderno y las hojas de cálculo. Administra ventas,
-            compras, inventario y ganancias desde tu celular, de forma simple y
-            segura.
+            Deja atrás el cuaderno y las hojas de cálculo. Vende, cobra fiado, haz tu corte de caja
+            y conoce tu ganancia real desde el celular. Para kioscos, misceláneas, tiendas y salones.
           </p>
           <Link
             href="/registro"
@@ -58,38 +59,38 @@ export default function LandingPage() {
           {[
             {
               icon: ShoppingCart,
-              title: "Ventas",
-              desc: "Registra cada venta y actualiza tu inventario al instante.",
+              title: "Punto de venta",
+              desc: "Cobra rápido con lector de código de barras o la cámara del celular, incluso sin internet.",
             },
             {
-              icon: Package,
-              title: "Compras",
-              desc: "Lleva el control de lo que compras y a quién le compras.",
+              icon: HandCoins,
+              title: "Fiado y clientes",
+              desc: "Lleva la cuenta de quién te debe, con límite de crédito, abonos y recordatorios por WhatsApp.",
             },
             {
               icon: Wallet,
+              title: "Caja y cortes",
+              desc: "Abre y cierra caja, registra entradas y salidas y detecta faltantes al instante.",
+            },
+            {
+              icon: Package,
               title: "Inventario",
-              desc: "Conoce qué tienes en stock y recibe alertas de bajo inventario.",
+              desc: "Existencias, venta a granel, caducidades y sugerencias de qué comprar.",
             },
             {
               icon: BarChart3,
-              title: "Reportes",
-              desc: "Visualiza tus ganancias y descubre tus productos más vendidos.",
+              title: "Ganancia real",
+              desc: "Utilidad calculada con el costo de lo vendido y tus gastos: sabrás cuánto ganas de verdad.",
             },
             {
-              icon: TrendingUp,
-              title: "Dashboard",
-              desc: "Un vistazo rápido a lo más importante de tu negocio hoy.",
-            },
-            {
-              icon: Store,
-              title: "Tu negocio",
-              desc: "Diseñado para kioscos, misceláneas, salones y tiendas familiares.",
+              icon: FileText,
+              title: "Facturación CFDI 4.0",
+              desc: "Factura a tus clientes y emite la factura global al público en general.",
             },
           ].map((item) => (
             <div
               key={item.title}
-              className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm"
+              className="bg-surface rounded-2xl p-6 border border-slate-100 shadow-sm"
             >
               <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-4">
                 <item.icon className="w-6 h-6 text-brand-600" />

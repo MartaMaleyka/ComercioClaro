@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: comercioclaro
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/comercioclaro
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/comercioclaro_test
+      JWT_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+      APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Crear base de pruebas
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE comercioclaro_test;"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Pruebas unitarias e integración
+        run: npm test
+      - name: Migraciones y datos de demostración
+        run: npm run db:deploy && npm run db:seed
+      - run: npm run build
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas de punta a punta
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

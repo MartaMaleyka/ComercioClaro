@@ -1,0 +1,24 @@
+{
+  "name": "ComercioClaro",
+  "short_name": "ComercioClaro",
+  "description": "Ventas, inventario, caja y ganancias de tu negocio desde el celular.",
+  "lang": "es",
+  "start_url": "/ventas",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#16a34a",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Vender", "url": "/ventas" },
+    { "name": "Caja", "url": "/caja" },
+    { "name": "Inventario", "url": "/inventario" }
+  ]
+}

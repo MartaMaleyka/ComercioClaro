@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Modo oscuro por clase (.dark en <html>), controlado desde Configuración. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand-50: #f0fdf4;
   --color-brand-100: #dcfce7;
@@ -22,6 +25,61 @@
   --color-info: #3b82f6;
 }
 
+/* Colores de gráficas (paleta categórica validada para daltonismo, claro/oscuro) */
+:root {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --chart-grid: #e2e8f0;
+  --chart-text: #64748b;
+}
+
+/*
+ * En oscuro se invierte la escala neutra (slate) y los fondos suaves de estado,
+ * así los componentes funcionan en ambos temas sin duplicar clases.
+ */
+.dark {
+  color-scheme: dark;
+  --color-surface: #111a2e;
+  --color-surface-secondary: #0b1220;
+  --color-border: #2a3752;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #9aa7bd;
+
+  --color-slate-50: #16213a;
+  --color-slate-100: #1c2842;
+  --color-slate-200: #2a3752;
+  --color-slate-300: #3b4a68;
+  --color-slate-400: #7c8aa5;
+  --color-slate-500: #9aa7bd;
+  --color-slate-600: #b8c2d3;
+  --color-slate-700: #cfd7e3;
+  --color-slate-800: #e2e8f0;
+  --color-slate-900: #f1f5f9;
+
+  --color-brand-50: #0f2a1c;
+  --color-brand-100: #14391f;
+  --color-brand-200: #1d5a31;
+  --color-brand-800: #86efac;
+
+  --color-red-50: #3a1417;
+  --color-red-100: #4c1a1e;
+  --color-red-700: #fca5a5;
+  --color-amber-50: #3a2a0c;
+  --color-amber-100: #4a3510;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-blue-50: #0f2447;
+  --color-blue-100: #142e5a;
+  --color-blue-700: #93c5fd;
+  --color-purple-50: #2a1745;
+  --color-purple-700: #d8b4fe;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --chart-grid: #2a3752;
+  --chart-text: #9aa7bd;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -37,6 +95,48 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-input, select, textarea, button {
+input,
+select,
+textarea,
+button {
   font-family: inherit;
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in-up 0.18s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+}
+
+/* Ticket para impresoras térmicas de 58/80 mm */
+@media print {
+  @page {
+    margin: 0;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
 }

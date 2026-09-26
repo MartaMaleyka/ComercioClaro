@@ -1,38 +1,31 @@
-import { NextRequest, NextResponse } from "next/server";
+import { handler, parseBody } from "@/lib/api";
+import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { audit } from "@/lib/audit";
+import { businessSchema } from "@/lib/validation";
+import { AppError } from "@/lib/errors";
 
-export async function PUT(request: NextRequest) {
-  const user = await getCurrentUser();
-  if (!user?.business) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+export const GET = handler(async () => {
+  const auth = await requireAuth();
+  return auth.business;
+});
+
+export const PUT = handler(async (request) => {
+  const auth = await requireAuth("OWNER");
+  const { userName, ...data } = await parseBody(request, businessSchema);
+  if (data.catalogEnabled && !(data.catalogSlug ?? auth.business.catalogSlug)) {
+    throw new AppError(400, "Elige la dirección del catálogo");
   }
 
-  const data = await request.json();
-
-  const [business, updatedUser] = await Promise.all([
-    prisma.business.update({
-      where: { id: user.business.id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.phone !== undefined && { phone: data.phone }),
-        ...(data.address !== undefined && { address: data.address }),
-        ...(data.currency !== undefined && { currency: data.currency }),
-      },
-    }),
-    data.userName
-      ? prisma.user.update({
-          where: { id: user.id },
-          data: { name: data.userName },
-        })
-      : null,
-  ]);
-
-  return NextResponse.json({
-    business,
-    user: updatedUser
-      ? { id: updatedUser.id, email: updatedUser.email, name: updatedUser.name }
-      : { id: user.id, email: user.email, name: user.name },
+  return prisma.$transaction(async (tx) => {
+    const business = await tx.business.update({ where: { id: auth.businessId }, data });
+    const user = userName
+      ? await tx.user.update({ where: { id: auth.userId }, data: { name: userName } })
+      : null;
+    await audit(tx, auth, "business.update", "Business", auth.businessId, { fields: Object.keys(data) });
+    return {
+      business,
+      user: user ? { id: user.id, email: user.email, name: user.name } : auth.user,
+    };
   });
-}
+});
