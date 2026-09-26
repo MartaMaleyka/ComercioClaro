@@ -640,6 +640,11 @@ export default function PosPage() {
 
   return (
     <div className="space-y-4 pb-24 lg:pb-0">
+      <h1 className="sr-only">{t("nav.sell")}</h1>
+      {/* Anuncia el total al agregar o quitar productos, para quien usa lector de pantalla. */}
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {cart.length > 0 ? `${t("pos.total")}: ${fmt.money(total)}` : ""}
+      </p>
       {!cash?.current && cash !== undefined && (
         <div className="rounded-xl bg-amber-50 text-amber-800 px-4 py-2 text-sm flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
@@ -721,11 +726,19 @@ export default function PosPage() {
                     onClick={() => addProduct(p)}
                     disabled={out}
                     className={cn(
-                      "text-left p-3 rounded-xl border bg-surface transition-colors disabled:opacity-50",
-                      inCart ? "border-brand-500 ring-1 ring-brand-500" : "border-slate-100 hover:border-slate-300"
+                      "relative text-left p-3 rounded-xl border bg-surface transition-[color,border-color,transform] motion-safe:active:scale-[0.98] disabled:opacity-50",
+                      inCart ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
                     )}
                   >
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2">{p.name}</p>
+                    {inCart && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow tabular-nums"
+                      >
+                        {fmt.number(Number(inCart.quantity))}
+                      </span>
+                    )}
+                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">{p.name}</p>
                     <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mt-1">
                       {fmt.money(p.price)}
                       {p.unit !== "PIECE" && (
@@ -739,7 +752,7 @@ export default function PosPage() {
                       )}
                     >
                       {out ? t("pos.soldOut") : `${fmt.qty(p.stock, p.unit)} ${t("pos.available")}`}
-                      {inCart && ` · ${inCart.quantity} ${t("pos.inCart")}`}
+                      {inCart && <span className="sr-only">{` · ${inCart.quantity} ${t("pos.inCart")}`}</span>}
                     </p>
                   </button>
                 );

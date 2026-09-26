@@ -86,14 +86,14 @@ export function CategoriesTab() {
                   <button
                     aria-label={`Renombrar ${c.name}`}
                     onClick={() => rename(c)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     aria-label={`Eliminar ${c.name}`}
                     onClick={() => remove(c)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

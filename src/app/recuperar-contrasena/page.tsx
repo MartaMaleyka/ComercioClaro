@@ -141,10 +141,10 @@ function ResetForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-surface-secondary">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-b from-brand-50 to-surface-secondary">
       <Suspense>
         <ResetForm />
       </Suspense>
-    </div>
+    </main>
   );
 }

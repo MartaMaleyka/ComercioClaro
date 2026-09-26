@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -77,6 +77,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const t = useT();
   const [moreOpen, setMoreOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  // El idioma de la página sigue al del usuario para que el lector de pantalla pronuncie bien (WCAG 3.1.1).
+  useEffect(() => {
+    document.documentElement.lang = user.language === "zh" ? "zh-Hans" : user.language;
+  }, [user.language]);
 
   const items = navItems.filter((i) => i.roles.includes(role));
   const primary = items.filter((i) => mobilePrimary[role].includes(i.href));
@@ -230,7 +235,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               aria-current={isActive(pathname, item.href) ? "page" : undefined}
               className={cn(
                 "flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 transition-colors",
-                isActive(pathname, item.href) ? "text-brand-600" : "text-slate-400"
+                isActive(pathname, item.href) ? "text-brand-600" : "text-slate-500"
               )}
             >
               <item.icon className="w-5 h-5" aria-hidden="true" />
@@ -239,7 +244,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
           <button
             onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 text-slate-400"
+            className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 text-slate-500"
           >
             <Menu className="w-5 h-5" aria-hidden="true" />
             <span className="text-[10px] font-medium">{t("nav.more")}</span>

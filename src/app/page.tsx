@@ -3,9 +3,12 @@ import {
   BarChart3,
   FileText,
   HandCoins,
+  Languages,
   Package,
   ShoppingCart,
+  Smartphone,
   Store,
+  Tag,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -21,10 +24,7 @@ export default function LandingPage() {
           <span className="font-bold text-xl text-brand-800">ComercioClaro</span>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/login"
-            className="px-4 py-2 text-sm font-medium text-brand-700 hover:text-brand-800"
-          >
+          <Link href="/login" className="px-4 py-2 text-sm font-medium text-brand-700 hover:text-brand-800">
             Iniciar sesión
           </Link>
           <Link
@@ -39,12 +39,11 @@ export default function LandingPage() {
       <main className="px-4 py-12 max-w-5xl mx-auto">
         <section className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4 leading-tight">
-            Tu negocio,{" "}
-            <span className="text-brand-600">claro y bajo control</span>
+            Tu negocio, <span className="text-brand-600">claro y bajo control</span>
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-8">
-            Deja atrás el cuaderno y las hojas de cálculo. Vende, cobra fiado, haz tu corte de caja
-            y conoce tu ganancia real desde el celular. Para kioscos, misceláneas, tiendas y salones.
+            Deja atrás el cuaderno y las hojas de cálculo. Vende, cobra fiado, haz tu corte de caja y conoce tu ganancia
+            real desde el celular. Para kioscos, misceláneas, tiendas y salones.
           </p>
           <Link
             href="/registro"
@@ -55,50 +54,70 @@ export default function LandingPage() {
           </Link>
         </section>
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-16">
-          {[
-            {
-              icon: ShoppingCart,
-              title: "Punto de venta",
-              desc: "Cobra rápido con lector de código de barras o la cámara del celular, incluso sin internet.",
-            },
-            {
-              icon: HandCoins,
-              title: "Fiado y clientes",
-              desc: "Lleva la cuenta de quién te debe, con límite de crédito, abonos y recordatorios por WhatsApp.",
-            },
-            {
-              icon: Wallet,
-              title: "Caja y cortes",
-              desc: "Abre y cierra caja, registra entradas y salidas y detecta faltantes al instante.",
-            },
-            {
-              icon: Package,
-              title: "Inventario",
-              desc: "Existencias, venta a granel, caducidades y sugerencias de qué comprar.",
-            },
-            {
-              icon: BarChart3,
-              title: "Ganancia real",
-              desc: "Utilidad calculada con el costo de lo vendido y tus gastos: sabrás cuánto ganas de verdad.",
-            },
-            {
-              icon: FileText,
-              title: "Facturación CFDI 4.0",
-              desc: "Factura a tus clientes y emite la factura global al público en general.",
-            },
-          ].map((item) => (
-            <div
-              key={item.title}
-              className="bg-surface rounded-2xl p-6 border border-slate-100 shadow-sm"
-            >
-              <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-4">
-                <item.icon className="w-6 h-6 text-brand-600" />
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-2">{item.title}</h3>
-              <p className="text-sm text-slate-600">{item.desc}</p>
-            </div>
-          ))}
+        <section aria-labelledby="funciones" className="mb-16">
+          <h2 id="funciones" className="text-2xl font-bold text-slate-900 text-center mb-6">
+            Todo lo que tu negocio necesita
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              {
+                icon: ShoppingCart,
+                title: "Punto de venta",
+                desc: "Cobra rápido con lector de código de barras o la cámara del celular, incluso sin internet.",
+              },
+              {
+                icon: HandCoins,
+                title: "Fiado y clientes",
+                desc: "Lleva la cuenta de quién te debe, con límite de crédito, abonos y recordatorios por WhatsApp.",
+              },
+              {
+                icon: Wallet,
+                title: "Caja y cortes",
+                desc: "Abre y cierra caja, registra entradas y salidas y detecta faltantes al instante.",
+              },
+              {
+                icon: Package,
+                title: "Inventario",
+                desc: "Existencias, venta a granel, caducidades y sugerencias de qué comprar.",
+              },
+              {
+                icon: BarChart3,
+                title: "Ganancia real",
+                desc: "Utilidad calculada con el costo de lo vendido y tus gastos: sabrás cuánto ganas de verdad.",
+              },
+              {
+                icon: FileText,
+                title: "Factura electrónica",
+                desc: "Panamá: factura DGI con PAC y aviso de los límites del facturador gratuito. México: CFDI 4.0 y factura global.",
+              },
+              {
+                icon: Smartphone,
+                title: "Yappy y tarjetas",
+                desc: "Cobra con Yappy por celular o QR y conoce cuánto te cuestan las comisiones de cada forma de pago.",
+              },
+              {
+                icon: Tag,
+                title: "Promociones y puntos",
+                desc: "2x1, precios por cantidad y puntos de lealtad que el punto de venta aplica solo.",
+              },
+              {
+                icon: Languages,
+                title: "Español, 中文 e inglés",
+                desc: "Cada persona del equipo usa el sistema en su idioma.",
+              },
+            ].map((item) => (
+              <li key={item.title} className="bg-surface rounded-2xl p-6 border border-slate-100 shadow-sm">
+                <div
+                  className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center mb-4"
+                  aria-hidden="true"
+                >
+                  <item.icon className="w-6 h-6 text-brand-600" />
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-600">{item.desc}</p>
+              </li>
+            ))}
+          </ul>
         </section>
       </main>
 

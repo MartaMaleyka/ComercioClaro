@@ -51,7 +51,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-brand-50 to-surface-secondary">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-brand-50 to-surface-secondary">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -119,6 +119,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }
