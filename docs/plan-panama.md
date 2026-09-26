@@ -4,7 +4,7 @@ Basado en la investigación de mercado (septiembre 2026): cerca de 16,000 minis�
 
 ## Estado
 
-Fases 1 a 6 implementadas, más la fase 7 (abajo). Pruebas: `tests/unit/panama.test.ts`, `tests/integration/panama.test.ts` y `e2e/panama.spec.ts`. Cuenta de demostración: `demo.pa@comercioclaro.com` / `demo1234` (cajero con interfaz en chino: `cajero.pa@comercioclaro.com`).
+Fases 1 a 6 implementadas, más la fase 7 (abajo). Pruebas: `tests/unit/panama.test.ts`, `tests/integration/panama.test.ts` y `e2e/panama.spec.ts`. Demostración: negocio "Minisúper El Dorado" en las cuentas Dueño (`demo@comercioclaro.com`) y Cajero (`cajero@comercioclaro.com`), contraseña `demo1234`; la interfaz en chino se elige en Configuración → Mi cuenta.
 
 ## Objetivo
 
@@ -40,7 +40,7 @@ Que un minisúper, abarrotería o fonda en Panamá pueda usar ComercioClaro el p
 - **Interfaz en chino simplificado (piloto)** para el menú, el punto de venta y la caja, con preferencia de idioma por usuario (español, 中文, English).
 
 ### Fase 6 — Demo, pruebas y documentación
-- Cuenta de demostración panameña (`demo.pa@comercioclaro.com`) con productos y tasas reales de ITBMS.
+- Negocio de demostración panameño (Minisúper El Dorado, en las cuentas Dueño y Cajero) con productos y tasas reales de ITBMS.
 - Pruebas unitarias, de integración y de punta a punta de los flujos panameños.
 
 ### Fase 7 — Lo que faltaba y funciones nuevas

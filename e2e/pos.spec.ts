@@ -1,17 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { BUSINESS, CASHIER, OWNER, login } from "./helpers";
 
 // Requiere la base con datos de demostración (npm run db:seed).
 
-async function login(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña").fill("demo1234");
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
-  await page.waitForURL(/\/(dashboard|ventas)/);
-}
-
 test("el dueño vende en efectivo y ve el ticket en el historial", async ({ page, isMobile }) => {
-  await login(page, "demo@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.mexico);
   await expect(page).toHaveURL(/\/dashboard/);
 
   await page.goto("/ventas");
@@ -37,7 +30,7 @@ test("el dueño vende en efectivo y ve el ticket en el historial", async ({ page
 });
 
 test("el cajero no puede ver reportes ni costos", async ({ page }) => {
-  await login(page, "cajero@comercioclaro.com");
+  await login(page, CASHIER, BUSINESS.mexico);
   await expect(page).toHaveURL(/\/ventas/);
   await expect(page.getByRole("link", { name: "Reportes" })).toHaveCount(0);
 
@@ -54,7 +47,7 @@ test("las páginas privadas redirigen a login sin sesión", async ({ page }) => 
 
 test("vende sin conexión y sincroniza al volver la red", async ({ page, context, isMobile }) => {
   test.skip(isMobile, "El flujo sin conexión se cubre en escritorio");
-  await login(page, "demo@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.mexico);
   await page.goto("/ventas");
   await expect(page.getByRole("button", { name: /Sabritas Original/ })).toBeVisible();
 

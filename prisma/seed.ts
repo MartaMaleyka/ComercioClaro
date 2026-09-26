@@ -21,6 +21,56 @@ function rng(seed: number) {
   };
 }
 
+/**
+ * Cuentas de demostración de Panamá de versiones anteriores. Sus negocios se integran a las
+ * cuentas Dueño y Cajero; los usuarios y sus datos se conservan.
+ */
+const LEGACY_DEMO_ACCOUNTS = [
+  "demo.pa@comercioclaro.com",
+  "cajero.pa@comercioclaro.com",
+  "demo.fonda@comercioclaro.com",
+  "demo.interior@comercioclaro.com",
+];
+
+/** Dueño y cajero de demostración: tienen acceso a todos los negocios de ejemplo. */
+async function demoUsers() {
+  const [owner, cashier] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { email: DEMO_EMAIL } }),
+    prisma.user.findUniqueOrThrow({ where: { email: CASHIER_EMAIL } }),
+  ]);
+  return { owner, cashier };
+}
+
+async function hasDemoBusiness(ownerId: string, name: string) {
+  const found = await prisma.business.findFirst({ where: { name, memberships: { some: { userId: ownerId } } } });
+  return found !== null;
+}
+
+/** Da acceso al dueño y al cajero de demostración a los negocios de las cuentas anteriores. */
+async function integrateLegacyDemoAccounts() {
+  const { owner, cashier } = await demoUsers();
+  const legacy = await prisma.membership.findMany({
+    where: { user: { email: { in: LEGACY_DEMO_ACCOUNTS } } },
+    select: { businessId: true },
+  });
+  const businessIds = [...new Set(legacy.map((m) => m.businessId))];
+  for (const businessId of businessIds) {
+    for (const [userId, role] of [
+      [owner.id, "OWNER"],
+      [cashier.id, "CASHIER"],
+    ] as const) {
+      await prisma.membership.upsert({
+        where: { userId_businessId: { userId, businessId } },
+        create: { userId, businessId, role },
+        update: {},
+      });
+    }
+  }
+  if (businessIds.length > 0) {
+    console.log(`✅ ${businessIds.length} negocio(s) de las cuentas anteriores integrados a Dueño y Cajero`);
+  }
+}
+
 async function seedMexico() {
   const existing = await prisma.user.findUnique({ where: { email: DEMO_EMAIL } });
   if (existing) {
@@ -306,63 +356,40 @@ async function seedMexico() {
   console.log(`   Cajero: ${CASHIER_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
-const PA_EMAIL = "demo.pa@comercioclaro.com";
-const PA_CASHIER_EMAIL = "cajero.pa@comercioclaro.com";
-
 /** Minisúper panameño: ITBMS 0/7/10/15%, B/., Yappy, fiado a 15 días y facturador gratuito. */
 async function seedPanama() {
-  const existing = await prisma.user.findUnique({ where: { email: PA_EMAIL } });
-  if (existing) {
-    console.log("ℹ️  La cuenta de demostración de Panamá ya existe; no se modificó.");
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Minisúper El Dorado")) {
+    console.log("ℹ️  La demostración de Panamá ya existe; no se modificó.");
     return;
   }
-
-  const passwordHash = await hashPassword(DEMO_PASSWORD);
-  const owner = await prisma.user.create({
+  const { id: businessId } = await prisma.business.create({
     data: {
-      email: PA_EMAIL,
-      passwordHash,
-      name: "Wei Chen",
+      name: "Minisúper El Dorado",
+      description: "Abarrotería y minisúper",
+      phone: "6123-4567",
+      address: "Vía Ricardo J. Alfaro, El Dorado, Panamá",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      ruc: "8-812-2345",
+      dv: "45",
+      legalName: "Wei Chen",
+      usesFreeInvoicer: true,
+      yappyDirectory: "@minisupereldorado",
+      cardFeeRate: 0.029,
+      yappyFeeRate: 0.0107,
       memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: "Minisúper El Dorado",
-              description: "Abarrotería y minisúper",
-              phone: "6123-4567",
-              address: "Vía Ricardo J. Alfaro, El Dorado, Panamá",
-              country: "PA",
-              currency: "USD",
-              locale: "es-PA",
-              timezone: "America/Panama",
-              showBalboa: true,
-              ruc: "8-812-2345",
-              dv: "45",
-              legalName: "Wei Chen",
-              usesFreeInvoicer: true,
-              yappyDirectory: "@minisupereldorado",
-              cardFeeRate: 0.029,
-              yappyFeeRate: 0.0107,
-            },
-          },
-        },
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
       },
     },
-    include: { memberships: true },
   });
-  const businessId = owner.memberships[0].businessId;
   const actor = { userId: owner.id, businessId, role: "OWNER" as const };
-
-  await prisma.user.create({
-    data: {
-      email: PA_CASHIER_EMAIL,
-      passwordHash,
-      name: "Li Na",
-      language: "zh",
-      memberships: { create: { role: "CASHIER", businessId } },
-    },
-  });
 
   const categoryNames = ["Abarrotes", "Bebidas", "Cervezas", "Cigarrillos", "Lácteos y huevos", "Limpieza"];
   const categories = Object.fromEntries(
@@ -628,48 +655,39 @@ async function seedPanama() {
   await openCashSession(actor, { openingAmount: 50, notes: "Fondo inicial" });
 
   console.log("✅ Demostración de Panamá creada");
-  console.log(`   Dueño:  ${PA_EMAIL} / ${DEMO_PASSWORD}`);
-  console.log(`   Cajero: ${PA_CASHIER_EMAIL} / ${DEMO_PASSWORD} (interfaz en chino)`);
   console.log("   Catálogo público: /c/minisuper-el-dorado");
 }
 
-const FONDA_EMAIL = "demo.fonda@comercioclaro.com";
-
 /** Fonda panameña en modo restaurante: cuentas por mesa, cocina, extras y variantes. */
 async function seedFonda() {
-  const existing = await prisma.user.findUnique({ where: { email: FONDA_EMAIL } });
-  if (existing) return;
-  const owner = await prisma.user.create({
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Fonda La Chiricana")) {
+    console.log("ℹ️  La demostración de la fonda ya existe; no se modificó.");
+    return;
+  }
+  const { id: businessId } = await prisma.business.create({
     data: {
-      email: FONDA_EMAIL,
-      passwordHash: await hashPassword(DEMO_PASSWORD),
-      name: "Rosa Pérez",
+      name: "Fonda La Chiricana",
+      description: "Comida típica panameña",
+      address: "Calle 50, Bella Vista, Panamá",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      restaurantMode: true,
+      yappyDirectory: "@fondachiricana",
+      region: "CAPITAL",
+      // Ley 6 de 1987: 25% a jubilados en restaurantes.
+      seniorDiscountRate: 0.25,
       memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: "Fonda La Chiricana",
-              description: "Comida típica panameña",
-              address: "Calle 50, Bella Vista, Panamá",
-              country: "PA",
-              currency: "USD",
-              locale: "es-PA",
-              timezone: "America/Panama",
-              showBalboa: true,
-              restaurantMode: true,
-              yappyDirectory: "@fondachiricana",
-              region: "CAPITAL",
-              // Ley 6 de 1987: 25% a jubilados en restaurantes.
-              seniorDiscountRate: 0.25,
-            },
-          },
-        },
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
       },
     },
-    include: { memberships: true },
   });
-  const businessId = owner.memberships[0].businessId;
   const actor = { userId: owner.id, businessId, role: "OWNER" as const };
   const base = {
     description: null,
@@ -729,43 +747,35 @@ async function seedFonda() {
   await createProduct(actor, { ...base, name: "Soda en lata", price: 1, cost: 0.55, stock: 120, taxRate: 0.07 });
   await openCashSession(actor, { openingAmount: 40, notes: "Fondo inicial" });
   console.log("✅ Demostración de fonda (modo restaurante) creada");
-  console.log(`   Dueña: ${FONDA_EMAIL} / ${DEMO_PASSWORD}`);
 }
-
-const INTERIOR_EMAIL = "demo.interior@comercioclaro.com";
 
 /** Abarrotería del interior: venta por libra, fiado a la quincena y a la cosecha, y efectivo. */
 async function seedInterior() {
-  const existing = await prisma.user.findUnique({ where: { email: INTERIOR_EMAIL } });
-  if (existing) return;
-  const owner = await prisma.user.create({
+  const { owner, cashier } = await demoUsers();
+  if (await hasDemoBusiness(owner.id, "Abarrotería Los Santos")) {
+    console.log("ℹ️  La demostración del interior ya existe; no se modificó.");
+    return;
+  }
+  const { id: businessId } = await prisma.business.create({
     data: {
-      email: INTERIOR_EMAIL,
-      passwordHash: await hashPassword(DEMO_PASSWORD),
-      name: "Yamileth Batista",
+      name: "Abarrotería Los Santos",
+      description: "Abarrotería de pueblo",
+      address: "Calle principal, Las Tablas, Los Santos",
+      country: "PA",
+      currency: "USD",
+      locale: "es-PA",
+      timezone: "America/Panama",
+      showBalboa: true,
+      region: "INTERIOR",
+      offlineDays: 30,
       memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: "Abarrotería Los Santos",
-              description: "Abarrotería de pueblo",
-              address: "Calle principal, Las Tablas, Los Santos",
-              country: "PA",
-              currency: "USD",
-              locale: "es-PA",
-              timezone: "America/Panama",
-              showBalboa: true,
-              region: "INTERIOR",
-              offlineDays: 30,
-            },
-          },
-        },
+        create: [
+          { userId: owner.id, role: "OWNER" },
+          { userId: cashier.id, role: "CASHIER" },
+        ],
       },
     },
-    include: { memberships: true },
   });
-  const businessId = owner.memberships[0].businessId;
   const actor = { userId: owner.id, businessId, role: "OWNER" as const };
   const base = {
     description: null,
@@ -823,11 +833,11 @@ async function seedInterior() {
   });
   await openCashSession(actor, { openingAmount: 30, notes: "Fondo inicial" });
   console.log("✅ Demostración del interior creada (libras, fiado a la quincena y a la cosecha)");
-  console.log(`   Dueña: ${INTERIOR_EMAIL} / ${DEMO_PASSWORD}`);
 }
 
 async function main() {
   await seedMexico();
+  await integrateLegacyDemoAccounts();
   await seedPanama();
   await seedFonda();
   await seedInterior();

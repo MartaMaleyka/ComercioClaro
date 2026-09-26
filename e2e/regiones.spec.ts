@@ -1,14 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { BUSINESS, OWNER, login } from "./helpers";
 
 // Capital e interior de Panamá. Requiere los datos de demostración (npm run db:seed).
-
-async function login(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByLabel("Contraseña").fill("demo1234");
-  await page.getByRole("button", { name: "Iniciar sesión" }).click();
-  await page.waitForURL(/\/(dashboard|ventas)/);
-}
 
 const salePanel = (page: Page) =>
   page.locator("div", { has: page.getByRole("heading", { name: "Venta actual" }) }).last();
@@ -18,7 +11,7 @@ test.beforeEach(({ isMobile }) => {
 });
 
 test("fonda: descuento de jubilado en el punto de venta y en el reporte mensual", async ({ page }) => {
-  await login(page, "demo.fonda@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.fonda);
   await page.goto("/ventas");
   await page.getByRole("button", { name: /^Carimañola/ }).click();
   const panel = salePanel(page);
@@ -35,7 +28,7 @@ test("fonda: descuento de jubilado en el punto de venta y en el reporte mensual"
 });
 
 test("interior: venta por libra y corte contando billetes y monedas", async ({ page }) => {
-  await login(page, "demo.interior@comercioclaro.com");
+  await login(page, OWNER, BUSINESS.interior);
   await page.goto("/ventas");
   await expect(page.getByRole("button", { name: /^Queso blanco \(libra\)/ })).toContainText("/lb");
 

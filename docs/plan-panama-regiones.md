@@ -46,7 +46,7 @@ Las siete fases están implementadas en la rama `claude/panama-capital-interior`
 - **Pruebas unitarias** de la quincena y la fecha fija: `tests/unit/panama-regiones.test.ts`.
 - **Pruebas de integración**: `tests/integration/panama-regiones.test.ts`. Cubren la libra, el jubilado contra la promoción y el reporte, los plazos del fiado, el corte por denominación, los días sin conexión, los servicios sin existencias y las zonas de entrega.
 - **Pruebas de punta a punta**: `e2e/regiones.spec.ts`.
-- **Demo del interior**: `demo.interior@comercioclaro.com` / `demo1234`.
+- **Demo del interior**: negocio "Abarrotería Los Santos" en las cuentas Dueño y Cajero.
 
 ## Fuentes
 - La Prensa: [30% de los hogares sin internet](https://www.prensa.com/economia/en-panama-30-de-los-hogares-no-cuenta-con-acceso-a-internet-fijo-o-movil/)

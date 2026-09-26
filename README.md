@@ -101,14 +101,17 @@ Abre [http://localhost:3000](http://localhost:3000).
 | ------ | -------------------------- | ---------- |
 | Dueño  | `demo@comercioclaro.com`   | `demo1234` |
 | Cajero | `cajero@comercioclaro.com` | `demo1234` |
-| Dueño (Panamá)  | `demo.pa@comercioclaro.com`   | `demo1234` |
-| Cajero (Panamá, interfaz en chino) | `cajero.pa@comercioclaro.com` | `demo1234` |
 
-Otras demos de Panamá (todas con la contraseña `demo1234`):
+Las dos cuentas tienen acceso a los cuatro negocios de ejemplo. Se cambia de negocio con el selector bajo el nombre del negocio, en la parte superior:
 
-- **Capital** (`demo.pa@comercioclaro.com`): promoción de cerveza, puntos de lealtad y catálogo público con zonas de entrega en `/c/minisuper-el-dorado`.
-- **Fonda** (`demo.fonda@comercioclaro.com`): modo restaurante, con extras, variantes, pantalla de cocina y 25% de descuento de jubilado.
-- **Interior** (`demo.interior@comercioclaro.com`): abarrotería de Las Tablas con venta por libra y fiado a la quincena y a la cosecha.
+- **Miscelánea La Esperanza** (México): con la que se entra al iniciar sesión.
+- **Minisúper El Dorado** (Panamá, capital): promoción de cerveza, puntos de lealtad y catálogo público con zonas de entrega en `/c/minisuper-el-dorado`.
+- **Fonda La Chiricana** (Panamá): modo restaurante, con extras, variantes, pantalla de cocina y 25% de descuento de jubilado.
+- **Abarrotería Los Santos** (Panamá, interior): venta por libra y fiado a la quincena y a la cosecha.
+
+La interfaz en chino o inglés se elige en Configuración → Mi cuenta.
+
+Si tu base tiene las cuentas de demostración anteriores (`demo.pa@`, `cajero.pa@`, `demo.fonda@`, `demo.interior@`), `npm run db:seed` agrega sus negocios al Dueño y al Cajero sin borrar nada.
 
 ## Scripts
 
