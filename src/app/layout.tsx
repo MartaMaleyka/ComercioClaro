@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/figtree";
+import "@fontsource-variable/bricolage-grotesque";
 import "./globals.css";
 import { themeScript } from "@/components/providers/ThemeToggle";
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
@@ -20,8 +22,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#15803d" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+    { media: "(prefers-color-scheme: light)", color: "#0e7a4e" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1512" },
   ],
 };
 

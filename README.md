@@ -237,11 +237,21 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 - [ZXing](https://github.com/zxing-js/browser) como respaldo de `BarcodeDetector`
 - Vitest, Playwright y GitHub Actions
 
+## Diseño: Sistema Claro
+
+Toda la app usa un solo design system, Claro. Los principios, colores, tipografía, espacios, movimiento y componentes están en [`docs/design-system.md`](docs/design-system.md).
+
+- **Colores:**
+  - Verde **Canal** (`#0e7a4e`) para actuar y **Mango** (`#f4a62a`) para destacar.
+  - Fondo **Arena** y texto **Tinta**, con modo oscuro propio.
+- **Tipografía:** Bricolage Grotesque en títulos y Figtree en texto y cifras, con números tabulares. Se sirven desde la app, sin Google Fonts.
+- **Tacto:** controles de al menos 48 px, respuesta al presionar en 120 ms y animaciones que se apagan con "reducir movimiento".
+
 ## Accesibilidad
 
 Objetivo: WCAG 2.2 nivel AA. `e2e/accessibility.spec.ts` revisa con axe-core todas las pantallas en modo claro y oscuro y falla ante cualquier violación.
 
-- Contraste de al menos 4.5:1 en textos y botones (el verde de marca se oscureció a `#15803d`; en oscuro los colores de estado se aclaran).
+- Contraste de al menos 4.5:1 en textos y botones (el verde Canal `#0e7a4e` da 5.4:1 con blanco; en oscuro los colores de estado se aclaran).
 - Foco visible en todos los controles; los diálogos atrapan el foco, cierran con Escape y lo devuelven al botón que los abrió.
 - Pestañas con flechas, Inicio y Fin; enlace "Ir al contenido"; landmarks y encabezados en orden.
 - Campos con etiqueta, ayuda y error enlazados (`aria-describedby`, `aria-invalid`) y marca de obligatorio.

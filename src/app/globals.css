@@ -3,85 +3,143 @@
 /* Modo oscuro por clase (.dark en <html>), controlado desde Configuración. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Sistema Claro (docs/design-system.md): verde Canal para la acción, Mango para destacar,
+ * Arena de fondo y Tinta para el texto. Los nombres de Tailwind (brand, slate, red, amber)
+ * se conservan para que toda la app tome el sistema sin cambiar clases.
+ */
 @theme {
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-200: #bbf7d0;
-  --color-brand-300: #86efac;
-  --color-brand-400: #4ade80;
-  --color-brand-500: #22c55e;
-  /* 600 es el color de acción: texto blanco sobre él y él sobre blanco cumplen 4.5:1 (WCAG AA). */
-  --color-brand-600: #15803d;
-  --color-brand-700: #166534;
-  --color-brand-800: #14532d;
-  --color-brand-900: #0f3d22;
-  /* Ámbar de aviso como texto sobre blanco (el de Tailwind da 3.2:1). */
+  --font-sans: "Figtree Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Figtree Variable", system-ui, sans-serif;
+
+  /* Canal: 600 es el color de acción; texto blanco sobre él y él sobre blanco cumplen AA (5.4:1). */
+  --color-brand-50: #e8f4ec;
+  --color-brand-100: #cfe8d8;
+  --color-brand-200: #a3d4b6;
+  --color-brand-300: #6fbe91;
+  --color-brand-400: #3fa06f;
+  --color-brand-500: #1c8a5a;
+  --color-brand-600: #0e7a4e;
+  --color-brand-700: #0a5e3c;
+  --color-brand-800: #094b31;
+  --color-brand-900: #073826;
+
+  /* Mango: se usa como fondo con texto Tinta encima (8.2:1); como texto, los tonos 700/800. */
+  --color-mango-50: #fdf1dc;
+  --color-mango-100: #fbe3b8;
+  --color-mango-200: #f6cd82;
+  --color-mango-400: #f4a62a;
+  --color-mango-500: #de8f12;
+  --color-mango-700: #9a5b00;
+  --color-mango-800: #6b4000;
+
+  /* Neutros cálidos (Tinta sobre Arena) en lugar del gris azulado. */
+  --color-slate-50: #faf9f5;
+  --color-slate-100: #f2f0ea;
+  --color-slate-200: #e4e0d6;
+  --color-slate-300: #cfc9bb;
+  --color-slate-400: #979c94;
+  --color-slate-500: #5f6b63;
+  --color-slate-600: #4a5750;
+  --color-slate-700: #36413b;
+  --color-slate-800: #25302a;
+  --color-slate-900: #17211b;
+  --color-slate-950: #0e1512;
+
+  /* Coral para peligro (blanco encima: 5.2:1) y ámbar de aviso como texto (el de Tailwind da 3.2:1). */
+  --color-red-600: #c2412d;
+  --color-red-700: #a33523;
+  --color-red-800: #862a1b;
   --color-amber-600: #b45309;
 
   --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-text: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
+  --color-surface-secondary: #f6f4ee;
+  --color-border: #e4e0d6;
+  --color-text: #17211b;
+  --color-text-secondary: #5f6b63;
+  --color-danger: #c2412d;
+  --color-warning: #f4a62a;
+  --color-info: #2458c6;
+
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.5rem;
+
+  --shadow-sm: 0 1px 2px rgb(23 33 27 / 0.06), 0 1px 3px rgb(23 33 27 / 0.05);
+  --shadow-md: 0 4px 12px rgb(23 33 27 / 0.08), 0 1px 3px rgb(23 33 27 / 0.06);
+  --shadow-lg: 0 12px 32px rgb(23 33 27 / 0.12), 0 2px 6px rgb(23 33 27 / 0.06);
+  --shadow-xl: 0 24px 56px rgb(23 33 27 / 0.18);
+
+  --ease-claro: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pop: pop 360ms var(--ease-claro);
 }
 
 /* Colores de gráficas (paleta categórica validada para daltonismo, claro/oscuro) */
 :root {
   --series-1: #2a78d6;
   --series-2: #eb6834;
-  --chart-grid: #e2e8f0;
-  --chart-text: #64748b;
+  --chart-grid: #e4e0d6;
+  --chart-text: #5f6b63;
 }
 
 /*
- * En oscuro se invierte la escala neutra (slate) y los fondos suaves de estado,
+ * En oscuro se invierte la escala neutra y los fondos suaves de estado,
  * así los componentes funcionan en ambos temas sin duplicar clases.
  */
 .dark {
   color-scheme: dark;
-  --color-surface: #111a2e;
-  --color-surface-secondary: #0b1220;
-  --color-border: #2a3752;
-  --color-text: #f1f5f9;
-  --color-text-secondary: #9aa7bd;
+  --color-surface: #16201b;
+  --color-surface-secondary: #0e1512;
+  --color-border: #2c3a33;
+  --color-text: #f1f4f1;
+  --color-text-secondary: #a3afa7;
 
-  --color-slate-50: #16213a;
-  --color-slate-100: #1c2842;
-  --color-slate-200: #2a3752;
-  --color-slate-300: #3b4a68;
-  --color-slate-400: #7c8aa5;
-  --color-slate-500: #9aa7bd;
-  --color-slate-600: #b8c2d3;
-  --color-slate-700: #cfd7e3;
-  --color-slate-800: #e2e8f0;
-  --color-slate-900: #f1f5f9;
+  --color-slate-50: #1a2520;
+  --color-slate-100: #202c26;
+  --color-slate-200: #2c3a33;
+  --color-slate-300: #3d4c44;
+  --color-slate-400: #7f8c84;
+  --color-slate-500: #a3afa7;
+  --color-slate-600: #bcc6bf;
+  --color-slate-700: #d2dad4;
+  --color-slate-800: #e4eae6;
+  --color-slate-900: #f1f4f1;
 
-  --color-brand-50: #0f2a1c;
-  --color-brand-100: #14391f;
-  --color-brand-200: #1d5a31;
-  --color-brand-800: #86efac;
+  --color-brand-50: #11291d;
+  --color-brand-100: #173825;
+  --color-brand-200: #1f5236;
+  --color-brand-800: #a3d4b6;
 
-  --color-red-50: #3a1417;
-  --color-red-100: #4c1a1e;
-  --color-red-700: #fca5a5;
-  --color-amber-50: #3a2a0c;
-  --color-amber-100: #4a3510;
+  --color-mango-50: #33240c;
+  --color-mango-100: #45310f;
+  --color-mango-700: #f6cd82;
+  --color-mango-800: #fbe3b8;
+
+  --color-red-50: #3a1714;
+  --color-red-100: #4c1d18;
+  --color-red-700: #f4a99c;
+  --color-amber-50: #33240c;
+  --color-amber-100: #45310f;
   --color-amber-700: #fcd34d;
   --color-amber-800: #fde68a;
-  --color-blue-50: #0f2447;
-  --color-blue-100: #142e5a;
-  --color-blue-700: #93c5fd;
+  --color-blue-50: #12223f;
+  --color-blue-100: #172b50;
+  --color-blue-700: #9dbcf5;
   --color-purple-50: #2a1745;
   --color-purple-700: #d8b4fe;
 
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.45);
+  --shadow-xl: 0 24px 56px rgb(0 0 0 / 0.55);
+
   --series-1: #3987e5;
   --series-2: #d95926;
-  --chart-grid: #2a3752;
-  --chart-text: #9aa7bd;
+  --chart-grid: #2c3a33;
+  --chart-text: #a3afa7;
 }
+
 
 * {
   box-sizing: border-box;
@@ -94,8 +152,17 @@ html {
 body {
   background-color: var(--color-surface-secondary);
   color: var(--color-text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Títulos con la tipografía de marca. */
+h1,
+h2,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
 }
 
 input,
@@ -121,7 +188,34 @@ button {
 }
 
 .animate-in {
-  animation: fade-in-up 0.18s ease-out;
+  animation: fade-in-up 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  70% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Respuesta táctil: todo lo que se presiona se hunde un poco (120 ms). */
+.press {
+  transition:
+    transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 120ms,
+    border-color 120ms,
+    box-shadow 120ms,
+    color 120ms;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -135,10 +229,10 @@ button {
  * azul marino; como fondo (botones) se mantienen oscuros para que el texto blanco contraste.
  */
 .dark .text-brand-600 {
-  color: #4ade80;
+  color: #6fbe91;
 }
 .dark .text-red-600 {
-  color: #f87171;
+  color: #f4a99c;
 }
 .dark .text-amber-600 {
   color: #fbbf24;
@@ -150,7 +244,7 @@ button {
   outline-offset: 2px;
 }
 .dark :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline-color: #4ade80;
+  outline-color: #6fbe91;
 }
 
 @media (prefers-reduced-motion: reduce) {
