@@ -8,7 +8,7 @@ import { AlertTriangle, CalendarClock, HandCoins, Package, ShoppingCart, Wallet 
 import { fetcher } from "@/lib/client/api";
 import { useFormat } from "@/lib/client/format";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { buttonStyles } from "@/components/ui/Button";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 import { useSession } from "@/components/providers/SessionProvider";
 import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
@@ -82,10 +82,8 @@ export default function DashboardPage() {
         title={`Hola, ${user.name.split(" ")[0]}`}
         description={tr("Así va tu negocio")}
         actions={
-          <Link href="/ventas">
-            <Button>
-              <ShoppingCart className="w-4 h-4" /> {tr("Vender")}
-            </Button>
+          <Link href="/ventas" className={buttonStyles("primary", "lg")}>
+            <ShoppingCart className="w-5 h-5" aria-hidden="true" /> {tr("Vender")}
           </Link>
         }
       />
@@ -95,11 +93,11 @@ export default function DashboardPage() {
       {business.country === "PA" && business.usesFreeInvoicer && <DgiLimitCard compact />}
 
       <section aria-labelledby="hoy">
-        <h2 id="hoy" className="text-sm font-semibold text-slate-500 mb-2">
+        <h2 id="hoy" className="text-lg font-bold text-slate-900 mb-3">
           {tr("Hoy")}
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Stat label={tr("Ventas")} value={fmt.money(data.today.revenue)} hint={`${data.today.salesCount} ventas`} />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <Stat hero label={tr("Ventas")} value={fmt.money(data.today.revenue)} hint={`${data.today.salesCount} ventas`} />
           <Stat
             label={tr("Utilidad bruta")}
             value={fmt.money(data.today.grossProfit)}
@@ -120,10 +118,10 @@ export default function DashboardPage() {
       </section>
 
       <section aria-labelledby="mes">
-        <h2 id="mes" className="text-sm font-semibold text-slate-500 mb-2">
+        <h2 id="mes" className="text-lg font-bold text-slate-900 mb-3">
           {tr("Este mes")}
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Stat label={tr("Ventas")} value={fmt.money(data.month.revenue)} hint={`${data.month.salesCount} ventas`} />
           <Stat
             label={tr("Utilidad bruta")}
@@ -234,7 +232,7 @@ export default function DashboardPage() {
         {data.lowStockProducts.length > 0 && (
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+              <h2 className="font-bold text-slate-900 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" /> {tr("Por agotarse")}
               </h2>
               <Link href="/inventario?tab=reabastecer" className="text-sm text-brand-700 dark:text-brand-300">
@@ -257,7 +255,7 @@ export default function DashboardPage() {
         {data.expiringBatches.length > 0 && (
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <h2 className="font-semibold text-slate-900 flex items-center gap-2">
+              <h2 className="font-bold text-slate-900 flex items-center gap-2">
                 <CalendarClock className="w-4 h-4 text-red-500" aria-hidden="true" /> {tr("Próximos a caducar")}
               </h2>
               <Link href="/inventario?tab=caducidad" className="text-sm text-brand-700 dark:text-brand-300">
@@ -284,7 +282,7 @@ export default function DashboardPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-900">{tr("Ventas recientes")}</h2>
+            <h2 className="font-bold text-slate-900">{tr("Ventas recientes")}</h2>
             <Link href="/ventas/historial" className="text-sm text-brand-700 dark:text-brand-300">
               {tr("Ver todas")}
             </Link>

@@ -10,7 +10,7 @@ import { adminFmt } from "@/lib/client/admin-format";
 import { ToastProvider, useToast } from "@/components/providers/ToastProvider";
 import { ConfirmProvider, useConfirm } from "@/components/providers/ConfirmProvider";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -156,7 +156,7 @@ function RecoveryCodes({ codes, onDone, doneLabel }: { codes: string[]; onDone: 
         <a
           href={`data:text/plain;charset=utf-8,${encodeURIComponent(`ComercioClaro\n${text}\n`)}`}
           download="comercioclaro-codigos-de-recuperacion.txt"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className={buttonStyles("secondary", "sm")}
         >
           <Download className="w-4 h-4" aria-hidden="true" /> {tr("Descargar")}
         </a>

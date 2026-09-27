@@ -8,7 +8,7 @@ export function PrintButton() {
     return () => clearTimeout(t);
   }, []);
   return (
-    <button onClick={() => window.print()} className="px-3 py-1.5 rounded-lg bg-green-700 text-white text-sm">
+    <button onClick={() => window.print()} className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-semibold">
       Imprimir
     </button>
   );

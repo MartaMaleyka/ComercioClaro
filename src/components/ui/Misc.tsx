@@ -71,13 +71,33 @@ export function Stat({
   hint,
   tone = "default",
   icon,
+  hero,
 }: {
   label: string;
   value: React.ReactNode;
   hint?: React.ReactNode;
   tone?: "default" | "positive" | "negative" | "warning";
   icon?: React.ReactNode;
+  /** Indicador principal de la pantalla: fondo Canal y cifra en blanco. */
+  hero?: boolean;
 }) {
+  if (hero)
+    return (
+      <div className="relative overflow-hidden bg-brand-600 text-white rounded-2xl shadow-md p-4 md:p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-lg [&_a]:text-white">
+        <span
+          className="absolute -right-8 -top-10 w-32 h-32 rounded-full bg-white/10"
+          aria-hidden="true"
+        />
+        <div className="relative flex items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-white/90">{label}</p>
+          {icon}
+        </div>
+        <p className="relative text-2xl md:text-[28px] leading-tight font-extrabold tracking-tight mt-1 tabular-nums">
+          {value}
+        </p>
+        {hint && <p className="relative text-xs md:text-sm font-medium text-white/90 mt-1">{hint}</p>}
+      </div>
+    );
   return (
     <div className="bg-surface rounded-2xl border border-slate-200/80 shadow-sm p-4 md:p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-center justify-between gap-2">

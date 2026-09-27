@@ -12,7 +12,7 @@ import { UNIT_LABELS } from "@/lib/utils";
 import { useFeature, useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
@@ -192,7 +192,7 @@ export function PurchaseOrdersTab() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => send(o)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 min-h-8 text-sm rounded-lg font-medium bg-surface text-slate-700 border border-slate-200 hover:bg-slate-50"
+                          className={buttonStyles("secondary", "sm")}
                         >
                           <MessageCircle className="w-4 h-4" aria-hidden="true" /> {tr("Enviar por WhatsApp")}
                         </a>

@@ -31,6 +31,7 @@ import { SeniorsView } from "@/components/reports/SeniorsView";
 import { ReconciliationView } from "@/components/reports/ReconciliationView";
 import { WasteView } from "@/components/reports/WasteView";
 import { CashflowView } from "@/components/reports/CashflowView";
+import { buttonStyles } from "@/components/ui/Button";
 
 interface Report {
   from: string;
@@ -145,7 +146,7 @@ export default function ReportsPage() {
           business.features.includes("export") && (
             <a
               href={withQuery("/api/export/sale-items", { from: data.from, to: data.to })}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
+              className={buttonStyles("secondary", "sm")}
             >
               <Download className="w-4 h-4" /> {tr("Detalle CSV")}
             </a>

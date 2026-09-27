@@ -17,6 +17,7 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
+import { buttonStyles } from "@/components/ui/Button";
 
 export default function SalesHistoryPage() {
   const tr = useText();
@@ -41,7 +42,7 @@ export default function SalesHistoryPage() {
           business.features.includes("export") && (
             <a
               href={withQuery("/api/export/sales", { from, to })}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
+              className={buttonStyles("secondary", "sm")}
             >
               <Download className="w-4 h-4" /> {tr("CSV")}
             </a>
