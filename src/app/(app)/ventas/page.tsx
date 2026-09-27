@@ -232,6 +232,15 @@ export default function PosPage() {
   const [giftBalance, setGiftBalance] = useState<{ code: string; balance: number; status: string } | null>(null);
   const online = useOnline();
   const [redeemPoints, setRedeemPoints] = useState("");
+  // Cupón de campaña: se consulta al aplicarlo y el servidor lo valida al cobrar.
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{
+    code: string;
+    kind: "PERCENT" | "AMOUNT";
+    value: number;
+    minPurchase: number | null;
+    problem: string | null;
+  } | null>(null);
   const [senior, setSenior] = useState(false);
   const [seniorId, setSeniorId] = useState("");
   const { data: promotionList } = useSWR<PromotionRule[]>(has("promotions") ? "/api/promotions" : null, fetcher);
@@ -466,15 +475,26 @@ export default function PosPage() {
   );
   const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner, promotions, seniorRate), 0));
   const discount = Math.min(num(saleDiscount), subtotal);
+  // Mismo cálculo que el servidor: sobre el total después del descuento general.
+  const couponBase = round2(subtotal - discount);
+  const couponBlocked =
+    coupon?.problem ??
+    (coupon?.minPurchase && couponBase < coupon.minPurchase
+      ? tr("El cupón aplica en compras desde {amount}", { amount: fmt.money(coupon.minPurchase) })
+      : null);
+  const couponDiscount =
+    coupon && !couponBlocked
+      ? Math.min(round2(coupon.kind === "PERCENT" ? couponBase * coupon.value : coupon.value), couponBase)
+      : 0;
   const customerForPoints = customers.list?.find((c) => c.id === customerId);
   const pointValue = business.loyaltyPointValue;
   const maxRedeem =
     business.loyaltyEnabled && customerForPoints && pointValue > 0
-      ? Math.min(customerForPoints.points ?? 0, Math.floor((subtotal - discount) / pointValue + 1e-9))
+      ? Math.min(customerForPoints.points ?? 0, Math.floor((subtotal - discount - couponDiscount) / pointValue + 1e-9))
       : 0;
   const pointsToRedeem = Math.min(Math.max(0, Math.floor(num(redeemPoints))), maxRedeem);
   const pointsDiscount = round2(pointsToRedeem * pointValue);
-  const total = round2(subtotal - discount - pointsDiscount);
+  const total = round2(subtotal - discount - couponDiscount - pointsDiscount);
   const received = num(amountReceived);
   const splitInfo = split ? splitStatus(split, total) : null;
   const change = splitInfo
@@ -538,6 +558,8 @@ export default function PosPage() {
     !invalidLine &&
     !(usesCredit && !customerId) &&
     !creditExceeded &&
+    // El cupón se valida en el servidor: no se puede cobrar sin conexión.
+    !(couponDiscount > 0 && !online) &&
     (split
       ? Boolean(splitInfo?.valid) &&
         // El vale se valida en el servidor: no se puede cobrar sin conexión.
@@ -555,6 +577,8 @@ export default function PosPage() {
     setGiftCode("");
     setGiftBalance(null);
     setRedeemPoints("");
+    setCouponCode("");
+    setCoupon(null);
     setSenior(false);
     setSeniorId("");
     setYappyManual(false);
@@ -589,6 +613,7 @@ export default function PosPage() {
       giftCardCode: !split && paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
       openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
+      couponCode: coupon && couponDiscount > 0 ? coupon.code : null,
       customerId: customerId || null,
       senior: seniorActive,
       seniorId: seniorActive ? seniorId.trim() || null : null,
@@ -990,6 +1015,49 @@ export default function PosPage() {
             ))}
           </div>
         )}
+        {has("campaigns") && (
+          <div className="space-y-1">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  label={tr("Cupón")}
+                  value={couponCode}
+                  onChange={(e) => {
+                    setCouponCode(e.target.value);
+                    setCoupon(null);
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                disabled={couponCode.trim().length < 3}
+                onClick={async () => {
+                  try {
+                    setCoupon(
+                      await api(withQuery("/api/coupons/lookup", { code: couponCode.trim(), amount: couponBase }))
+                    );
+                  } catch (err) {
+                    toast.error(err);
+                  }
+                }}
+              >
+                {tr("Aplicar")}
+              </Button>
+            </div>
+            {coupon && (
+              <p
+                role="status"
+                className={cn("text-sm", couponBlocked ? "text-red-600" : "text-brand-700 dark:text-brand-300")}
+              >
+                {couponBlocked ??
+                  tr("Cupón {code}: −{amount}", { code: coupon.code, amount: fmt.money(couponDiscount) })}
+              </p>
+            )}
+            {coupon && !online && (
+              <p className="text-sm text-amber-700">{tr("Para usar un cupón necesitas conexión.")}</p>
+            )}
+          </div>
+        )}
         <Input
           label={t("pos.notes")}
           value={notes}
@@ -1012,6 +1080,12 @@ export default function PosPage() {
             <div className="flex justify-between text-slate-600">
               <dt>{t("pos.discount")}</dt>
               <dd className="tabular-nums">-{fmt.money(discount)}</dd>
+            </div>
+          )}
+          {couponDiscount > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <dt>{tr("Cupón {code}", { code: coupon?.code ?? "" })}</dt>
+              <dd className="tabular-nums">-{fmt.money(couponDiscount)}</dd>
             </div>
           )}
           {pointsDiscount > 0 && (

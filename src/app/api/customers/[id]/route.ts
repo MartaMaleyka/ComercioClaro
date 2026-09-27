@@ -4,7 +4,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { customerSchema } from "@/lib/validation";
-import { customerStatement } from "@/server/customers";
+import { consentFields, customerStatement } from "@/server/customers";
 
 export const GET = handler<{ id: string }>(async (_request, { params }) => {
   const auth = await requireAuth();
@@ -19,7 +19,10 @@ export const PUT = handler<{ id: string }>(async (request, { params }) => {
   if (!existing) throw notFound("Cliente");
   const input = await parseBody(request, customerSchema);
   return prisma.$transaction(async (tx) => {
-    const customer = await tx.customer.update({ where: { id }, data: input });
+    const customer = await tx.customer.update({
+      where: { id },
+      data: { ...input, ...consentFields(input.marketingConsent, existing) },
+    });
     await audit(tx, auth, "customer.update", "Customer", id, { creditLimit: input.creditLimit });
     return customer;
   });

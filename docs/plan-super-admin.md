@@ -22,7 +22,7 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
   - Modo restaurante, pantalla para el cliente, vales, y recargas y pago de servicios.
   - Órdenes de compra, sucursales y traspasos, y conciliación bancaria.
   - Reportes avanzados, variantes y extras, conteo físico y exportación a CSV.
-  - Recetas e insumos, flujo de caja y punto de equilibrio, contabilidad automática y planilla.
+  - Recetas e insumos, flujo de caja y punto de equilibrio, contabilidad automática, planilla, y campañas y cupones.
 - **Se validan en el servidor.** La API responde "Tu plan no incluye…" y las pantallas ocultan lo que no está incluido.
 - **Siempre incluido, en todos los planes:**
   - Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos y venta sin conexión.

@@ -53,6 +53,11 @@ export const FEATURES = [
     label: "Planilla",
     description: "Empleados, CSS, seguro educativo, ISR, décimo tercer mes, vacaciones y comprobantes.",
   },
+  {
+    key: "campaigns",
+    label: "Campañas por WhatsApp y cupones",
+    description: "Segmentos de clientes, mensajes personalizados, cupones y resultados.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

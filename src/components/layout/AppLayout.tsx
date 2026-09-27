@@ -30,6 +30,7 @@ import {
   X,
   BookOpen,
   IdCard,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
@@ -90,6 +91,13 @@ const navItems: NavItem[] = [
     icon: Tag,
     roles: ["OWNER"],
     when: (b) => b.features.includes("promotions"),
+  },
+  {
+    href: "/campanas",
+    label: "nav.campaigns" as MessageKey,
+    icon: Megaphone,
+    roles: ["OWNER"],
+    when: (b) => b.features.includes("campaigns"),
   },
   { href: "/proveedores", label: "nav.suppliers" as MessageKey, icon: Truck, roles: ["OWNER"] },
   { href: "/gastos", label: "nav.expenses" as MessageKey, icon: Coins, roles: ["OWNER"] },

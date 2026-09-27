@@ -131,6 +131,12 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Décimo tercer mes en sus tres partidas, vacaciones y prima de antigüedad acumuladas.
   - Adelantos que se descuentan en la siguiente planilla y comprobantes de pago.
   - Al pagarse genera el gasto y alimenta el flujo de caja y la contabilidad.
+- **Campañas por WhatsApp y cupones** ([`docs/plan-campanas.md`](docs/plan-campanas.md)):
+  - Solo a clientes que aceptaron (Ley 81).
+  - Segmentos: cumpleaños, clientes que no vuelven, frecuentes, con fiado vencido o por etiqueta.
+  - Mensajes con `{nombre}`, `{puntos}` y `{cupón}`.
+  - Envío asistido por enlace, o directo con la API de WhatsApp Business.
+  - Cupones que se aplican en el punto de venta, con resultados de canjes y ventas atribuidas.
 
 ## Requisitos
 
