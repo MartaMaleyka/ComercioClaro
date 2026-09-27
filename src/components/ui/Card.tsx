@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "bg-surface rounded-2xl border border-slate-100 shadow-sm",
+        "bg-surface rounded-2xl border border-slate-200/80 shadow-sm",
         className
       )}
       {...props}
@@ -26,7 +26,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("px-5 py-4 border-b border-slate-100", className)}>
+    <div className={cn("px-5 py-4 border-b border-slate-100 [&_h2]:text-lg [&_h2]:font-bold", className)}>
       {children}
     </div>
   );

@@ -94,7 +94,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-ink/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
@@ -102,24 +102,25 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "relative w-full bg-surface rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto animate-in focus:outline-none",
+          "relative w-full bg-surface rounded-t-3xl sm:rounded-3xl shadow-xl max-h-[92vh] overflow-y-auto animate-in focus:outline-none",
           size === "lg" ? "sm:max-w-3xl" : "sm:max-w-lg"
         )}
       >
-        <div className="sticky top-0 z-10 bg-surface px-5 py-4 border-b border-slate-100 flex items-center justify-between rounded-t-2xl">
-          <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+        <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6 pt-3 sm:pt-5 pb-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">
+          <span className="sm:hidden absolute left-1/2 top-2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-300" aria-hidden="true" />
+          <h2 id={titleId} className="text-xl font-bold text-slate-900 pt-2 sm:pt-0">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={tr("Cerrar")}
-            className="p-2.5 -mr-1 hover:bg-slate-100 rounded-xl transition-colors"
+            className="press p-2.5 -mr-1 hover:bg-slate-100 rounded-xl"
           >
             <X className="w-5 h-5 text-slate-500" aria-hidden="true" />
           </button>
         </div>
-        <div className="px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div className="px-5 sm:px-6 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </div>
   );

@@ -52,6 +52,11 @@
   --color-red-800: #862a1b;
   --color-amber-600: #b45309;
 
+  /* Tinta fija: no se invierte en oscuro (barra lateral, avisos flotantes). */
+  --color-ink: #17211b;
+  --color-ink-soft: #25302a;
+  --color-ink-line: #34423a;
+
   --color-surface: #ffffff;
   --color-surface-secondary: #f6f4ee;
   --color-border: #e4e0d6;

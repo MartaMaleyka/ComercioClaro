@@ -13,8 +13,8 @@ export function PageHeader({
   return (
     <div className="flex items-start justify-between gap-3 flex-wrap">
       <div>
-        <h1 className="text-xl font-bold text-slate-900">{title}</h1>
-        {description && <p className="text-sm text-slate-500">{description}</p>}
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900">{title}</h1>
+        {description && <p className="text-sm md:text-base text-slate-500 mt-0.5">{description}</p>}
       </div>
       {actions && <div className="flex gap-2 flex-wrap">{actions}</div>}
     </div>
@@ -34,7 +34,7 @@ export function ScrollArea({ label, children }: { label: string; children: React
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse bg-slate-100 rounded-xl", className)} />;
+  return <div className={cn("animate-pulse bg-slate-200/70 rounded-2xl", className)} />;
 }
 
 export function ListSkeleton({ rows = 4 }: { rows?: number }) {
@@ -53,7 +53,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
   return (
     <div
       role="alert"
-      className="rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm flex items-center justify-between gap-3"
+      className="rounded-2xl bg-red-50 text-red-700 px-4 py-3 text-sm flex items-center justify-between gap-3"
     >
       <span>{error instanceof Error ? error.message : tr("No se pudo cargar la información")}</span>
       {onRetry && (
@@ -79,14 +79,14 @@ export function Stat({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="bg-surface rounded-2xl border border-slate-100 shadow-sm p-4">
+    <div className="bg-surface rounded-2xl border border-slate-200/80 shadow-sm p-4 md:p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="text-sm font-semibold text-slate-600">{label}</p>
         {icon}
       </div>
       <p
         className={cn(
-          "text-xl font-bold mt-1 tabular-nums",
+          "text-2xl md:text-[28px] leading-tight font-extrabold tracking-tight mt-1 tabular-nums",
           tone === "positive" && "text-brand-600",
           tone === "negative" && "text-red-600",
           tone === "warning" && "text-amber-600",
@@ -95,7 +95,7 @@ export function Stat({
       >
         {value}
       </p>
-      {hint && <p className="text-xs text-slate-500 mt-0.5">{hint}</p>}
+      {hint && <p className="text-xs md:text-sm font-medium text-slate-500 mt-1">{hint}</p>}
     </div>
   );
 }

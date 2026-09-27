@@ -71,3 +71,19 @@ Reglas:
 ## Componentes
 
 Viven en `src/components/ui`. Usa siempre estos en lugar de clases sueltas, así un cambio llega a toda la app.
+
+| Componente | Archivo | Notas |
+| --- | --- | --- |
+| `Button` | `ui/Button.tsx` | Variantes: `primary`, `secondary`, `ghost`, `danger` y `accent` (Mango). Tamaños `sm` (36 px), `md` (48 px), `lg` (56 px) y `xl` (64 px, cobrar). Se hunde al presionar; al cargar muestra un indicador sin cambiar de tamaño. |
+| `Input`, `Select`, `Textarea`, `Checkbox` | `ui/Input.tsx` | 48 px de alto, borde de 1.5 px y anillo verde al enfocar. El error se marca con borde coral y mensaje enlazado (`aria-describedby`). |
+| `SearchBar` | `ui/SearchBar.tsx` | 48 px, lupa a la izquierda y botón para limpiar. |
+| `Card` | `ui/Card.tsx` | Radio de 20 px, borde Arena y sombra suave. |
+| `Badge` | `ui/Badge.tsx` | Con `dot`, el estado se lee por el punto y la palabra. |
+| `Tabs` | `ui/Tabs.tsx` | Pestañas segmentadas (píldora); se recorren con flechas, Inicio y Fin. |
+| `Switch`, `SegmentedControl` | `ui/Switch.tsx` | Interruptor de 48 × 28 px con perilla animada. |
+| `Modal` | `ui/Modal.tsx` | Hoja desde abajo en celular (con asa) y tarjeta en escritorio. Atrapa el foco y cierra con Escape. |
+| `PageHeader`, `Stat`, `Skeleton`, `ErrorState` | `ui/Misc.tsx` | Título de pantalla en Display. Los indicadores tienen cifra grande y se elevan al pasar el cursor. |
+| `EmptyState` | `ui/EmptyState.tsx` | Ícono en burbuja verde, título y siguiente paso. |
+| Avisos (`useToast`) | `providers/ToastProvider.tsx` | Fondo Tinta con ícono de color: se leen igual en claro y oscuro. |
+
+Colores fijos que no se invierten en oscuro: `ink`, `ink-soft` e `ink-line`. Se usan en la barra de navegación y en los avisos flotantes.
