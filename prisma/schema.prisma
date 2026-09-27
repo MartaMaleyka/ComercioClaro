@@ -175,6 +175,8 @@ model Business {
   seniorDiscountRate   Decimal        @default(0) @db.Decimal(5, 4)
   // Zonas de entrega: [{ name, fee, productId }]
   deliveryZones        Json?
+  // Parámetros de planilla (tasas de CSS, seguro educativo, ISR...): ver src/lib/payroll.ts
+  payrollSettings      Json?
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
@@ -235,6 +237,9 @@ model Business {
   recurringExpenses    RecurringExpense[]
   ownerTransactions    OwnerTransaction[]
   accountingPeriods    AccountingPeriod[]
+  employees            Employee[]
+  payrollRuns          PayrollRun[]
+  salaryAdvances       SalaryAdvance[]
 }
 
 model Category {
@@ -713,6 +718,9 @@ model CashMovement {
 
 model Expense {
   id            String            @id @default(cuid())
+  // Gasto generado al pagar una planilla (sueldos y cuotas patronales)
+  payrollRunId  String?           @unique
+  payrollRun    PayrollRun?       @relation(fields: [payrollRunId], references: [id], onDelete: SetNull)
   // Gasto generado por un gasto recurrente (renta, luz, internet)
   recurringId   String?
   recurring     RecurringExpense? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
@@ -1393,4 +1401,124 @@ model AccountingPeriod {
   updatedAt  DateTime  @updatedAt
 
   @@unique([businessId, month])
+}
+
+enum PayFrequency {
+  QUINCENAL
+  MENSUAL
+}
+
+enum PayrollStatus {
+  DRAFT
+  PAID
+}
+
+/**
+ * Empleado del negocio: salario mensual, forma de pago y datos para la CSS.
+ */
+model Employee {
+  id                   String       @id @default(cuid())
+  name                 String
+  // Cédula y número de seguro social
+  idNumber             String?
+  socialSecurityNumber String?
+  position             String?
+  // Salario mensual (en planilla quincenal se paga la mitad cada quincena)
+  salary               Decimal      @db.Decimal(12, 2)
+  frequency            PayFrequency @default(QUINCENAL)
+  hireDate             DateTime
+  // Última vez que tomó vacaciones (para las acumuladas); vacío = desde que entró
+  vacationSince        DateTime?
+  active               Boolean      @default(true)
+  terminatedAt         DateTime?
+  businessId           String
+  business             Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  lines    PayrollLine[]
+  advances SalaryAdvance[]
+
+  @@index([businessId, active])
+}
+
+/**
+ * Planilla de un periodo (quincena o mes). En borrador se puede ajustar; al pagarse genera
+ * el gasto y los asientos contables.
+ */
+model PayrollRun {
+  id                  String         @id @default(cuid())
+  frequency           PayFrequency
+  // Días calendario "YYYY-MM-DD"
+  periodStart         String
+  periodEnd           String
+  status              PayrollStatus  @default(DRAFT)
+  paidAt              DateTime?
+  paidMethod          PaymentMethod?
+  // Cuotas a la CSS e ISR retenido pagados (se pagan el mes siguiente)
+  contributionsPaidAt DateTime?
+  gross               Decimal        @default(0) @db.Decimal(12, 2)
+  deductions          Decimal        @default(0) @db.Decimal(12, 2)
+  net                 Decimal        @default(0) @db.Decimal(12, 2)
+  employerCost        Decimal        @default(0) @db.Decimal(12, 2)
+  userId              String?
+  businessId          String
+  business            Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  lines    PayrollLine[]
+  advances SalaryAdvance[]
+  expense  Expense?
+
+  @@unique([businessId, frequency, periodStart])
+  @@index([businessId, periodEnd])
+}
+
+model PayrollLine {
+  id             String     @id @default(cuid())
+  runId          String
+  run            PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId     String
+  employee       Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  salary         Decimal    @db.Decimal(12, 2)
+  overtimeHours  Decimal    @default(0) @db.Decimal(8, 2)
+  overtime       Decimal    @default(0) @db.Decimal(12, 2)
+  // Partida del décimo tercer mes pagada en esta planilla
+  thirteenth     Decimal    @default(0) @db.Decimal(12, 2)
+  gross          Decimal    @db.Decimal(12, 2)
+  cssEmployee    Decimal    @db.Decimal(12, 2)
+  eduEmployee    Decimal    @db.Decimal(12, 2)
+  incomeTax      Decimal    @db.Decimal(12, 2)
+  advances       Decimal    @default(0) @db.Decimal(12, 2)
+  otherDeduction Decimal    @default(0) @db.Decimal(12, 2)
+  net            Decimal    @db.Decimal(12, 2)
+  cssEmployer    Decimal    @db.Decimal(12, 2)
+  eduEmployer    Decimal    @db.Decimal(12, 2)
+  riskEmployer   Decimal    @db.Decimal(12, 2)
+
+  @@unique([runId, employeeId])
+}
+
+/**
+ * Adelanto de sueldo: se entrega ahora y se descuenta en la siguiente planilla.
+ */
+model SalaryAdvance {
+  id            String        @id @default(cuid())
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  date          DateTime
+  notes         String?
+  employeeId    String
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // Planilla en la que se descontó
+  runId         String?
+  run           PayrollRun?   @relation(fields: [runId], references: [id], onDelete: SetNull)
+  cashSessionId String?
+  userId        String?
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+
+  @@index([employeeId, runId])
 }

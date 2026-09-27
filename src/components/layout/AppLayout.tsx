@@ -29,6 +29,7 @@ import {
   WifiOff,
   X,
   BookOpen,
+  IdCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
@@ -99,6 +100,13 @@ const navItems: NavItem[] = [
     icon: BookOpen,
     roles: ["OWNER"],
     when: (b) => b.features.includes("accounting"),
+  },
+  {
+    href: "/planilla",
+    label: "nav.payroll" as MessageKey,
+    icon: IdCard,
+    roles: ["OWNER"],
+    when: (b) => b.features.includes("payroll"),
   },
   { href: "/facturas", label: "nav.invoices" as MessageKey, icon: FileText, roles: ["OWNER"] },
   { href: "/configuracion", label: "nav.settings" as MessageKey, icon: Settings, roles: ["OWNER", "CASHIER"] },

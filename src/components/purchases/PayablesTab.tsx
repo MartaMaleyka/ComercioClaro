@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { ErrorState, ListSkeleton, Stat } from "@/components/ui/Misc";
+import { ErrorState, ListSkeleton, Stat, ScrollArea } from "@/components/ui/Misc";
 
 export interface Bill {
   id: string;
@@ -541,7 +541,7 @@ function StatementModal({
               amount: fmt.money(data.balance),
             })}
           </p>
-          <div className="overflow-x-auto">
+          <ScrollArea label={tr("Estado de cuenta")}>
             <table className="w-full text-sm min-w-[520px]">
               <caption className="sr-only">{tr("Estado de cuenta")}</caption>
               <thead>
@@ -575,7 +575,7 @@ function StatementModal({
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollArea>
         </div>
       )}
     </Modal>

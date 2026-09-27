@@ -48,6 +48,11 @@ export const FEATURES = [
     label: "Contabilidad automática",
     description: "Libro diario y mayor, estados financieros, aportes y retiros del dueño y cierre de mes.",
   },
+  {
+    key: "payroll",
+    label: "Planilla",
+    description: "Empleados, CSS, seguro educativo, ISR, décimo tercer mes, vacaciones y comprobantes.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

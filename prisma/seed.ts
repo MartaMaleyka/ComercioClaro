@@ -13,6 +13,7 @@ import { adjustStock } from "../src/server/inventory";
 import { createSupplierBill, paySupplierBill } from "../src/server/payables";
 import { createRecurringExpense } from "../src/server/cashflow";
 import { closePeriod, createOwnerTransaction } from "../src/server/accounting";
+import { createAdvance, createEmployee, createPayrollRun, payPayrollRun } from "../src/server/payroll";
 import { addDays, dayKey } from "../src/lib/dates";
 import type { Prisma } from "../src/generated/prisma/client";
 
@@ -905,7 +906,7 @@ const PLANS = [
  */
 const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
   pro: ["cashflow"],
-  empresarial: ["recipes", "cashflow", "accounting"],
+  empresarial: ["recipes", "cashflow", "accounting", "payroll"],
 };
 
 /** Planes, super admin y la suscripción de cada negocio de demostración. */
@@ -1161,6 +1162,43 @@ async function seedAccounting() {
   console.log("✅ Contabilidad del minisúper (aportes, retiros y cierre de mes)");
 }
 
+/** Planilla de la fonda: dos empleados, la quincena anterior pagada y un adelanto por descontar. */
+async function seedPayroll() {
+  const demo = await demoBusiness("Fonda La Chiricana");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.employee.findFirst({ where: { businessId: business.id } })) return;
+  const day = 24 * 60 * 60 * 1000;
+  const key = (msAgo: number) => dayKey(new Date(Date.now() - msAgo), business.timezone);
+  await createEmployee(actor, {
+    name: "Yaritza Pérez",
+    idNumber: "4-712-1180",
+    socialSecurityNumber: "2211987",
+    position: "Cocinera",
+    salary: 750,
+    frequency: "QUINCENAL",
+    hireDate: key(730 * day),
+    vacationSince: key(200 * day),
+    active: true,
+  });
+  const waiter = await createEmployee(actor, {
+    name: "Luis Batista",
+    idNumber: "8-955-2034",
+    socialSecurityNumber: "3310452",
+    position: "Mesero",
+    salary: 650,
+    frequency: "QUINCENAL",
+    hireDate: key(240 * day),
+    vacationSince: null,
+    active: true,
+  });
+  // La quincena anterior, ya pagada por transferencia.
+  const previous = await createPayrollRun(actor, { frequency: "QUINCENAL", date: key(16 * day) });
+  await payPayrollRun(actor, previous.id, "TRANSFER");
+  await createAdvance(actor, { employeeId: waiter.id, amount: 40, method: "TRANSFER", notes: "Adelanto por emergencia" });
+  console.log("✅ Planilla de la fonda");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1173,6 +1211,7 @@ async function main() {
   await seedSplitPayments();
   await seedRecurringExpenses();
   await seedAccounting();
+  await seedPayroll();
 }
 
 main()

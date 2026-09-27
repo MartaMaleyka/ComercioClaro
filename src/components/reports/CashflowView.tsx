@@ -10,7 +10,7 @@ import { useText } from "@/lib/client/i18n";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { ErrorState, ListSkeleton, Stat } from "@/components/ui/Misc";
+import { ErrorState, ListSkeleton, Stat, ScrollArea } from "@/components/ui/Misc";
 
 interface Week {
   start: string;
@@ -166,7 +166,7 @@ export function CashflowView() {
             </div>
             <Card>
               <CardContent>
-                <div className="overflow-x-auto">
+                <ScrollArea label={tr("Flujo de caja proyectado")}>
                   <table className="w-full text-sm min-w-[760px]">
                     <caption className="sr-only">{tr("Flujo de caja proyectado")}</caption>
                     <thead>
@@ -221,7 +221,7 @@ export function CashflowView() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollArea>
                 <p className="text-xs text-slate-500 mt-2">
                   {tr(
                     "Ventas: promedio cobrado por día de la semana en las últimas 8 semanas (sin fiado ni vales). Compras: promedio de las compras de contado. Lo vencido se cuenta en la primera semana."

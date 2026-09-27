@@ -8,6 +8,7 @@ import type { Actor } from "./inventory";
 import { customersAging } from "./customers";
 import { getOpenSession, cashSessionSummary } from "./cash";
 import { financialSummary } from "./reports";
+import { payDates, payPeriod, payrollSettings, thirteenthWindow } from "@/lib/payroll";
 
 /**
  * Flujo de caja proyectado y punto de equilibrio. Todo se calcula al consultar, con lo que
@@ -311,22 +312,43 @@ export async function cashflowProjection(
   };
 }
 
-/** Sueldos por pagar en el periodo (se completa con la planilla). */
-export async function payrollOutflows(
-  _businessId: string,
-  _fromKey: string,
-  _toKey: string
-): Promise<{ date: string; amount: Decimal }[]> {
-  void _businessId;
-  void _fromKey;
-  void _toKey;
-  return [];
+/**
+ * Planilla estimada en el periodo: en cada día de pago, el costo del periodo de cada empleado
+ * activo (salario más cuotas patronales) y las partidas del décimo en abril, agosto y diciembre.
+ * No cuenta los periodos ya pagados.
+ */
+export async function payrollOutflows(businessId: string, fromKey: string, toKey: string) {
+  const [employees, business, paid] = await Promise.all([
+    prisma.employee.findMany({ where: { businessId, active: true } }),
+    prisma.business.findUniqueOrThrow({ where: { id: businessId }, select: { payrollSettings: true } }),
+    prisma.payrollRun.findMany({ where: { businessId, status: "PAID", periodEnd: { gte: fromKey } } }),
+  ]);
+  const s = payrollSettings(business.payrollSettings);
+  const employerRate = D(s.cssEmployer).plus(s.eduEmployer).plus(s.riskEmployer);
+  const paidKeys = new Set(paid.map((r) => `${r.frequency}|${r.periodEnd}`));
+  const result: { date: string; amount: Decimal }[] = [];
+  for (const e of employees) {
+    for (const date of payDates(fromKey, toKey, e.frequency)) {
+      if (paidKeys.has(`${e.frequency}|${date}`)) continue;
+      const period = payPeriod(date, e.frequency);
+      const base = e.frequency === "QUINCENAL" ? D(e.salary).div(2) : D(e.salary);
+      // La partida del décimo equivale a un tercio del salario mensual.
+      const thirteenth = thirteenthWindow(period.start, period.end) ? D(e.salary).div(3) : D(0);
+      result.push({ date, amount: money(base.times(D(1).plus(employerRate)).plus(thirteenth)) });
+    }
+  }
+  return result;
 }
 
-/** Sueldos fijos por mes (se completa con la planilla). */
-export async function monthlyPayroll(_businessId: string): Promise<Decimal> {
-  void _businessId;
-  return D(0);
+/** Planilla fija por mes: salarios de los empleados activos más las cuotas patronales. */
+export async function monthlyPayroll(businessId: string): Promise<Decimal> {
+  const [employees, business] = await Promise.all([
+    prisma.employee.findMany({ where: { businessId, active: true } }),
+    prisma.business.findUniqueOrThrow({ where: { id: businessId }, select: { payrollSettings: true } }),
+  ]);
+  const s = payrollSettings(business.payrollSettings);
+  const employerRate = D(s.cssEmployer).plus(s.eduEmployer).plus(s.riskEmployer);
+  return money(sum(employees.map((e) => D(e.salary))).times(D(1).plus(employerRate)));
 }
 
 // ---------- Punto de equilibrio ----------

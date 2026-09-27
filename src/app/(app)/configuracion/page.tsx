@@ -14,6 +14,7 @@ import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { TranslationFeedbackButton } from "@/components/layout/TranslationFeedbackButton";
 import { ServiceProvidersCard } from "@/components/settings/ServiceProvidersCard";
+import { PayrollSettingsCard } from "@/components/settings/PayrollSettingsCard";
 import { DeliveryZonesCard, type DeliveryZone } from "@/components/settings/DeliveryZonesCard";
 import { COUNTRIES, countryConfig } from "@/lib/country";
 import type { FeatureKey } from "@/lib/features";
@@ -161,6 +162,7 @@ function BusinessSettings() {
       <BusinessForm initial={data} onSaved={() => mutate()} />
       {business.features.includes("catalog") && <DeliveryZonesCard initial={data.deliveryZones ?? []} />}
       {business.features.includes("services") && <ServiceProvidersCard />}
+      {business.features.includes("payroll") && <PayrollSettingsCard />}
     </div>
   );
 }
