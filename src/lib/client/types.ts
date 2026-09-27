@@ -125,10 +125,18 @@ export interface Supplier {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  creditDays?: number;
   _count?: { purchases: number };
 }
 
 export interface Purchase {
+  bill?: {
+    id: string;
+    status: "OPEN" | "PAID" | "CANCELLED";
+    balance: number;
+    dueDate: string;
+    number: string | null;
+  } | null;
   id: string;
   folio: number;
   status: "ACTIVE" | "CANCELLED";

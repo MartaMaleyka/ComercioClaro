@@ -32,6 +32,7 @@ interface Summary {
   refunds?: number;
   cashExpenses?: number;
   cashPurchases?: number;
+  cashSupplierPayments?: number;
   serviceCash?: number;
   expected?: number;
   movements: { id: string; type: "IN" | "OUT"; amount: number; reason: string; createdAt: string }[];
@@ -190,7 +191,8 @@ export default function CashPage() {
                   (current.cashOut ?? 0) +
                     (current.refunds ?? 0) +
                     (current.cashExpenses ?? 0) +
-                    (current.cashPurchases ?? 0)
+                    (current.cashPurchases ?? 0) +
+                    (current.cashSupplierPayments ?? 0)
                 )}
                 hint={t("cash.outflowsHint")}
               />
@@ -376,6 +378,7 @@ export default function CashPage() {
               ["Devoluciones", -(detailData.data.refunds ?? 0)],
               ["Gastos de caja", -(detailData.data.cashExpenses ?? 0)],
               ["Compras de caja", -(detailData.data.cashPurchases ?? 0)],
+              ["Abonos a proveedores", -(detailData.data.cashSupplierPayments ?? 0)],
               ["Recargas y servicios", detailData.data.serviceCash ?? 0],
               ["Esperado", detailData.data.session.expectedAmount],
               ["Contado", detailData.data.session.countedAmount],

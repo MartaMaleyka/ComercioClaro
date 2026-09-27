@@ -14,7 +14,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Checkbox, Input, Select } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
@@ -413,7 +413,9 @@ function ReceiveModal({ order, onClose, onSaved }: { order: PurchaseOrder; onClo
       ])
     )
   );
-  const [paidFromCash, setPaidFromCash] = useState(false);
+  const [payment, setPayment] = useState<"paid" | "cash" | "credit">("paid");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const set = (id: string, patch: Partial<(typeof values)[string]>) =>
@@ -429,7 +431,9 @@ function ReceiveModal({ order, onClose, onSaved }: { order: PurchaseOrder; onClo
     try {
       await api(`/api/purchase-orders/${order.id}/receive`, {
         body: {
-          paidFromCash,
+          paidFromCash: payment === "cash",
+          onCredit: payment === "credit",
+          ...(payment === "credit" ? { invoiceNumber: invoiceNumber || null, dueDate: dueDate || null } : {}),
           notes: notes || null,
           lines: pendingLines.map((l) => ({
             lineId: l.id,
@@ -491,11 +495,31 @@ function ReceiveModal({ order, onClose, onSaved }: { order: PurchaseOrder; onClo
           onChange={(e) => setNotes(e.target.value)}
           placeholder={tr("Número de factura, condiciones...")}
         />
-        <Checkbox
-          label={tr("Se pagó con dinero de la caja")}
-          checked={paidFromCash}
-          onChange={(e) => setPaidFromCash(e.target.checked)}
-        />
+        <Select
+          label={tr("Pago")}
+          value={payment}
+          onChange={(e) => setPayment(e.target.value as "paid" | "cash" | "credit")}
+        >
+          <option value="paid">{tr("De contado (banco u otro medio)")}</option>
+          <option value="cash">{tr("Se pagó con dinero de la caja")}</option>
+          <option value="credit">{tr("A crédito (queda por pagar)")}</option>
+        </Select>
+        {payment === "credit" && (
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label={tr("Número de factura")}
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+            />
+            <Input
+              label={tr("Vencimiento")}
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              hint={tr("Vacío: según los días de crédito del proveedor")}
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <p className="font-bold text-slate-900">
             {tr("Total:")} {fmt.money(total)}

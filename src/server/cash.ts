@@ -37,7 +37,7 @@ export async function openCashSession(actor: Actor, input: { openingAmount: numb
  * Resumen del turno: efectivo esperado = fondo inicial + ventas en efectivo
  * + abonos en efectivo + entradas + recargas y servicios en efectivo
  * − devoluciones en efectivo − salidas
- * − gastos y compras pagados de caja.
+ * − gastos, compras y abonos a proveedores pagados de caja.
  */
 export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: string) {
   const session = await db.cashSession.findUnique({ where: { id: sessionId } });
@@ -94,6 +94,12 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
     _sum: { amount: true },
   });
   const giftCardCash = D(giftCards._sum.amount);
+  // Abonos a facturas de proveedores pagados con el efectivo de la caja (sin los anulados).
+  const supplierPayments = await db.supplierPayment.aggregate({
+    where: { cashSessionId: sessionId, fromCash: true, voidedAt: null },
+    _sum: { amount: true },
+  });
+  const cashSupplierPayments = D(supplierPayments._sum.amount);
 
   const expected = money(
     D(session.openingAmount)
@@ -106,6 +112,7 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
       .minus(cashOut)
       .minus(cashExpenses)
       .minus(cashPurchases)
+      .minus(cashSupplierPayments)
   );
 
   return {
@@ -118,6 +125,7 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
     refunds,
     cashExpenses,
     cashPurchases,
+    cashSupplierPayments,
     serviceCash,
     giftCardCash,
     expected,

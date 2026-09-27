@@ -29,7 +29,7 @@ interface SupplierDetail {
   purchases: { id: string; folio: number; total: number; createdAt: string; status: string }[];
 }
 
-const emptyForm = { name: "", contact: "", phone: "", email: "", notes: "" };
+const emptyForm = { name: "", contact: "", phone: "", email: "", notes: "", creditDays: "30" };
 
 export default function SuppliersPage() {
   const tr = useText();
@@ -48,7 +48,14 @@ export default function SuppliersPage() {
   function openForm(s: Supplier | null) {
     setForm(
       s
-        ? { name: s.name, contact: s.contact ?? "", phone: s.phone ?? "", email: s.email ?? "", notes: s.notes ?? "" }
+        ? {
+            name: s.name,
+            contact: s.contact ?? "",
+            phone: s.phone ?? "",
+            email: s.email ?? "",
+            notes: s.notes ?? "",
+            creditDays: String(s.creditDays ?? 30),
+          }
         : emptyForm
     );
     setEditing(s);
@@ -188,6 +195,13 @@ export default function SuppliersPage() {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </div>
+          <Input
+            label={tr("Días de crédito")}
+            inputMode="numeric"
+            value={form.creditDays}
+            onChange={(e) => setForm({ ...form, creditDays: e.target.value })}
+            hint={tr("Vencimiento por defecto de sus facturas a crédito")}
+          />
           <Textarea
             label={tr("Notas")}
             rows={2}
