@@ -12,7 +12,7 @@ import { PAYMENT_METHOD_LABELS } from "@/lib/utils";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -118,7 +118,7 @@ function Expenses() {
             {business.features.includes("export") && (
               <a
                 href={withQuery("/api/export/expenses", { from, to })}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50"
+                className={buttonStyles("secondary", "sm")}
               >
                 <Download className="w-4 h-4" /> {tr("CSV")}
               </a>

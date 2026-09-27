@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardList, MessageCircle, ShoppingBag, ThumbsUp } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { useToast } from "@/components/providers/ToastProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { whatsappLink } from "@/lib/client/receipt";
 import { UNIT_LABELS } from "@/lib/utils";
 import { useSession, useFeature } from "@/components/providers/SessionProvider";
@@ -114,7 +114,7 @@ export function ReorderTab() {
         </p>
         <Link
           href="/compras?nueva=1"
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-brand-600 text-white"
+          className={buttonStyles("primary", "sm")}
         >
           <ShoppingBag className="w-4 h-4" /> {tr("Registrar compra")}
         </Link>

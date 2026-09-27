@@ -7,9 +7,10 @@ import { CheckCircle2, Circle, Rocket, X } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { useText } from "@/lib/client/i18n";
 import { useToast } from "@/components/providers/ToastProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import type { OnboardingStepKey } from "@/server/onboarding";
+import { cn } from "@/lib/utils";
 
 interface Onboarding {
   dismissed: boolean;
@@ -162,7 +163,7 @@ export function OnboardingCard() {
                   ) : step.href ? (
                     <Link
                       href={step.href}
-                      className="shrink-0 rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      className={cn(buttonStyles("secondary", "sm"), "shrink-0")}
                     >
                       {t.action}
                     </Link>

@@ -11,7 +11,7 @@ import { whatsappLink } from "@/lib/client/receipt";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
@@ -165,7 +165,7 @@ export default function OrdersPage() {
                       <>
                         <Link
                           href={`/ventas?pedido=${o.id}`}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 min-h-8 text-sm rounded-lg font-medium bg-brand-600 text-white hover:bg-brand-700"
+                          className={buttonStyles("primary", "sm")}
                         >
                           <ShoppingCart className="w-4 h-4" aria-hidden="true" /> {tr("Cobrar en el punto de venta")}
                         </Link>
@@ -187,7 +187,7 @@ export default function OrdersPage() {
                         )}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-1.5 min-h-8 text-sm rounded-lg font-medium bg-surface text-slate-700 border border-slate-200 hover:bg-slate-50"
+                        className={buttonStyles("secondary", "sm")}
                       >
                         <MessageCircle className="w-4 h-4" aria-hidden="true" /> {tr("WhatsApp")}
                       </a>

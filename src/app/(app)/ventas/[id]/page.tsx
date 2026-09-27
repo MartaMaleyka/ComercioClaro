@@ -15,7 +15,7 @@ import { PAYMENT_METHOD_LABELS, UNIT_LABELS, isFractionalUnit } from "@/lib/util
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Input, Select } from "@/components/ui/Input";
@@ -217,7 +217,7 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             href={whatsappLink(sale.receiptText, sale.customer?.phone, business.locale)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-surface border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium"
+            className={buttonStyles("secondary", "sm")}
           >
             <Share2 className="w-4 h-4" /> {tr("WhatsApp")}
           </a>
