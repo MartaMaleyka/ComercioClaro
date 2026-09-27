@@ -119,7 +119,12 @@ test("con la aprobación encendida el registro espera y se aprueba desde la list
   await page.goto("/admin/negocios");
   const approval = page.getByRole("switch", { name: "Aprobar a mano los registros nuevos" });
   await expect(approval).toHaveAttribute("aria-checked", "false");
+  // El interruptor cambia al instante; el registro debe esperar a que el ajuste quede guardado.
+  const turnedOn = page.waitForResponse(
+    (r) => r.url().endsWith("/api/admin/signup-settings") && r.request().method() === "PUT"
+  );
   await approval.click();
+  await turnedOn;
   await expect(approval).toHaveAttribute("aria-checked", "true");
 
   const name = `Pendiente ${unique()}`;
