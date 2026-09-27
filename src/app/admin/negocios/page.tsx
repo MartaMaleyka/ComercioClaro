@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import { Plus } from "lucide-react";
+import { Download, MailCheck, MailWarning, Plus } from "lucide-react";
 import { api, fetcher, withQuery } from "@/lib/client/api";
 import { useText } from "@/lib/client/i18n";
 import { adminFmt } from "@/lib/client/admin-format";
@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
+import { ErrorState, ListSkeleton, PageHeader, ScrollArea } from "@/components/ui/Misc";
+import { Switch } from "@/components/ui/Switch";
+import { BUSINESS_TYPES, businessTypeLabel } from "@/lib/business-types";
 
 interface BusinessRow {
   id: string;
@@ -27,44 +29,135 @@ interface BusinessRow {
   plan: { id: string; name: string; priceMonthly: number; currency: string } | null;
   trialEndsAt: string | null;
   paidUntil: string | null;
-  owners: { id: string; name: string; email: string }[];
+  businessType: string | null;
+  signupSource: "SELF" | "ADMIN" | null;
+  closedReason: string | null;
+  owners: { id: string; name: string; email: string; emailVerified: boolean }[];
+  lastLoginAt: string | null;
+  lastSaleAt: string | null;
   counts: { memberships: number; products: number; sales: number };
   createdAt: string;
 }
 
+const FILTERS = ["search", "status", "planId", "country", "businessType", "source", "from", "to"] as const;
+
 export default function AdminBusinessesPage() {
   const tr = useText();
+  const toast = useToast();
   const params = useSearchParams();
   const router = useRouter();
   const [search, setSearch] = useState(params.get("search") ?? "");
-  const status = params.get("status") ?? "";
-  const planId = params.get("planId") ?? "";
-  const setFilter = (key: string, value: string) => {
+  const value = (key: (typeof FILTERS)[number]) => params.get(key) ?? "";
+  const setFilter = (key: string, v: string) => {
     const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
+    if (v) next.set(key, v);
     else next.delete(key);
     router.replace(`/admin/negocios${next.size ? `?${next}` : ""}`);
   };
-  const { data, error, mutate } = useSWR<BusinessRow[]>(
-    withQuery("/api/admin/businesses", { search: params.get("search"), status, planId }),
+  const query = Object.fromEntries(FILTERS.map((k) => [k, params.get(k)]));
+  const activeFilters = FILTERS.filter((k) => k !== "search" && params.get(k)).length;
+  const { data, error, mutate } = useSWR<BusinessRow[]>(withQuery("/api/admin/businesses", query), fetcher);
+  const { data: plans } = useSWR<PlanOption[]>("/api/admin/plans", fetcher);
+  const { data: signup, mutate: mutateSignup } = useSWR<{ requireSignupApproval: boolean }>(
+    "/api/admin/signup-settings",
     fetcher
   );
-  const { data: plans } = useSWR<PlanOption[]>("/api/admin/plans", fetcher);
+  const { data: pending, mutate: mutatePending } = useSWR<BusinessRow[]>(
+    "/api/admin/businesses?status=PENDING",
+    fetcher
+  );
   const [creating, setCreating] = useState(false);
+  const [savingApproval, setSavingApproval] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
+
+  async function toggleApproval(enabled: boolean) {
+    setSavingApproval(true);
+    mutateSignup({ requireSignupApproval: enabled }, { revalidate: false });
+    try {
+      await api("/api/admin/signup-settings", { method: "PUT", body: { enabled } });
+      toast.success(
+        enabled
+          ? tr("Los registros nuevos esperarán tu aprobación")
+          : tr("Los registros nuevos entran directo a su prueba")
+      );
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSavingApproval(false);
+      mutateSignup();
+    }
+  }
+
+  async function approve(b: BusinessRow) {
+    setApproving(b.id);
+    try {
+      await api(`/api/admin/businesses/${b.id}/approve`, { method: "POST" });
+      toast.success(tr("{name} aprobado: avisamos al dueño", { name: b.name }));
+      mutate();
+      mutatePending();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setApproving(null);
+    }
+  }
+
+  const exportHref = withQuery("/api/admin/businesses/export", query);
+  const pendingCount = pending?.length ?? 0;
 
   return (
     <div className="space-y-5">
       <PageHeader
         title={tr("Negocios")}
-        description={tr("Plan, estado, funciones y pagos de cada negocio")}
+        description={tr("Registros, plan, estado, funciones y pagos de cada negocio")}
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="w-4 h-4" aria-hidden="true" /> {tr("Nuevo negocio")}
-          </Button>
+          <>
+            <a
+              href={exportHref}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="w-4 h-4" aria-hidden="true" /> {tr("Exportar CSV")}
+            </a>
+            <Button onClick={() => setCreating(true)}>
+              <Plus className="w-4 h-4" aria-hidden="true" /> {tr("Nuevo negocio")}
+            </Button>
+          </>
         }
       />
+
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-900">{tr("Aprobar a mano los registros nuevos")}</p>
+            <p className="text-xs text-slate-500">
+              {signup?.requireSignupApproval
+                ? tr("Quien se registra espera tu aprobación antes de usar la app. Te avisamos por correo.")
+                : tr("Quien se registra empieza su prueba al momento. Te avisamos por correo de cada registro.")}
+            </p>
+          </div>
+          <Switch
+            checked={signup?.requireSignupApproval ?? false}
+            onChange={toggleApproval}
+            busy={savingApproval || !signup}
+            label={tr("Aprobar a mano los registros nuevos")}
+          />
+        </CardContent>
+      </Card>
+
+      {pendingCount > 0 && value("status") !== "PENDING" && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-purple-50 px-4 py-3"
+        >
+          <p className="text-sm text-purple-700">{tr("{n} registro(s) esperan tu aprobación.", { n: pendingCount })}</p>
+          <Button size="sm" variant="secondary" onClick={() => setFilter("status", "PENDING")}>
+            {tr("Ver por aprobar")}
+          </Button>
+        </div>
+      )}
+
       <form
-        className="grid sm:grid-cols-[1fr_180px_180px] gap-3 items-end"
+        className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
           setFilter("search", search.trim());
@@ -76,22 +169,66 @@ export default function AdminBusinessesPage() {
           onChange={(e) => setSearch(e.target.value)}
           onBlur={() => setFilter("search", search.trim())}
         />
-        <Select label={tr("Estado")} value={status} onChange={(e) => setFilter("status", e.target.value)}>
-          <option value="">{tr("Todos")}</option>
-          <option value="ACTIVE">{tr("Activo")}</option>
-          <option value="TRIAL">{tr("En prueba")}</option>
-          <option value="OVERDUE">{tr("Pago vencido")}</option>
-          <option value="SUSPENDED">{tr("Suspendido")}</option>
-        </Select>
-        <Select label={tr("Plan")} value={planId} onChange={(e) => setFilter("planId", e.target.value)}>
-          <option value="">{tr("Todos")}</option>
-          <option value="none">{tr("Sin plan")}</option>
-          {plans?.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </Select>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 items-end">
+          <Select label={tr("Estado")} value={value("status")} onChange={(e) => setFilter("status", e.target.value)}>
+            <option value="">{tr("Todos")}</option>
+            <option value="ACTIVE">{tr("Activo")}</option>
+            <option value="TRIAL">{tr("En prueba")}</option>
+            <option value="OVERDUE">{tr("Pago vencido")}</option>
+            <option value="SUSPENDED">{tr("Suspendido")}</option>
+            <option value="PENDING">{tr("Por aprobar")}</option>
+            <option value="CLOSED">{tr("Dado de baja")}</option>
+          </Select>
+          <Select label={tr("Plan")} value={value("planId")} onChange={(e) => setFilter("planId", e.target.value)}>
+            <option value="">{tr("Todos")}</option>
+            <option value="none">{tr("Sin plan")}</option>
+            {plans?.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+          <Select label={tr("País")} value={value("country")} onChange={(e) => setFilter("country", e.target.value)}>
+            <option value="">{tr("Todos")}</option>
+            <option value="PA">Panamá</option>
+            <option value="MX">México</option>
+            <option value="OTHER">{tr("Otro")}</option>
+          </Select>
+          <Select
+            label={tr("Tipo")}
+            value={value("businessType")}
+            onChange={(e) => setFilter("businessType", e.target.value)}
+          >
+            <option value="">{tr("Todos")}</option>
+            {BUSINESS_TYPES.map((t) => (
+              <option key={t.key} value={t.key}>
+                {tr(t.label)}
+              </option>
+            ))}
+          </Select>
+          <Select label={tr("Origen")} value={value("source")} onChange={(e) => setFilter("source", e.target.value)}>
+            <option value="">{tr("Todos")}</option>
+            <option value="SELF">{tr("Registro propio")}</option>
+            <option value="ADMIN">{tr("Alta del admin")}</option>
+          </Select>
+          <Input
+            label={tr("Registrado desde")}
+            type="date"
+            value={value("from")}
+            onChange={(e) => setFilter("from", e.target.value)}
+          />
+          <Input
+            label={tr("Hasta")}
+            type="date"
+            value={value("to")}
+            onChange={(e) => setFilter("to", e.target.value)}
+          />
+          {activeFilters > 0 && (
+            <Button type="button" variant="ghost" onClick={() => router.replace("/admin/negocios")}>
+              {tr("Quitar filtros ({n})", { n: activeFilters })}
+            </Button>
+          )}
+        </div>
       </form>
 
       {error ? (
@@ -102,77 +239,137 @@ export default function AdminBusinessesPage() {
         <p className="text-sm text-slate-500">{tr("No hay negocios con esos filtros.")}</p>
       ) : (
         <Card>
-          <CardContent className="overflow-x-auto p-0">
-            <table className="w-full text-sm min-w-[720px]">
-              <caption className="sr-only">{tr("Negocios")}</caption>
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tr("Negocio")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tr("Plan")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tr("Estado")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tr("Vence")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium text-right">
-                    {tr("Usuarios")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium text-right">
-                    {tr("Productos")}
-                  </th>
-                  <th scope="col" className="px-4 py-2 font-medium text-right">
-                    {tr("Ventas")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.map((b) => (
-                  <tr key={b.id}>
-                    <th scope="row" className="px-4 py-2.5 text-left font-normal">
-                      <Link
-                        href={`/admin/negocios/${b.id}`}
-                        className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
-                      >
-                        {b.name}
-                      </Link>
-                      <span className="block text-xs text-slate-500">
-                        {b.owners.map((o) => o.email).join(", ")} · {b.country}
-                      </span>
+          <CardContent className="p-0">
+            <p className="px-4 pt-3 text-xs text-slate-500">{tr("{n} negocio(s)", { n: data.length })}</p>
+            <ScrollArea label={tr("Negocios")}>
+              <table className="w-full text-sm min-w-[900px]">
+                <caption className="sr-only">{tr("Negocios")}</caption>
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Negocio")}
                     </th>
-                    <td className="px-4 py-2.5">
-                      {b.plan ? (
-                        <>
-                          {b.plan.name}
-                          <span className="block text-xs text-slate-500">
-                            {adminFmt.money(b.plan.priceMonthly, b.plan.currency)} / {tr("mes")}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-slate-500">{tr("Sin plan")}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <StatusBadge status={b.status} access={b.access} />
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-600">
-                      {b.status === "TRIAL" && b.trialEndsAt
-                        ? adminFmt.date(b.trialEndsAt)
-                        : b.paidUntil
-                          ? adminFmt.date(b.paidUntil)
-                          : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{b.counts.memberships}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{b.counts.products}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">{b.counts.sales}</td>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Plan")}
+                    </th>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Estado")}
+                    </th>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Registro")}
+                    </th>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Actividad")}
+                    </th>
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tr("Vence")}
+                    </th>
+                    <th scope="col" className="px-4 py-2 font-medium text-right">
+                      {tr("Ventas")}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.map((b) => {
+                    const owner = b.owners[0];
+                    return (
+                      <tr key={b.id} className="align-top">
+                        <th scope="row" className="px-4 py-2.5 text-left font-normal">
+                          <Link
+                            href={`/admin/negocios/${b.id}`}
+                            className="font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                          >
+                            {b.name}
+                          </Link>
+                          <span className="block text-xs text-slate-500">
+                            {[b.businessType ? tr(businessTypeLabel(b.businessType) ?? "") : null, b.country]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                          {owner && (
+                            <span className="flex items-center gap-1 text-xs text-slate-500">
+                              {owner.email}
+                              {owner.emailVerified ? (
+                                <MailCheck className="w-3.5 h-3.5 text-brand-600" aria-hidden="true" />
+                              ) : (
+                                <MailWarning className="w-3.5 h-3.5 text-amber-700" aria-hidden="true" />
+                              )}
+                              <span className="sr-only">
+                                {owner.emailVerified ? tr("Correo confirmado") : tr("Correo sin confirmar")}
+                              </span>
+                            </span>
+                          )}
+                        </th>
+                        <td className="px-4 py-2.5">
+                          {b.plan ? (
+                            <>
+                              {b.plan.name}
+                              <span className="block text-xs text-slate-500">
+                                {adminFmt.money(b.plan.priceMonthly, b.plan.currency)} / {tr("mes")}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-500">{tr("Sin plan")}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <StatusBadge status={b.status} access={b.access} />
+                          {b.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              className="mt-1.5"
+                              onClick={() => approve(b)}
+                              loading={approving === b.id}
+                              aria-label={tr("Aprobar {name}", { name: b.name })}
+                            >
+                              {tr("Aprobar")}
+                            </Button>
+                          )}
+                          {b.status === "CLOSED" && b.closedReason && (
+                            <span className="block text-xs text-slate-500 mt-1 max-w-48">{b.closedReason}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-600">
+                          {adminFmt.date(b.createdAt)}
+                          <span className="block text-xs text-slate-500">
+                            {b.signupSource === "SELF"
+                              ? tr("Registro propio")
+                              : b.signupSource === "ADMIN"
+                                ? tr("Alta del admin")
+                                : "—"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-600 text-xs">
+                          <span className="block">
+                            {b.lastLoginAt
+                              ? tr("Entró: {date}", { date: adminFmt.date(b.lastLoginAt) })
+                              : tr("Sin accesos registrados")}
+                          </span>
+                          <span className="block text-slate-500">
+                            {b.lastSaleAt
+                              ? tr("Vendió: {date}", { date: adminFmt.date(b.lastSaleAt) })
+                              : tr("Sin ventas")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-600">
+                          {b.status === "TRIAL" && b.trialEndsAt
+                            ? adminFmt.date(b.trialEndsAt)
+                            : b.paidUntil
+                              ? adminFmt.date(b.paidUntil)
+                              : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums">
+                          {b.counts.sales}
+                          <span className="block text-xs text-slate-500">
+                            {tr("{n} usuario(s)", { n: b.counts.memberships })}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}

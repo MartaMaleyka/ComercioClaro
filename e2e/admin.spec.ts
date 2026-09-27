@@ -19,7 +19,7 @@ test("el super admin ve el resumen y desactiva una función a un negocio", async
   await expect(page.getByRole("heading", { name: "Resumen de la plataforma" })).toBeVisible();
   await expect(page.getByText("Ingreso mensual recurrente")).toBeVisible();
 
-  await page.getByRole("link", { name: "Negocios" }).click();
+  await page.getByRole("link", { name: "Negocios", exact: true }).click();
   await page.getByRole("link", { name: BUSINESS.panama }).click();
   await expect(page.getByRole("heading", { name: BUSINESS.panama })).toBeVisible();
   // Cada función se ajusta con Plan / Sí / No y se guarda al momento.

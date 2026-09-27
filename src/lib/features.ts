@@ -165,15 +165,25 @@ export function parseOverrides(value: unknown): FeatureOverrides {
 
 export type AccessState =
   | { blocked: false; warning: null | { kind: "trial"; daysLeft: number } | { kind: "overdue"; since: string } }
-  | { blocked: true; reason: "suspended" | "trialEnded"; message: string | null };
+  | { blocked: true; reason: "suspended" | "trialEnded" | "pending" | "closed"; message: string | null };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Si el negocio puede usarse, y qué aviso mostrar (prueba por terminar o pago vencido). */
 export function accessState(
-  business: { status: string; trialEndsAt: Date | null; paidUntil: Date | null; suspendedReason: string | null },
+  business: {
+    status: string;
+    trialEndsAt: Date | null;
+    paidUntil: Date | null;
+    suspendedReason: string | null;
+    closedReason?: string | null;
+  },
   now = new Date()
 ): AccessState {
+  if (business.status === "PENDING") return { blocked: true, reason: "pending", message: null };
+  if (business.status === "CLOSED") {
+    return { blocked: true, reason: "closed", message: business.closedReason ?? null };
+  }
   if (business.status === "SUSPENDED") return { blocked: true, reason: "suspended", message: business.suspendedReason };
   if (business.status === "TRIAL" && business.trialEndsAt) {
     if (business.trialEndsAt.getTime() <= now.getTime()) return { blocked: true, reason: "trialEnded", message: null };

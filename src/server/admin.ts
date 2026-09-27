@@ -65,7 +65,10 @@ export async function adminOverview(now = new Date()) {
         suspendedReason: true,
         billingCycle: true,
         planId: true,
-        plan: { select: { priceMonthly: true, priceYearly: true, currency: true } },
+        createdAt: true,
+        signupSource: true,
+        businessType: true,
+        plan: { select: { name: true, priceMonthly: true, priceYearly: true, currency: true } },
       },
     }),
     prisma.plan.findMany({ orderBy: [{ sortOrder: "asc" }, { priceMonthly: "asc" }] }),
@@ -82,7 +85,7 @@ export async function adminOverview(now = new Date()) {
       GROUP BY b."currency" ORDER BY 3 DESC`,
   ]);
 
-  const byStatus = { ACTIVE: 0, TRIAL: 0, SUSPENDED: 0, OVERDUE: 0, TRIAL_ENDED: 0 };
+  const byStatus = { ACTIVE: 0, TRIAL: 0, SUSPENDED: 0, PENDING: 0, CLOSED: 0, OVERDUE: 0, TRIAL_ENDED: 0 };
   const mrr = new Map<string, Prisma.Decimal>();
   const trialsEnding: { id: string; name: string; trialEndsAt: Date }[] = [];
   const overdue: { id: string; name: string; paidUntil: Date }[] = [];
@@ -118,9 +121,55 @@ export async function adminOverview(now = new Date()) {
     return [...totals].map(([currency, amount]) => ({ currency, amount: money(amount).toNumber() }));
   };
 
+  // Embudo de registros por semana (8 semanas): registrados → vendieron → pagaron → dados de baja.
+  const [withSales, withPayments] = await Promise.all([
+    prisma.$queryRaw<{ businessId: string }[]>`SELECT DISTINCT "businessId" FROM "Sale"`,
+    prisma.$queryRaw<{ businessId: string }[]>`SELECT DISTINCT "businessId" FROM "SubscriptionPayment"`,
+  ]);
+  const sold = new Set(withSales.map((r) => r.businessId));
+  const paid = new Set(withPayments.map((r) => r.businessId));
+  const weekStart = (d: Date) => {
+    const day = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+    return day;
+  };
+  const thisWeek = weekStart(now);
+  const funnel = Array.from({ length: 8 }, (_, i) => {
+    const start = new Date(thisWeek.getTime() - (7 - i) * 7 * DAY_MS);
+    const end = new Date(start.getTime() + 7 * DAY_MS);
+    const cohort = businesses.filter((b) => b.createdAt >= start && b.createdAt < end);
+    return {
+      week: start.toISOString().slice(0, 10),
+      registered: cohort.length,
+      selfSignup: cohort.filter((b) => b.signupSource === "SELF").length,
+      sold: cohort.filter((b) => sold.has(b.id)).length,
+      paid: cohort.filter((b) => paid.has(b.id)).length,
+      closed: cohort.filter((b) => b.status === "CLOSED").length,
+    };
+  });
+  const recent = businesses
+    .filter((b) => b.createdAt.getTime() >= now.getTime() - 7 * DAY_MS)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 10)
+    .map((b) => ({
+      id: b.id,
+      name: b.name,
+      status: b.status,
+      createdAt: b.createdAt,
+      businessType: b.businessType,
+      signupSource: b.signupSource,
+      planName: b.plan?.name ?? null,
+    }));
+
   return {
     businesses: businesses.length,
     byStatus,
+    funnel,
+    recent,
+    pending: businesses
+      .filter((b) => b.status === "PENDING")
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .map((b) => ({ id: b.id, name: b.name, createdAt: b.createdAt, businessType: b.businessType })),
     mrr: [...mrr].map(([currency, amount]) => ({ currency, amount: money(amount).toNumber() })),
     collectedThisMonth: byCurrency(payments.filter((p) => p.createdAt >= monthStart)),
     collectedByMonth: months,
@@ -163,6 +212,15 @@ export async function adminListBusinesses(query: AdminListQuery) {
     where.status = query.status;
   }
   if (query.planId) where.planId = query.planId === "none" ? null : query.planId;
+  if (query.country) where.country = query.country;
+  if (query.businessType) where.businessType = query.businessType;
+  if (query.source) where.signupSource = query.source;
+  if (query.from || query.to) {
+    where.createdAt = {
+      ...(query.from ? { gte: new Date(`${query.from}T00:00:00Z`) } : {}),
+      ...(query.to ? { lt: new Date(new Date(`${query.to}T00:00:00Z`).getTime() + DAY_MS) } : {}),
+    };
+  }
 
   const rows = await prisma.business.findMany({
     where,
@@ -170,7 +228,9 @@ export async function adminListBusinesses(query: AdminListQuery) {
       plan: { select: { id: true, name: true, priceMonthly: true, priceYearly: true, currency: true } },
       memberships: {
         where: { role: "OWNER" },
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true, emailVerifiedAt: true, lastLoginAt: true } },
+        },
         orderBy: { createdAt: "asc" },
         take: 3,
       },
@@ -179,20 +239,42 @@ export async function adminListBusinesses(query: AdminListQuery) {
     orderBy: { createdAt: "desc" },
     take: 500,
   });
-  return rows.map((b) => ({
-    id: b.id,
-    name: b.name,
-    country: b.country,
-    status: b.status,
-    access: accessState(b, now),
-    plan: b.plan,
-    billingCycle: b.billingCycle,
-    trialEndsAt: b.trialEndsAt,
-    paidUntil: b.paidUntil,
-    owners: b.memberships.map((m) => m.user),
-    counts: b._count,
-    createdAt: b.createdAt,
-  }));
+  const lastSales = rows.length
+    ? await prisma.sale.groupBy({
+        by: ["businessId"],
+        where: { businessId: { in: rows.map((b) => b.id) } },
+        _max: { createdAt: true },
+      })
+    : [];
+  const lastSale = new Map(lastSales.map((r) => [r.businessId, r._max.createdAt]));
+  return rows.map((b) => {
+    const logins = b.memberships.map((m) => m.user.lastLoginAt).filter((d): d is Date => d !== null);
+    return {
+      id: b.id,
+      name: b.name,
+      country: b.country,
+      status: b.status,
+      access: accessState(b, now),
+      plan: b.plan,
+      billingCycle: b.billingCycle,
+      trialEndsAt: b.trialEndsAt,
+      paidUntil: b.paidUntil,
+      businessType: b.businessType,
+      signupSource: b.signupSource,
+      closedAt: b.closedAt,
+      closedReason: b.closedReason,
+      owners: b.memberships.map((m) => ({
+        id: m.user.id,
+        name: m.user.name,
+        email: m.user.email,
+        emailVerified: m.user.emailVerifiedAt !== null,
+      })),
+      lastLoginAt: logins.length ? new Date(Math.max(...logins.map((d) => d.getTime()))) : null,
+      lastSaleAt: lastSale.get(b.id) ?? null,
+      counts: b._count,
+      createdAt: b.createdAt,
+    };
+  });
 }
 
 export async function adminBusinessDetail(id: string) {
@@ -201,7 +283,20 @@ export async function adminBusinessDetail(id: string) {
     include: {
       plan: true,
       memberships: {
-        include: { user: { select: { id: true, name: true, email: true, disabledAt: true, isSuperAdmin: true } } },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              disabledAt: true,
+              isSuperAdmin: true,
+              emailVerifiedAt: true,
+              lastLoginAt: true,
+              termsAcceptedAt: true,
+            },
+          },
+        },
         orderBy: { createdAt: "asc" },
       },
       subscriptionPayments: { orderBy: { createdAt: "desc" }, take: 50, include: { plan: { select: { name: true } } } },
@@ -228,6 +323,10 @@ export async function adminBusinessDetail(id: string) {
     id: business.id,
     name: business.name,
     country: business.country,
+    businessType: business.businessType,
+    signupSource: business.signupSource,
+    closedAt: business.closedAt,
+    closedReason: business.closedReason,
     currency: business.currency,
     address: business.address,
     phone: business.phone,
