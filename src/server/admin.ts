@@ -294,6 +294,7 @@ export async function adminBusinessDetail(id: string) {
               emailVerifiedAt: true,
               lastLoginAt: true,
               termsAcceptedAt: true,
+              totpEnabledAt: true,
             },
           },
         },
@@ -325,6 +326,7 @@ export async function adminBusinessDetail(id: string) {
     country: business.country,
     businessType: business.businessType,
     signupSource: business.signupSource,
+    requireMfa: business.requireMfa,
     closedAt: business.closedAt,
     closedReason: business.closedReason,
     currency: business.currency,
@@ -390,6 +392,7 @@ export async function adminUpdateBusiness(admin: Admin, id: string, input: Admin
     data.featureOverrides = Object.keys(overrides).length > 0 ? overrides : Prisma.DbNull;
   }
   if (input.adminNotes !== undefined) data.adminNotes = input.adminNotes;
+  if (input.requireMfa !== undefined) data.requireMfa = input.requireMfa;
   if (status === "TRIAL" && !(input.trialEndsAt ?? business.trialEndsAt)) {
     throw new AppError(400, "Indica hasta cuándo dura la prueba");
   }
@@ -400,6 +403,7 @@ export async function adminUpdateBusiness(admin: Admin, id: string, input: Admin
       fields: Object.keys(input),
       ...(input.status ? { status: input.status } : {}),
       ...(input.planId !== undefined ? { planId: input.planId } : {}),
+      ...(input.requireMfa !== undefined ? { requireMfa: input.requireMfa } : {}),
     });
     return updated;
   });
@@ -593,6 +597,9 @@ export async function adminListUsers(search?: string) {
       isSuperAdmin: true,
       disabledAt: true,
       createdAt: true,
+      emailVerifiedAt: true,
+      lastLoginAt: true,
+      totpEnabledAt: true,
       memberships: { select: { role: true, business: { select: { id: true, name: true } } } },
     },
     orderBy: { createdAt: "desc" },

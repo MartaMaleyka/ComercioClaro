@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, CreditCard, History, LayoutDashboard, LogOut, ShieldCheck, Store, Users } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  History,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  ShieldCheck,
+  Store,
+  Users,
+} from "lucide-react";
 import { LanguageContext, useText } from "@/lib/client/i18n";
 import { clearOfflineData } from "@/lib/client/offline-db";
 import { cn } from "@/lib/utils";
@@ -75,6 +85,12 @@ function Shell({
                 <Store className="w-4 h-4" aria-hidden="true" /> {tr("Ir a mi negocio")}
               </Link>
             )}
+            <Link
+              href="/seguridad"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+            >
+              <KeyRound className="w-4 h-4" aria-hidden="true" /> {tr("Seguridad")}
+            </Link>
             <button
               onClick={logout}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg text-slate-600 hover:bg-slate-100"

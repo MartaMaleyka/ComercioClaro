@@ -60,10 +60,12 @@ export const en: Record<string, string> = {
   "Abonos a proveedores": "Supplier payments",
   "Abonos de clientes": "Customer payments",
   "Abre la caja": "Open the till",
+  "Abre tu app de autenticación y agrega una cuenta nueva.": "Open your authenticator app and add a new account.",
   Abrir: "Open",
   "Abrir WhatsApp para {name}": "Open WhatsApp for {name}",
   "Abrir caja": "Open register",
   "Abrir en este equipo": "Open on this device",
+  "Abrir seguridad": "Open security",
   "Abrió caja": "Opened register",
   "Acceso, bloqueo y administradores de la plataforma": "Access, blocking and platform administrators",
   "Acepta recibir promociones por WhatsApp (Ley 81 de protección de datos)":
@@ -72,13 +74,19 @@ export const en: Record<string, string> = {
   Aceptar: "Accept",
   "Aceptó términos el {date}": "Accepted terms on {date}",
   Activa: "Active",
+  "Activa desde el {date}. Te quedan {n} códigos de recuperación.":
+    "On since {date}. You have {n} recovery codes left.",
   "Activa “Controlar lotes y caducidad” en los productos y captura la fecha al registrar compras.":
     "Turn on “Track lots and expiry” in products and enter the date when recording purchases.",
   Activada: "On",
   "Activada solo para este negocio": "On for this business only",
+  Activar: "Turn on",
+  "Activar la verificación en dos pasos": "Turn on two-step verification",
   "Activar puntos de lealtad": "Enable loyalty points",
   Activas: "Active",
   Actividad: "Activity",
+  "Actividad de {name}": "Activity of {name}",
+  "Actividad reciente": "Recent activity",
   Activo: "Active",
   "Activo (se puede asignar)": "Active (can be assigned)",
   "Activo: se registra cada mes": "Active: recorded every month",
@@ -91,9 +99,12 @@ export const en: Record<string, string> = {
   "Adelanto registrado": "Advance recorded",
   "Adelantos a empleados": "Employee advances",
   "Adelantos y otros": "Advances and other",
+  "Además de tu contraseña, al entrar te pediremos un código de 6 dígitos de una app de autenticación (Google Authenticator, Microsoft Authenticator, Authy…).":
+    "Besides your password, signing in will ask for a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy…).",
   Administración: "Administration",
   "Administración de ComercioClaro": "ComercioClaro administration",
   Administrador: "Administrator",
+  Administradores: "Administrators",
   Agotado: "Out of stock",
   "Agrega ALANUBE_API_URL y ALANUBE_TOKEN en las variables del servidor. Alanube entrega un sandbox gratuito al solicitarlo.":
     "Add ALANUBE_API_URL and ALANUBE_TOKEN to the server variables. Alanube provides a free sandbox on request.",
@@ -123,6 +134,8 @@ export const en: Record<string, string> = {
   "Ajuste de inventario": "Inventory adjustment",
   "Ajustó inventario": "Adjusted inventory",
   "Ajustó una función de un negocio": "Adjusted a business feature",
+  "Al cambiarla se cierran las sesiones de los demás dispositivos.":
+    "Changing it closes the sessions on your other devices.",
   "Al corriente": "Current",
   "Al día": "Up to date",
   "Al elegirlo se ajustan los días de venta sin conexión.": "Choosing it adjusts the offline sales days.",
@@ -197,6 +210,7 @@ export const en: Record<string, string> = {
   Bimestral: "Bimonthly",
   Bitácora: "Activity log",
   Bloqueado: "Blocked",
+  Bloqueados: "Blocked",
   Bloquear: "Block",
   Borrador: "Draft",
   Borrar: "Delete",
@@ -244,10 +258,13 @@ export const en: Record<string, string> = {
   "Calculando destinatarios…": "Calculating recipients…",
   "Cambiar balanza": "Change scale",
   "Cambiar contraseña": "Change password",
+  "Cambiar correo": "Change email",
+  "Cambiar el correo de {name}": "Change the email of {name}",
   "Cambio {amount}": "Change {amount}",
   "Cambio:": "Change:",
   "Cambios guardados": "Changes saved",
   "Cambió el acceso de un usuario": "Changed a user's access",
+  "Cambió el correo de un usuario": "Changed a user's email",
   "Cambió la aprobación de registros": "Changed sign-up approval",
   "Cambió la suscripción o las funciones": "Changed the subscription or features",
   "Cambió las reglas del cobro automático": "Changed the automatic billing rules",
@@ -300,6 +317,7 @@ export const en: Record<string, string> = {
   Cerradas: "Closed",
   "Cerrado el {date}": "Closed on {date}",
   Cerrar: "Close",
+  "Cerrar las demás": "Close the others",
   "Cerrar mes": "Close month",
   "Cerrar orden": "Close order",
   "Cerrar orden #{folio}": "Close order #{folio}",
@@ -310,6 +328,7 @@ export const en: Record<string, string> = {
   "Cerrar {month}": "Close {month}",
   "Cerró caja": "Closed register",
   "Cerró las sesiones de un usuario": "Closed a user's sessions",
+  "Cerró una sesión de un usuario": "Closed a user session",
   "Chica 50×25 mm": "Small 50×25 mm",
   "Ciclo de cobro": "Billing cycle",
   "Cierra el mes cuando tu contador lo haya revisado: así nadie cambia lo que ya se declaró.":
@@ -319,6 +338,7 @@ export const en: Record<string, string> = {
   Claro: "Light",
   "Clave SAT producto": "SAT product code",
   "Clave SAT unidad": "SAT unit code",
+  "Clave para escribir a mano": "Key to type by hand",
   Cliente: "Customer",
   "Cliente guardado": "Customer saved",
   Clientes: "Customers",
@@ -400,8 +420,11 @@ export const en: Record<string, string> = {
   "Conteo exacto: facturas emitidas desde ComercioClaro con tu PAC.":
     "Exact count: invoices issued from ComercioClaro with your PAC.",
   "Conteo físico": "Stock count",
+  Contraseña: "Password",
   "Contraseña actual": "Current password",
   "Contraseña actualizada. Se cerraron tus otras sesiones.": "Password updated. Your other sessions were signed out.",
+  "Contraseña correcta, faltó el código": "Password correct, code missing",
+  "Contraseña incorrecta": "Wrong password",
   "Contraseña temporal": "Temporary password",
   "Control de facturas electrónicas y de los límites del facturador gratuito":
     "E-invoices and free invoicer limit tracking",
@@ -411,11 +434,16 @@ export const en: Record<string, string> = {
     "Connect it by USB or a serial adapter. At the point of sale, products sold by the pound or kilo show a Weigh button.",
   "Copia el texto que no se entiende y escribe cómo lo dirías tú. Se guarda con esta pantalla.":
     "Copy the text that is unclear and write how you would say it. It is saved with this screen.",
+  Copiar: "Copy",
   "Copiar el catálogo de productos (sin existencias)": "Copy the product catalog (without stock)",
   Copias: "Copies",
+  Correcto: "Successful",
   Correo: "Email",
+  "Correo cambiado: le enviamos el enlace para confirmarlo": "Email changed: we sent the confirmation link",
   "Correo confirmado": "Email confirmed",
   "Correo del dueño": "Owner email",
+  "Correo desconocido": "Unknown email",
+  "Correo nuevo": "New email",
   "Correo sin confirmar": "Email not confirmed",
   Cortes: "Closings",
   Costo: "Cost",
@@ -477,8 +505,15 @@ export const en: Record<string, string> = {
   "Cédula o carné": "ID or card number",
   "Cédula o carné del jubilado": "Retiree ID or card number",
   Código: "Code",
+  "Código QR para tu app de autenticación": "QR code for your authenticator app",
+  "Código de 6 dígitos": "6-digit code",
   "Código de barras": "Barcode",
+  "Código de la app o de recuperación": "App or recovery code",
   "Código del vale": "Gift card code",
+  "Código incorrecto": "Wrong code",
+  "Códigos copiados": "Codes copied",
+  "Códigos de recuperación": "Recovery codes",
+  "Códigos de recuperación nuevos": "New recovery codes",
   "Cómo debería decir": "What it should say",
   DV: "DV",
   "Dado de baja": "Closed",
@@ -508,12 +543,15 @@ export const en: Record<string, string> = {
   "Depósitos sin venta": "Deposits without a sale",
   Desactivada: "Off",
   "Desactivada solo para este negocio": "Off for this business only",
+  Desactivar: "Turn off",
+  "Desactivar la verificación en dos pasos": "Turn off two-step verification",
   Desbloquear: "Unblock",
   "Descarga de ventas, productos y movimientos.": "Download sales, products and movements.",
   "Descarga el estado de cuenta en CSV desde la banca en línea y súbelo aquí. Cada depósito se cruza con tus ventas por número de operación, por monto y fecha, o como lote del día.":
     "Download your bank statement as CSV from online banking and upload it here. Each deposit is matched with your sales by transaction number, by amount and date, or as a daily batch.",
   "Descarga tu información en CSV (se abre en Excel) o un respaldo completo.":
     "Download your data as CSV (opens in Excel) or as a full backup.",
+  Descargar: "Download",
   "Descargar CSV": "Download CSV",
   "Descargar plantilla": "Download template",
   "Descargar respaldo completo (JSON)": "Download full backup (JSON)",
@@ -558,8 +596,10 @@ export const en: Record<string, string> = {
   Dirección: "Address",
   "Dirección del catálogo": "Catalog address",
   Directorio: "Directory",
+  Dispositivo: "Device",
   "Dividir pago": "Split payment",
   "Documentos emitidos este mes": "Documents issued this month",
+  "Dos pasos": "Two-step",
   Dueño: "Owner",
   "Dueño (acceso total)": "Owner (full access)",
   Décimo: "13th month",
@@ -613,6 +653,8 @@ export const en: Record<string, string> = {
     "The online catalog asks for the zone and adds its fee. Each zone is charged as a service at the point of sale.",
   "El cliente escanea tu QR y el cajero confirma el pago en la app.":
     "The customer scans your QR and the cashier confirms the payment in the app.",
+  "El correo nuevo queda sin confirmar hasta que abra el enlace. Se cierran sus sesiones y avisamos al correo anterior.":
+    "The new email stays unconfirmed until they open the link. Their sessions are closed and we notify the old email.",
   "El correo ya tenía cuenta: el negocio quedó agregado a ese usuario.":
     "The email already had an account: the business was added to that user.",
   "El costo de cada producto se actualiza con el promedio ponderado de lo que ya tenías y lo que entra.":
@@ -638,6 +680,8 @@ export const en: Record<string, string> = {
     "Online payment is off: set BILLING_PROVIDER (stripe or simulado).",
   "El pago en línea no está configurado. Contacta al administrador para pagar por transferencia o Yappy.":
     "Online payment isn't set up. Contact the administrator to pay by transfer or Yappy.",
+  "El panel de administración exige la verificación en dos pasos. Actívala para continuar.":
+    "The admin panel requires two-step verification. Turn it on to continue.",
   "El peso": "The weight",
   "El precio": "The price",
   "El saldo de {amount} dejará de poder usarse. No se devuelve dinero.":
@@ -707,15 +751,18 @@ export const en: Record<string, string> = {
   Equipo: "Team",
   "Eres administrador de la plataforma.": "You are a platform administrator.",
   Error: "Error",
+  "Es obligatoria para los administradores de la plataforma.": "It's mandatory for platform administrators.",
   "Es un insumo: se usa en recetas y no se vende en la caja":
     "It's an ingredient: used in recipes and not sold at the register",
   "Es un servicio: no lleva existencias (entrega, reparación, recarga propia)":
     "It is a service: no stock (delivery, repair, own top-up)",
+  "Escanea este código QR o escribe la clave a mano.": "Scan this QR code or type the key by hand.",
   "Escanea o busca cada producto del anaquel. Al terminar, las existencias se ajustan a lo contado y queda registrado el motivo.":
     "Scan or search each product on the shelf. When done, stock is set to what you counted and the reason is recorded.",
   "Escanea o escribe el código y Enter": "Scan or type the code and press Enter",
   "Escanear con la cámara": "Scan with the camera",
   "Escanear código": "Scan code",
+  "Escribe el código de 6 dígitos que muestra la app.": "Enter the 6-digit code the app shows.",
   "Escribe las cantidades de la receta completa; se dividen entre las porciones":
     "Enter the quantities for the whole recipe; they are divided by the portions",
   "Escribe lo que realmente llegó. Si falta algo, la orden queda abierta para recibirlo después.":
@@ -733,6 +780,7 @@ export const en: Record<string, string> = {
   "Estamos revisando el registro de {name}. Te avisaremos por correo en cuanto esté aprobado.":
     "We're reviewing the sign-up for {name}. We'll email you as soon as it's approved.",
   "Este cobro ya fue procesado.": "This charge was already processed.",
+  "Este dispositivo": "This device",
   "Este mes": "This month",
   "Este producto es": "This product is",
   "Este registro espera tu aprobación. Al aprobarlo empieza su prueba y se avisa al dueño por correo.":
@@ -741,6 +789,7 @@ export const en: Record<string, string> = {
   Etiquetas: "Labels",
   "Etiquetas de peso (balanza etiquetadora)": "Weight labels (label-printing scale)",
   Exento: "Exempt",
+  "Exigir verificación en dos pasos": "Require two-step verification",
   "Existencia actual:": "Current stock:",
   "Existencia ajustada": "Stock adjusted",
   "Existencia contada": "Counted stock",
@@ -828,6 +877,8 @@ export const en: Record<string, string> = {
   "Gastos recurrentes y planilla": "Recurring expenses and payroll",
   "Gastos {expenses}": "Expenses {expenses}",
   "Gastos {expenses} · comisiones de recargas {commissions}": "Expenses {expenses} · top-up commissions {commissions}",
+  Generar: "Generate",
+  "Generar códigos de recuperación nuevos": "Generate new recovery codes",
   "Generó una contraseña temporal": "Generated a temporary password",
   "Global · público en general": "Global · general public",
   "Gracias, revisaremos la traducción": "Thanks, we will review the translation",
@@ -837,6 +888,8 @@ export const en: Record<string, string> = {
   "Gráfica de ventas y ganancia neta por día": "Chart of sales and net profit per day",
   "Guarda este reporte: Acodeco puede pedir la prueba de los descuentos otorgados.":
     "Keep this report: Acodeco may ask for proof of the discounts given.",
+  "Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una sola vez para entrar si pierdes tu teléfono. No los volveremos a mostrar.":
+    "Keep these recovery codes somewhere safe. Each works once to sign in if you lose your phone. We won't show them again.",
   "Guarda tu hoja de Excel como CSV. Columnas reconocidas: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. Si el código de barras (o el nombre) ya existe se actualiza el producto.":
     "Save your Excel sheet as CSV. Recognized columns: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. If the barcode (or name) already exists, the product is updated.",
   Guardar: "Save",
@@ -869,6 +922,7 @@ export const en: Record<string, string> = {
   "Horas extra de {name}": "Overtime hours for {name}",
   Hoy: "Today",
   IEPS: "IEPS",
+  "IP {ip} · última actividad {date}": "IP {ip} · last active {date}",
   ISR: "Income tax",
   "ISR del tramo alto": "Income tax top bracket",
   "ISR del tramo intermedio": "Income tax middle bracket",
@@ -897,6 +951,7 @@ export const en: Record<string, string> = {
   "Indica qué cantidad se devuelve": "Enter the quantity returned",
   "Ingreso mensual recurrente": "Monthly recurring revenue",
   "Iniciar conteo": "Start count",
+  "Inicios de sesión": "Sign-ins",
   Insumo: "Ingredient",
   Insumos: "Ingredients",
   "Intento {n} de {max}; el próximo es el {date}.": "Attempt {n} of {max}; the next one is on {date}.",
@@ -942,6 +997,8 @@ export const en: Record<string, string> = {
   "La prueba termina": "Trial ends",
   "La tarjeta queda guardada para renovar automáticamente. Puedes cancelarlo cuando quieras.":
     "The card is saved to renew automatically. You can cancel anytime.",
+  "La verificación en dos pasos vuelve a ser opcional en este negocio":
+    "Two-step verification is optional again for this business",
   "La vigencia se extiende desde el vencimiento actual (o desde hoy si ya venció).":
     "The period is extended from the current expiry date (or from today if it already expired).",
   "Las compras a crédito y las facturas que registres aparecerán aquí hasta que las pagues.":
@@ -981,6 +1038,7 @@ export const en: Record<string, string> = {
     "Cashiers can sell and handle the register and customers, but cannot see costs, reports or settings.",
   "Los cambios se aplican a los {n} negocio(s) con este plan.": "Changes apply to the {n} business(es) on this plan.",
   "Los clientes acumulan y canjean puntos.": "Customers earn and redeem points.",
+  "Los códigos anteriores dejarán de servir.": "The previous codes will stop working.",
   "Los pagos exceden el total": "Payments exceed the total",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "Dishes prepared in the kitchen are sent to the kitchen display.",
@@ -996,6 +1054,8 @@ export const en: Record<string, string> = {
     "Products in the same group are shown together at checkout",
   "Los registros nuevos entran directo a su prueba": "New sign-ups go straight to their trial",
   "Los registros nuevos esperarán tu aprobación": "New sign-ups will wait for your approval",
+  "Los usuarios de este negocio deberán usar la verificación en dos pasos":
+    "Users of this business must use two-step verification",
   Lote: "Lot",
   "Lote del día": "Daily batch",
   "Límite de crédito (fiado)": "Credit limit",
@@ -1100,6 +1160,7 @@ export const en: Record<string, string> = {
   "No han vuelto": "Haven't come back",
   "No hay cuentas abiertas.": "No open tabs.",
   "No hay negocios con esos filtros.": "No businesses match those filters.",
+  "No hay otras sesiones registradas.": "No other sessions recorded.",
   "No hay planes disponibles para pagar en línea.": "No plans are available to pay online.",
   "No hay tarjeta guardada. Se guarda al pagar en línea.": "No saved card. It's saved when you pay online.",
   "No hay usuarios con esa búsqueda.": "No users match that search.",
@@ -1111,6 +1172,7 @@ export const en: Record<string, string> = {
   "No se podrán registrar, cancelar ni editar ventas, compras ni gastos con fecha en ese mes.":
     "Sales, purchases and expenses dated in that month can't be recorded, cancelled or edited.",
   "No se pudo cargar la información": "Could not load the information",
+  "No se pudo copiar": "Couldn't copy",
   Nombre: "Name",
   "Nombre de la cuenta (p. ej. Mesa 3)": "Tab name (e.g. Table 3)",
   "Nombre del dueño": "Owner name",
@@ -1353,6 +1415,8 @@ export const en: Record<string, string> = {
   "QR fijo del comercio (confirmación manual)": "Fixed business QR (manual confirmation)",
   Queda: "Left",
   "Queda registrado en la bitácora quién lo reabrió y por qué.": "The activity log records who reopened it and why.",
+  "Quien no la tenga deberá activarla al entrar. {n} de {total} ya la usan.":
+    "Anyone without it must turn it on when signing in. {n} of {total} already use it.",
   "Quien se registra empieza su prueba al momento. Te avisamos por correo de cada registro.":
     "New sign-ups start their trial right away. We'll email you about each one.",
   "Quien se registra espera tu aprobación antes de usar la app. Te avisamos por correo.":
@@ -1361,11 +1425,13 @@ export const en: Record<string, string> = {
   Quitar: "Remove",
   "Quitar administrador": "Remove administrator",
   "Quitar del plan": "Remove from plan",
+  "Quitar dos pasos": "Remove two-step",
   "Quitar filtros ({n})": "Clear filters ({n})",
   "Quitar selección": "Clear selection",
   "Quitar tarjeta": "Remove card",
   "Quitar todas las de {group}": "Remove all {group}",
   "Quitar {name}": "Remove {name}",
+  "Quitó la verificación en dos pasos": "Removed two-step verification",
   "Quitó usuario": "Removed user",
   "Qué comprar": "What to buy",
   RFC: "RFC",
@@ -1468,6 +1534,7 @@ export const en: Record<string, string> = {
   "Requieren atención": "Need attention",
   Restaurar: "Restore",
   "Restaurar valores por defecto": "Restore defaults",
+  Resultado: "Result",
   "Resultado acumulado": "Accumulated result",
   Resumen: "Summary",
   "Resumen de la plataforma": "Platform overview",
@@ -1529,6 +1596,8 @@ export const en: Record<string, string> = {
   "Segmentos de clientes, mensajes personalizados, cupones y resultados.":
     "Customer segments, personalized messages, coupons and results.",
   "Segundo monitor o tableta.": "Second monitor or tablet.",
+  Seguridad: "Security",
+  "Seguridad de tu cuenta": "Account security",
   "Seguro educativo del empleado": "Employee education insurance",
   "Seguro educativo del patrono": "Employer education insurance",
   "Según el plan (no)": "Per plan (no)",
@@ -1547,7 +1616,9 @@ export const en: Record<string, string> = {
   Servicio: "Service",
   "Servicio anulado": "Service voided",
   Servido: "Served",
+  "Sesiones abiertas": "Open sessions",
   "Sesiones cerradas": "Sessions closed",
+  "Sesión cerrada": "Session closed",
   "Si compras por caja y vendes suelto (p. ej. 20 cigarrillos por cajetilla, 30 huevos por cartón)":
     "If you buy by the box and sell loose (e.g. 20 cigarettes per pack, 30 eggs per tray)",
   "Si el PAC o la DGI no responden, la factura queda en contingencia y se reintenta sola. El ticket imprime el CUFE y su código QR.":
@@ -1557,6 +1628,7 @@ export const en: Record<string, string> = {
   "Si ves un texto mal traducido, usa “Reportar traducción”.":
     "If you see a badly translated text, use “Report translation”.",
   "Sin accesos registrados": "No recorded access",
+  "Sin actividad registrada.": "No recorded activity.",
   "Sin aportes ni retiros": "No contributions or withdrawals",
   "Sin asientos en el mes.": "No entries this month.",
   "Sin caja abierta el saldo inicial es 0. Escribe el total de caja y banco para afinarlo.":
@@ -1573,6 +1645,7 @@ export const en: Record<string, string> = {
   "Sin cupones": "No coupons",
   "Sin cupón": "No coupon",
   "Sin definir": "Not set",
+  "Sin dos pasos": "No two-step",
   "Sin empleados": "No employees",
   "Sin existencias: {items}": "Out of stock: {items}",
   "Sin facturas": "No invoices",
@@ -1599,6 +1672,7 @@ export const en: Record<string, string> = {
   "Sin recetas todavía": "No recipes yet",
   "Sin registros nuevos esta semana.": "No new sign-ups this week.",
   "Sin renovación automática": "No automatic renewal",
+  "Sin sesiones abiertas.": "No open sessions.",
   "Sin tarjeta guardada (paga a mano)": "No saved card (pays manually)",
   "Sin traspasos": "No transfers",
   "Sin vales": "No gift cards",
@@ -1660,6 +1734,8 @@ export const en: Record<string, string> = {
   Teléfono: "Phone",
   "Teléfono (WhatsApp)": "Phone (WhatsApp)",
   Tema: "Theme",
+  "Tendrán que iniciar sesión otra vez. Esta sesión sigue abierta.":
+    "They'll have to sign in again. This session stays open.",
   "Tendrás que volver a iniciar sesión en cada dispositivo.": "You will have to sign in again on each device.",
   "Terminó tu periodo de prueba": "Your trial has ended",
   "Texto en pantalla": "Text on screen",
@@ -1711,6 +1787,7 @@ export const en: Record<string, string> = {
   "Tu comisión: {amount}": "Your commission: {amount}",
   "Tu compra": "Your purchase",
   "Tu correo ya está confirmado": "Your email is already confirmed",
+  "Tu cuenta quedará protegida solo con la contraseña.": "Your account will be protected by your password only.",
   "Tu negocio está en revisión": "Your business is under review",
   "Tu periodo de prueba termina en {days} día(s). Contacta al administrador para activar tu plan.":
     "Your trial ends in {days} day(s). Contact the administrator to activate your plan.",
@@ -1727,6 +1804,9 @@ export const en: Record<string, string> = {
     "A public page with your products and prices. Customers build their order and send it to you on WhatsApp.",
   "Unidad del peso": "Weight unit",
   "Unidades por caja (opcional)": "Units per box (optional)",
+  "Uno de tus negocios exige la verificación en dos pasos. Actívala para continuar.":
+    "One of your businesses requires two-step verification. Turn it on to continue.",
+  "Uno de tus negocios la exige.": "One of your businesses requires it.",
   "Uno por uno, con el lector de códigos o importándolos desde Excel.":
     "One by one, with the barcode scanner or by importing from Excel.",
   "Usa Aprobar o Reactivar arriba para cambiarlo.": "Use Approve or Reactivate above to change it.",
@@ -1836,6 +1916,12 @@ export const en: Record<string, string> = {
   "Ver todas": "View all",
   "Ver todo": "View all",
   "Ver todos los negocios": "See all businesses",
+  "Verificación en dos pasos": "Two-step verification",
+  "Verificación en dos pasos activada": "Two-step verification on",
+  "Verificación en dos pasos desactivada": "Two-step verification off",
+  "Verificación en dos pasos quitada": "Two-step verification removed",
+  "Verificación en dos pasos, sesiones abiertas en otros dispositivos y actividad reciente.":
+    "Two-step verification, sessions open on other devices and recent activity.",
   Vigente: "Current",
   "Visible en la página de precios": "Shown on the pricing page",
   Volver: "Back",
@@ -1846,6 +1932,8 @@ export const en: Record<string, string> = {
   XML: "XML",
   "Ya cubriste tus gastos fijos del mes: lo que sigue es ganancia.":
     "You've covered this month's fixed expenses: what follows is profit.",
+  "Ya los guardé": "I saved them",
+  "Ya los guardé, continuar": "I saved them, continue",
   "Ya no haremos más intentos automáticos: paga con otra tarjeta.":
     "We won't try automatically again: pay with another card.",
   "Ya no se renovará el plan automáticamente. Tendrás que pagar a mano antes del vencimiento.":
@@ -1934,6 +2022,7 @@ export const en: Record<string, string> = {
   "{n} productos contados · diferencia estimada a costo:": "{n} products counted · estimated difference at cost:",
   "{n} pts": "{n} pts",
   "{n} registro(s) esperan tu aprobación.": "{n} sign-up(s) waiting for your approval.",
+  "{n} sesión(es) cerrada(s)": "{n} session(s) closed",
   "{n} usuario(s)": "{n} user(s)",
   "{n} variantes": "{n} variants",
   "{n} variantes creadas. Ajusta su existencia y código en el inventario.":
@@ -1962,6 +2051,7 @@ export const en: Record<string, string> = {
   "· cad.": "· exp.",
   "· pendiente": "· pending",
   "¿Bloquear a {name}?": "Block {name}?",
+  "¿Cerrar las sesiones de los demás dispositivos?": "Close the sessions on your other devices?",
   "¿Cómo facturas?": "How do you invoice?",
   "¿Desbloquear a {name}?": "Unblock {name}?",
   "¿Dónde está el negocio?": "Where is the business?",
@@ -1973,6 +2063,7 @@ export const en: Record<string, string> = {
     "Not listed? Add RFC, legal name, regime and ZIP code to the customer in",
   "¿Quitar a {name} como administrador?": "Remove {name} as administrator?",
   "¿Quitar la tarjeta?": "Remove the card?",
+  "¿Quitar la verificación en dos pasos de {name}?": "Remove two-step verification for {name}?",
   "¿Quitar {feature} del plan {plan}?": "Remove {feature} from the {plan} plan?",
   "¿Reactivar {name}?": "Reactivate {name}?",
   "¿Suspender {name}?": "Suspend {name}?",
@@ -1982,5 +2073,9 @@ export const en: Record<string, string> = {
   "Últimas vacaciones": "Last vacation",
   "Último acceso: {date}": "Last access: {date}",
   "Últimos 7 días": "Last 7 days",
+  "Últimos inicios de sesión en tu cuenta, correctos y fallidos.":
+    "Latest successful and failed sign-ins to your account.",
+  "Úsalo solo si perdió su teléfono y comprobaste que es la persona. Se cierran sus sesiones y le avisamos por correo.":
+    "Use only if they lost their phone and you verified it's them. Their sessions are closed and we email them.",
   "→ quedará en": "→ will be",
 };

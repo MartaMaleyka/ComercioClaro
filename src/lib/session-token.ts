@@ -13,10 +13,12 @@ export interface SessionPayload {
   bid: string;
   /** versión de token del usuario; si cambia, la sesión deja de ser válida */
   tv: number;
+  /** sesión (dispositivo) en la base de datos, para verla y cerrarla sola */
+  sid?: string;
 }
 
 export async function createToken(payload: SessionPayload) {
-  return new SignJWT({ bid: payload.bid, tv: payload.tv })
+  return new SignJWT({ bid: payload.bid, tv: payload.tv, ...(payload.sid ? { sid: payload.sid } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
@@ -30,7 +32,12 @@ export async function verifyToken(token: string): Promise<SessionPayload | null>
     if (typeof payload.sub !== "string" || typeof payload.bid !== "string" || typeof payload.tv !== "number") {
       return null;
     }
-    return { sub: payload.sub, bid: payload.bid, tv: payload.tv };
+    return {
+      sub: payload.sub,
+      bid: payload.bid,
+      tv: payload.tv,
+      ...(typeof payload.sid === "string" ? { sid: payload.sid } : {}),
+    };
   } catch {
     return null;
   }

@@ -54,6 +54,13 @@ Investigación, plan y fuentes en [`docs/plan-panama-regiones.md`](docs/plan-pan
   - Productos de servicio sin existencias.
 - **Perfil capital o interior** en Configuración, que aplica los valores recomendados.
 
+### Seguridad de las cuentas
+
+- Verificación en dos pasos con app de autenticación y códigos de recuperación: obligatoria para el super admin y exigible por negocio ([`docs/plan-seguridad.md`](docs/plan-seguridad.md)).
+- Sesiones por dispositivo que se pueden cerrar una por una, historial de inicios de sesión y aviso por correo de un dispositivo nuevo.
+- Contraseñas comunes rechazadas y la IP del cliente tomada del proxy de confianza.
+- En el panel: actividad de cada usuario, cambiar su correo, quitar los dos pasos y filtros por seguridad.
+
 ### Registro y bienvenida
 
 - Registro con el plan elegido, tipo de negocio, teléfono y aceptación de términos y privacidad, con protección contra bots ([`docs/plan-registro.md`](docs/plan-registro.md)).
@@ -179,6 +186,8 @@ Abre [http://localhost:3000](http://localhost:3000).
 | Dueño  | `demo@comercioclaro.com`   | `demo1234` |
 | Cajero | `cajero@comercioclaro.com` | `demo1234` |
 | Super admin | `admin@comercioclaro.com` | `demo1234` |
+
+El super admin entra con verificación en dos pasos: agrega a tu app de autenticación (Google Authenticator, Authy…) la clave de demostración `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP` y escribe el código que muestra.
 
 El Dueño y el Cajero tienen acceso a los cuatro negocios de ejemplo. Se cambia de negocio con el selector bajo el nombre del negocio, en la parte superior:
 

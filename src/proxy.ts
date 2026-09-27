@@ -14,6 +14,7 @@ const publicPages = [
 ];
 const publicApi = [
   "/api/auth/login",
+  "/api/auth/login/mfa",
   "/api/auth/register",
   "/api/auth/reset-password",
   "/api/auth/verify-email",
