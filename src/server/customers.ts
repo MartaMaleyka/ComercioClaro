@@ -5,6 +5,10 @@ import { audit } from "@/lib/audit";
 import type { Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 import { computeAging, type AgingResult } from "@/lib/aging";
+import { paidWith } from "./payments";
+
+/** Ventas con parte fiada (fiado completo o pago dividido con fiado). */
+const creditSale = { payments: { some: { method: "CREDIT" as const } } };
 
 /** Registra un abono a la cuenta de fiado de un cliente. */
 export async function addCustomerPayment(
@@ -48,8 +52,8 @@ export async function customerStatement(businessId: string, customerId: string) 
 
   const [sales, payments] = await Promise.all([
     prisma.sale.findMany({
-      where: { customerId, businessId, paymentMethod: "CREDIT" },
-      include: { returns: { where: { refundMethod: "CREDIT" } } },
+      where: { customerId, businessId, ...creditSale },
+      include: { returns: { where: { refundMethod: "CREDIT" } }, payments: { where: { method: "CREDIT" } } },
       orderBy: { createdAt: "asc" },
     }),
     prisma.customerPayment.findMany({ where: { customerId, businessId }, orderBy: { createdAt: "asc" } }),
@@ -58,7 +62,8 @@ export async function customerStatement(businessId: string, customerId: string) 
   type Entry = { date: Date; type: "SALE" | "RETURN" | "CANCEL" | "PAYMENT"; description: string; amount: number };
   const entries: Entry[] = [];
   for (const sale of sales) {
-    entries.push({ date: sale.createdAt, type: "SALE", description: `Venta #${sale.folio}`, amount: D(sale.total).toNumber() });
+    const credit = paidWith(sale.payments, "CREDIT");
+    entries.push({ date: sale.createdAt, type: "SALE", description: `Venta #${sale.folio}`, amount: credit.toNumber() });
     for (const r of sale.returns) {
       entries.push({ date: r.createdAt, type: "RETURN", description: `Devolución venta #${sale.folio}`, amount: -D(r.total).toNumber() });
     }
@@ -68,7 +73,7 @@ export async function customerStatement(businessId: string, customerId: string) 
         date: sale.cancelledAt,
         type: "CANCEL",
         description: `Cancelación venta #${sale.folio}`,
-        amount: -D(sale.total).minus(returned).toNumber(),
+        amount: -credit.minus(returned).toNumber(),
       });
     }
   }
@@ -112,14 +117,14 @@ export async function customersAging(businessId: string, customerIds?: string[])
 
   const [sales, payments] = await Promise.all([
     prisma.sale.findMany({
-      where: { businessId, customerId: { in: ids }, paymentMethod: "CREDIT", status: "ACTIVE" },
+      where: { businessId, customerId: { in: ids }, status: "ACTIVE", ...creditSale },
       select: {
         id: true,
         folio: true,
         createdAt: true,
         dueDate: true,
-        total: true,
         customerId: true,
+        payments: { where: { method: "CREDIT" }, select: { method: true, amount: true } },
         returns: { where: { refundMethod: "CREDIT" }, select: { total: true } },
       },
     }),
@@ -141,7 +146,7 @@ export async function customersAging(businessId: string, customerIds?: string[])
         folio: s.folio,
         date: s.createdAt,
         dueDate: s.dueDate ?? new Date(s.createdAt.getTime() + (days.get(id) ?? 15) * 86_400_000),
-        amount: Number(s.total) - s.returns.reduce((acc, r) => acc + Number(r.total), 0),
+        amount: paidWith(s.payments, "CREDIT").toNumber() - s.returns.reduce((acc, r) => acc + Number(r.total), 0),
       }));
     result.set(id, computeAging(charges, paid.get(id) ?? 0));
   }

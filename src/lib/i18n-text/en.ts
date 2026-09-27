@@ -77,6 +77,7 @@ export const en: Record<string, string> = {
     "Add your first product or import your catalog from Excel.",
   Agregar: "Add",
   "Agregar extra": "Add extra",
+  "Agregar forma de pago": "Add payment method",
   "Agregar insumo": "Add ingredient",
   "Agregar las {n} sugerencias de reabastecimiento": "Add the {n} restock suggestions",
   "Agregar producto": "Add product",
@@ -162,6 +163,7 @@ export const en: Record<string, string> = {
   Cajas: "Boxes",
   Cajero: "Cashier",
   "Cambiar contraseña": "Change password",
+  "Cambio {amount}": "Change {amount}",
   "Cambio:": "Change:",
   "Cambios guardados": "Changes saved",
   "Cambió el acceso de un usuario": "Changed a user's access",
@@ -382,6 +384,7 @@ export const en: Record<string, string> = {
   Dirección: "Address",
   "Dirección del catálogo": "Catalog address",
   Directorio: "Directory",
+  "Dividir pago": "Split payment",
   "Documentos emitidos este mes": "Documents issued this month",
   Dueño: "Owner",
   "Dueño (acceso total)": "Owner (full access)",
@@ -533,6 +536,7 @@ export const en: Record<string, string> = {
   "Facturas (DGI Panamá)": "Invoices (DGI Panama)",
   "Facturas a clientes y factura global al público en general":
     "Customer invoices and global invoice to the general public",
+  "Falta por cubrir {amount}": "{amount} left to cover",
   Faltantes: "Shortages",
   Fecha: "Date",
   "Fecha de entrega": "Delivery date",
@@ -544,6 +548,7 @@ export const en: Record<string, string> = {
   Fila: "Row",
   "Fondo inicial": "Opening float",
   "Forma de pago": "Payment method",
+  "Forma de pago {n}": "Payment method {n}",
   Formato: "Format",
   Funciones: "Features",
   "Funciones actualizadas": "Features updated",
@@ -668,6 +673,7 @@ export const en: Record<string, string> = {
     "Cashiers can sell and handle the register and customers, but cannot see costs, reports or settings.",
   "Los cambios se aplican a los {n} negocio(s) con este plan.": "Changes apply to the {n} business(es) on this plan.",
   "Los clientes acumulan y canjean puntos.": "Customers earn and redeem points.",
+  "Los pagos exceden el total": "Payments exceed the total",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "Dishes prepared in the kitchen are sent to the kitchen display.",
   "Los precios incluyen impuestos. El desglose se calcula al facturar.":
@@ -701,6 +707,7 @@ export const en: Record<string, string> = {
   Metro: "Meter",
   "Mi cuenta": "My account",
   Mililitro: "Milliliter",
+  Mixto: "Split",
   "Modificó un plan": "Changed a plan",
   "Modo de cobro": "Charge mode",
   "Modo restaurante": "Restaurant mode",
@@ -807,6 +814,7 @@ export const en: Record<string, string> = {
   "Pagado hasta": "Paid until",
   Pago: "Payment",
   "Pago de servicio": "Bill payment",
+  "Pago dividido": "Split payment",
   "Pago registrado": "Payment recorded",
   "Pago vencido": "Payment overdue",
   "Pago vencido desde {date}": "Payment overdue since {date}",
@@ -944,6 +952,7 @@ export const en: Record<string, string> = {
   "Recoge en tienda": "Pickup in store",
   Reembolso: "Refund",
   Referencia: "Reference",
+  "Referencia de {method}": "{method} reference",
   "Registra a quién le compras para comparar precios y saber a quién pedir.":
     "Record who you buy from to compare prices and know whom to order from.",
   "Registra clientes para venderles fiado y llevar su cuenta.":
@@ -1134,6 +1143,7 @@ export const en: Record<string, string> = {
   "Total a pagar": "Total to pay",
   "Total cobrado": "Total charged",
   "Total contado: {amount}": "Counted total: {amount}",
+  "Total cubierto": "Total covered",
   "Total estimado": "Estimated total",
   "Total mostrado": "Total shown",
   "Total por cobrar": "Total receivable",
@@ -1153,6 +1163,7 @@ export const en: Record<string, string> = {
   "Tus clientes registrados ganan puntos al comprar y los canjean como descuento.":
     "Registered customers earn points when they buy and redeem them as a discount.",
   "Un producto": "One product",
+  "Un solo pago": "Single payment",
   "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.":
     "A public page with your products and prices. Customers build their order and send it to you on WhatsApp.",
   "Unidades por caja (opcional)": "Units per box (optional)",

@@ -54,6 +54,13 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   if (!sale) return <ListSkeleton rows={3} />;
 
   const active = sale.status === "ACTIVE";
+  // Lo cobrado por grupo: dinero (efectivo, tarjeta, transferencia, Yappy), fiado y vale.
+  const payments = sale.payments?.length ? sale.payments : [{ method: sale.paymentMethod, amount: sale.total }];
+  const paidBy = (methods: string[]) =>
+    payments.filter((p) => methods.includes(p.method)).reduce((acc, p) => acc + p.amount, 0);
+  const paidCredit = paidBy(["CREDIT"]);
+  const paidGift = paidBy(["GIFT_CARD"]);
+  const paidMoney = paidBy(["CASH", "CARD", "TRANSFER", "YAPPY"]);
 
   async function cancel() {
     const reason = await confirm({
@@ -76,10 +83,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   function openReturn() {
     setReturnQty({});
     setReturnReason("");
-    // Fiado y vale se devuelven a la misma cuenta; lo demás, a elección.
-    setRefundMethod(
-      sale!.paymentMethod === "CREDIT" || sale!.paymentMethod === "GIFT_CARD" ? sale!.paymentMethod : "CASH"
-    );
+    // Fiado y vale se devuelven a la misma cuenta; lo cobrado en dinero, a elección.
+    setRefundMethod(paidMoney > 0 ? "CASH" : paidCredit > 0 ? "CREDIT" : "GIFT_CARD");
     setReturnOpen(true);
   }
 
@@ -165,8 +170,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
         <div>
           <h1 className="text-xl font-bold text-slate-900">{tr("Venta #{folio}", { folio: sale.folio })}</h1>
           <p className="text-sm text-slate-500">
-            {fmt.dateTime(sale.createdAt)} · {PAYMENT_METHOD_LABELS[sale.paymentMethod]}
-            {sale.paymentReference && ` (ref. ${sale.paymentReference})`}
+            {fmt.dateTime(sale.createdAt)} · {tr(PAYMENT_METHOD_LABELS[sale.paymentMethod])}
+            {sale.paymentMethod !== "MIXED" && sale.paymentReference && ` (ref. ${sale.paymentReference})`}
             {sale.customer && ` · ${sale.customer.name}`}
           </p>
           {sale.dueDate && sale.status === "ACTIVE" && (
@@ -185,9 +190,22 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             {sale.invoice?.status === "PENDING" && <Badge tone="amber">{tr("Factura en contingencia")}</Badge>}
           </div>
         </div>
-        <p className={`text-2xl font-bold tabular-nums ${active ? "text-slate-900" : "line-through text-slate-400"}`}>
-          {fmt.money(sale.total)}
-        </p>
+        <div className="text-right">
+          <p className={`text-2xl font-bold tabular-nums ${active ? "text-slate-900" : "line-through text-slate-400"}`}>
+            {fmt.money(sale.total)}
+          </p>
+          {sale.paymentMethod === "MIXED" && (
+            <ul className="text-xs text-slate-600" aria-label={tr("Pagos")}>
+              {sale.payments?.map((p) => (
+                <li key={p.id} className="tabular-nums">
+                  {tr(PAYMENT_METHOD_LABELS[p.method])} {fmt.money(p.amount)}
+                  {p.reference && ` · ${p.reference}`}
+                </li>
+              ))}
+              {(sale.change ?? 0) > 0 && <li>{tr("Cambio {amount}", { amount: fmt.money(sale.change ?? 0) })}</li>}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap">
@@ -346,13 +364,9 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
             label={tr("Reembolso")}
             value={refundMethod}
             onChange={(e) => setRefundMethod(e.target.value as PaymentMethod)}
-            disabled={sale.paymentMethod === "CREDIT" || sale.paymentMethod === "GIFT_CARD"}
+            disabled={[paidMoney, paidCredit, paidGift].filter((n) => n > 0).length === 1 && paidMoney === 0}
           >
-            {sale.paymentMethod === "CREDIT" ? (
-              <option value="CREDIT">{tr("Descontar del saldo del cliente")}</option>
-            ) : sale.paymentMethod === "GIFT_CARD" ? (
-              <option value="GIFT_CARD">{tr("Regresar al saldo del vale")}</option>
-            ) : (
+            {paidMoney > 0 && (
               <>
                 <option value="CASH">{tr("Efectivo (sale de caja)")}</option>
                 <option value="CARD">{tr("Tarjeta")}</option>
@@ -360,6 +374,8 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
                 {business.country === "PA" && <option value="YAPPY">{tr("Yappy")}</option>}
               </>
             )}
+            {paidCredit > 0 && <option value="CREDIT">{tr("Descontar del saldo del cliente")}</option>}
+            {paidGift > 0 && <option value="GIFT_CARD">{tr("Regresar al saldo del vale")}</option>}
           </Select>
           <Input
             label={tr("Motivo")}

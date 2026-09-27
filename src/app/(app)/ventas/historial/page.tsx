@@ -64,9 +64,9 @@ export default function SalesHistoryPage() {
           onChange={(e) => setPaymentMethod(e.target.value)}
         >
           <option value="">{tr("Toda forma de pago")}</option>
-          {countryConfig(business.country).paymentMethods.map((m) => (
+          {[...countryConfig(business.country).paymentMethods, "MIXED"].map((m) => (
             <option key={m} value={m}>
-              {PAYMENT_METHOD_LABELS[m]}
+              {tr(PAYMENT_METHOD_LABELS[m])}
             </option>
           ))}
         </Select>

@@ -70,7 +70,7 @@ export async function attemptInvoice(invoiceId: string) {
     include: {
       business: true,
       customer: true,
-      sales: { include: { items: { include: { product: true } } } },
+      sales: { include: { items: { include: { product: true } }, payments: true } },
     },
   });
   if (invoice.status !== "PENDING") return invoice;

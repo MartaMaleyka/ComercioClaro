@@ -45,15 +45,20 @@ export async function exportCsv(
     case "sales": {
       const sales = await prisma.sale.findMany({
         where: { businessId, createdAt },
-        include: { customer: true },
+        include: { customer: true, payments: true },
         orderBy: { createdAt: "asc" },
         take: MAX_ROWS,
       });
+      // Pago dividido: "Mixto (Efectivo 5.00 + Tarjeta 10.00)".
+      const methodLabel = (s: (typeof sales)[number]) =>
+        s.paymentMethod === "MIXED"
+          ? `${PAYMENT_METHOD_LABELS.MIXED} (${s.payments.map((p) => `${PAYMENT_METHOD_LABELS[p.method]} ${p.amount.toFixed(2)}`).join(" + ")})`
+          : PAYMENT_METHOD_LABELS[s.paymentMethod];
       return toCsv(
         ["Folio", "Fecha", "Estado", "Forma de pago", "Referencia", "Vence", "Cliente", "Subtotal", "Descuento", "Total", "Costo", "Utilidad bruta", "Notas", "Motivo cancelación"],
         sales.map((s) => [
           s.folio, localDate(s.createdAt), s.status === "ACTIVE" ? "Activa" : "Cancelada",
-          PAYMENT_METHOD_LABELS[s.paymentMethod], s.paymentReference, s.dueDate?.toISOString().slice(0, 10), s.customer?.name, s.subtotal.toFixed(2), s.discount.toFixed(2),
+          methodLabel(s), s.paymentReference, s.dueDate?.toISOString().slice(0, 10), s.customer?.name, s.subtotal.toFixed(2), s.discount.toFixed(2),
           s.total.toFixed(2), s.costTotal.toFixed(2), s.total.minus(s.costTotal).toFixed(2), s.notes, s.cancelReason,
         ])
       );

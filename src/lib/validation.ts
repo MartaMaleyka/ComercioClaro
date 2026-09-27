@@ -336,6 +336,20 @@ export const saleSchema = z.object({
     .max(200, "Demasiados productos en una venta"),
   discount: moneyInput.default(0),
   paymentMethod: paymentMethod.default("CASH"),
+  // Pago dividido: varias formas de pago. En efectivo, el monto es lo que entrega el cliente.
+  payments: z
+    .array(
+      z.object({
+        method: paymentMethod,
+        amount: positiveMoney,
+        reference: optText(60),
+        giftCardCode: optText(40),
+        yappyChargeId: id.nullish(),
+      })
+    )
+    .max(6, "Máximo 6 formas de pago")
+    .refine((list) => new Set(list.map((p) => p.method)).size === list.length, "Usa un solo renglón por forma de pago")
+    .nullish(),
   amountReceived: moneyInput.nullish(),
   paymentReference: optText(60),
   yappyChargeId: id.nullish(),
@@ -566,7 +580,7 @@ export const listQuerySchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   status: z.enum(["ACTIVE", "CANCELLED"]).optional(),
-  paymentMethod: paymentMethod.optional(),
+  paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY", "GIFT_CARD", "MIXED"]).optional(),
 });
 
 export const reportQuerySchema = z.object({

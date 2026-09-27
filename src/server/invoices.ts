@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { dayRange, parseDayKey } from "@/lib/dates";
 import { buildItem, PAYMENT_FORM, PUBLIC_RFC, type CfdiItem } from "@/lib/cfdi";
 import type { Actor } from "./inventory";
+import { mainPaymentMethod } from "./payments";
 import { getPacProvider } from "./einvoice/providers";
 
 const PROVIDER = "facturama";
@@ -64,7 +65,7 @@ export async function invoiceSale(
     prisma.business.findUniqueOrThrow({ where: { id: actor.businessId } }),
     prisma.sale.findFirst({
       where: { id: input.saleId, businessId: actor.businessId },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: { product: true } }, payments: true },
     }),
     prisma.customer.findFirst({ where: { id: input.customerId, businessId: actor.businessId } }),
   ]);
@@ -102,8 +103,9 @@ export async function invoiceSale(
     Currency: business.currency,
     ExpeditionPlace: issuer.postalCode,
     Folio: String(sale.folio),
-    PaymentForm: input.paymentForm ?? PAYMENT_FORM[sale.paymentMethod],
-    PaymentMethod: sale.paymentMethod === "CREDIT" ? "PPD" : "PUE",
+    // Pago dividido: la forma de pago con el mayor monto; con fiado, pago en parcialidades (PPD).
+    PaymentForm: input.paymentForm ?? PAYMENT_FORM[mainPaymentMethod(sale)],
+    PaymentMethod: sale.payments.some((p) => p.method === "CREDIT") ? "PPD" : "PUE",
     Exportation: "01",
     Receiver: {
       Rfc: customer.rfc,
