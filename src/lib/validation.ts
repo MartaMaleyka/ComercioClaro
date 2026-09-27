@@ -957,3 +957,25 @@ export const weightBarcodeSchema = z.object({
   decimals: z.coerce.number().int().min(0).max(3),
   weightUnit: z.enum(["KG", "G", "LB", "OZ"]),
 });
+
+/** Pago en línea del plan desde "Mi plan". */
+export const billingCheckoutSchema = z.object({
+  planId: z.string().min(1).max(64),
+  billingCycle: z.enum(["MONTHLY", "YEARLY"]),
+});
+
+export const billingUpdateSchema = z.object({ autoRenew: z.boolean() });
+
+export const simulatedPaymentSchema = z.object({
+  chargeId: z.string().min(1).max(64),
+  card: z.enum(["4242", "0002"]),
+});
+
+/** Reglas del cobro automático (super admin). */
+export const platformSettingsSchema = z.object({
+  graceDays: z.coerce.number().int().min(0).max(60),
+  retryIntervalDays: z.coerce.number().int().min(1).max(15),
+  maxRetries: z.coerce.number().int().min(1).max(10),
+  noticeDays: z.coerce.number().int().min(1).max(15),
+  suspendManualPayers: z.boolean(),
+});

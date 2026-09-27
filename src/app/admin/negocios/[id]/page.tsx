@@ -60,10 +60,18 @@ interface Detail {
     createdAt: string;
     plan: { name: string } | null;
   }[];
+  billing: {
+    autoRenew: boolean;
+    card: string | null;
+    failures: number;
+    nextChargeAt: string | null;
+    suspendedByBilling: boolean;
+    failedCharges: { id: string; createdAt: string; amount: number; currency: string; error: string | null }[];
+  };
   usage: { users: number; products: number; branches: number };
   sales30: { count: number; total: number };
   lastSaleAt: string | null;
-  audit: { id: string; action: string; createdAt: string; userName: string | null; details: unknown }[];
+  audit: { id: string; action: string; createdAt: string; userId: string; userName: string | null; details: unknown }[];
 }
 
 const METHODS: Record<string, string> = {
@@ -133,7 +141,33 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <div className="text-sm rounded-xl bg-slate-50 px-3 py-2 space-y-1">
+                <p>
+                  {data.billing.card
+                    ? tr("Tarjeta: {card}", { card: data.billing.card })
+                    : tr("Sin tarjeta guardada (paga a mano)")}
+                  {" · "}
+                  {data.billing.autoRenew ? tr("Renovación automática") : tr("Sin renovación automática")}
+                </p>
+                {data.billing.failures > 0 && (
+                  <p className="text-red-700">
+                    {tr("{n} cobro(s) fallido(s)", { n: data.billing.failures })}
+                    {data.billing.nextChargeAt &&
+                      ` · ${tr("Próximo intento: {date}", { date: adminFmt.date(data.billing.nextChargeAt) })}`}
+                  </p>
+                )}
+                {data.billing.failedCharges.map((c) => (
+                  <p key={c.id} className="text-xs text-slate-500">
+                    {adminFmt.date(c.createdAt)} · {adminFmt.money(c.amount, c.currency)} · {c.error}
+                  </p>
+                ))}
+                {data.billing.suspendedByBilling && (
+                  <p className="text-xs text-slate-600">
+                    {tr("Suspendido por falta de pago: se reactiva al pagar en línea.")}
+                  </p>
+                )}
+              </div>
               {data.payments.length === 0 ? (
                 <p className="text-sm text-slate-500">{tr("Sin pagos registrados.")}</p>
               ) : (
@@ -203,7 +237,9 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                   <li key={a.id} className="py-2 flex justify-between gap-2">
                     <span>
                       {tr(ACTION_LABELS[a.action] ?? a.action)}
-                      <span className="block text-xs text-slate-500">{a.userName}</span>
+                      <span className="block text-xs text-slate-500">
+                        {a.userName ?? (a.userId === "billing" ? tr("Cobro automático") : null)}
+                      </span>
                     </span>
                     <span className="text-xs text-slate-500 shrink-0">{adminFmt.dateTime(a.createdAt)}</span>
                   </li>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, LogOut, Lock } from "lucide-react";
+import Link from "next/link";
+import { Building2, CreditCard, LogOut, Lock } from "lucide-react";
 import { useText } from "@/lib/client/i18n";
 import { clearOfflineData } from "@/lib/client/offline-db";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 /** Negocio suspendido o con la prueba vencida: no se puede usar hasta que el administrador lo active. */
 export function BlockedBusiness() {
   const tr = useText();
-  const { business, businesses } = useSession();
+  const { business, businesses, role } = useSession();
   const [busy, setBusy] = useState(false);
   const router = useRouter();
   const access = business.access;
@@ -62,6 +63,14 @@ export function BlockedBusiness() {
           <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3">
             {tr("Motivo")}: {access.message}
           </p>
+        )}
+        {role === "OWNER" && business.onlineBilling && (
+          <Link
+            href="/configuracion/plan"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-brand-700"
+          >
+            <CreditCard className="w-4 h-4" aria-hidden="true" /> {tr("Pagar mi plan en línea")}
+          </Link>
         )}
         {others.length > 0 && (
           <div className="space-y-2 text-left">

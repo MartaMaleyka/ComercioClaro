@@ -1283,6 +1283,24 @@ async function seedScale() {
   });
 }
 
+/** Cobro automático: reglas de la plataforma y una tarjeta de prueba guardada en la fonda. */
+async function seedBilling() {
+  await prisma.platformSettings.upsert({ where: { id: "platform" }, create: {}, update: {} });
+  const demo = await demoBusiness("Fonda La Chiricana");
+  if (!demo) return;
+  const { business } = demo;
+  if (business.billingCustomerId) return;
+  await prisma.business.update({
+    where: { id: business.id },
+    data: {
+      autoRenew: true,
+      billingCustomerId: `sim_cus_${business.id}`,
+      billingMethodId: "sim_pm_4242",
+      billingCardLabel: "Tarjeta de prueba •••• 4242",
+    },
+  });
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1298,6 +1316,7 @@ async function main() {
   await seedPayroll();
   await seedCampaigns();
   await seedScale();
+  await seedBilling();
 }
 
 main()
