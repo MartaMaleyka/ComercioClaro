@@ -121,6 +121,20 @@ const navItems: NavItem[] = [
   { href: "/configuracion", label: "nav.settings" as MessageKey, icon: Settings, roles: ["OWNER", "CASHIER"] },
 ];
 
+/** Grupos de la barra lateral y del menú "Más" (las funciones apagadas no aparecen). */
+const navGroups: { label: string; hrefs: string[] }[] = [
+  {
+    label: "Día a día",
+    hrefs: ["/dashboard", "/ventas", "/ventas/historial", "/caja", "/pedidos", "/cocina", "/vales"],
+  },
+  {
+    label: "Negocio",
+    hrefs: ["/inventario", "/clientes", "/compras", "/proveedores", "/promociones", "/campanas"],
+  },
+  { label: "Finanzas", hrefs: ["/gastos", "/reportes", "/contabilidad", "/planilla", "/facturas"] },
+  { label: "Ajustes", hrefs: ["/configuracion"] },
+];
+
 const mobilePrimary: Record<Role, string[]> = {
   OWNER: ["/dashboard", "/ventas", "/inventario", "/caja"],
   CASHIER: ["/ventas", "/ventas/historial", "/caja", "/clientes"],
@@ -185,8 +199,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <button
         onClick={() => businesses.length > 1 && setSwitcherOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-1 text-xs text-slate-500 max-w-[180px]",
-          businesses.length > 1 && "hover:text-slate-700"
+          "flex items-center gap-1 text-xs text-slate-500 md:text-ink-muted max-w-[180px]",
+          businesses.length > 1 && "hover:text-slate-700 md:hover:text-white"
         )}
         aria-haspopup={businesses.length > 1 ? "listbox" : undefined}
         aria-expanded={switcherOpen}
@@ -197,7 +211,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {switcherOpen && (
         <div
           role="listbox"
-          className="absolute left-0 top-6 z-50 w-56 bg-surface border border-slate-200 rounded-xl shadow-lg p-1"
+          className="absolute left-0 top-6 z-50 w-56 bg-surface border border-slate-200 rounded-2xl shadow-lg p-1 animate-in"
         >
           {businesses.map((b) => (
             <button
@@ -206,7 +220,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               aria-selected={b.id === business.id}
               onClick={() => switchBusiness(b.id)}
               className={cn(
-                "w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-slate-50",
+                "w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-700 hover:bg-slate-50",
                 b.id === business.id && "font-semibold text-brand-700 dark:text-brand-300"
               )}
             >
@@ -220,56 +234,92 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
   const logo = (
-    <div className="flex items-center gap-2">
-      <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center shrink-0">
-        <Store className="w-4 h-4 text-white" aria-hidden="true" />
+    <div className="flex items-center gap-2.5">
+      <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+        <Store className="w-5 h-5 text-white" aria-hidden="true" />
       </div>
       <div className="min-w-0">
-        <p className="font-bold text-sm text-brand-800">ComercioClaro</p>
+        <p className="font-display font-extrabold text-[15px] leading-tight text-slate-900 md:text-white">
+          ComercioClaro
+        </p>
         {businessSwitcher}
       </div>
     </div>
   );
 
+  const groups = navGroups
+    .map((g) => ({ ...g, items: items.filter((i) => g.hrefs.includes(i.href)) }))
+    .filter((g) => g.items.length > 0);
+
+  const orderBadge = (item: NavItem, className: string) =>
+    badgeFor(item) > 0 && (
+      <span
+        className={cn(
+          "min-w-6 h-6 px-1.5 rounded-full bg-mango-400 text-ink text-xs font-bold flex items-center justify-center animate-[pop_360ms_cubic-bezier(.2,.8,.2,1)]",
+          className
+        )}
+      >
+        {badgeFor(item)}
+        <span className="sr-only"> {tr("nuevos")}</span>
+      </span>
+    );
+
+  // En el celular, Vender va al centro y más grande: es lo que más se toca.
+  const sell = primary.find((i) => i.href === "/ventas");
+  const others = primary.filter((i) => i.href !== "/ventas");
+  const bottom = sell ? [...others.slice(0, 2), sell, ...others.slice(2)] : primary;
+
   return (
-    <div className="min-h-screen flex flex-col pb-20 md:pb-0 md:flex-row">
+    <div className="min-h-screen flex flex-col pb-24 md:pb-0 md:flex-row">
       <a href="#contenido" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-2 focus:bg-surface">
         {tr("Ir al contenido")}
       </a>
-      <aside className="hidden md:flex md:w-64 md:flex-col bg-surface border-r border-slate-100 fixed inset-y-0 left-0">
-        <div className="p-5 border-b border-slate-100">{logo}</div>
-        <nav aria-label={tr("Principal")} className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(pathname, item.href) ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                isActive(pathname, item.href)
-                  ? "bg-brand-50 text-brand-700 dark:text-brand-300"
-                  : "text-slate-600 hover:bg-slate-50"
-              )}
-            >
-              <item.icon className="w-5 h-5" aria-hidden="true" />
-              {t(item.label)}
-              {badgeFor(item) > 0 && (
-                <span className="ml-auto min-w-6 h-6 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
-                  {badgeFor(item)}
-                  <span className="sr-only"> {tr("nuevos")}</span>
-                </span>
-              )}
-            </Link>
+      <aside className="hidden md:flex md:w-64 md:flex-col bg-ink text-ink-text fixed inset-y-0 left-0 border-r border-ink-line [&_:focus-visible]:outline-mango-400">
+        <div className="px-5 pt-5 pb-4">{logo}</div>
+        <nav aria-label={tr("Principal")} className="flex-1 px-3 pb-3 overflow-y-auto space-y-5">
+          {groups.map((g) => (
+            <div key={g.label} className="space-y-0.5">
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+                {tr(g.label)}
+              </p>
+              {g.items.map((item) => {
+                const on = isActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={on ? "page" : undefined}
+                    className={cn(
+                      "press flex items-center gap-3 px-3 min-h-11 rounded-xl text-[15px] font-medium",
+                      on ? "bg-brand-600 text-white shadow-sm" : "text-ink-text hover:bg-white/[0.06] hover:text-white"
+                    )}
+                  >
+                    <item.icon className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    {t(item.label)}
+                    {orderBadge(item, "ml-auto")}
+                  </Link>
+                );
+              })}
+            </div>
           ))}
         </nav>
-        <div className="p-3 border-t border-slate-100">
-          <p className="px-3 pb-2 text-xs text-slate-500 truncate">
-            {user.name} · {t(`role.${role}`)}
-          </p>
-          <TranslationFeedbackButton className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 w-full transition-colors" />
+        <div className="p-3 border-t border-ink-line space-y-0.5">
+          <div className="flex items-center gap-3 px-3 py-2">
+            <span
+              className="w-9 h-9 rounded-full bg-ink-soft text-white text-sm font-bold flex items-center justify-center shrink-0"
+              aria-hidden="true"
+            >
+              {initials(user.name)}
+            </span>
+            <p className="min-w-0 text-sm leading-tight">
+              <span className="block truncate font-semibold text-white">{user.name}</span>
+              <span className="block truncate text-xs text-ink-muted">{t(`role.${role}`)}</span>
+            </p>
+          </div>
+          <TranslationFeedbackButton className="press flex items-center gap-3 px-3 min-h-11 rounded-xl text-sm font-medium text-ink-text hover:bg-white/[0.06] hover:text-white w-full" />
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 w-full transition-colors"
+            className="press flex items-center gap-3 px-3 min-h-11 rounded-xl text-sm font-medium text-ink-text hover:bg-white/[0.06] hover:text-white w-full"
           >
             <LogOut className="w-5 h-5" aria-hidden="true" />
             {t("nav.logout")}
@@ -278,17 +328,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 md:ml-64 min-w-0">
-        <header className="md:hidden sticky top-0 z-40 bg-surface border-b border-slate-100 px-4 py-3">
+        <header className="md:hidden sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-slate-200/70 px-4 py-2.5">
           <div className="flex items-center justify-between">
             {logo}
-            <button onClick={handleLogout} aria-label={t("nav.logout")} className="p-2 hover:bg-slate-100 rounded-xl">
-              <LogOut className="w-5 h-5 text-slate-500" />
+            <button
+              onClick={handleLogout}
+              aria-label={t("nav.logout")}
+              className="press p-2.5 hover:bg-slate-100 rounded-xl"
+            >
+              <LogOut className="w-5 h-5 text-slate-600" />
             </button>
           </div>
         </header>
 
         {!online && (
-          <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2 flex items-center gap-2">
+          <div role="status" className="bg-mango-50 text-mango-800 text-sm font-medium px-4 py-2 flex items-center gap-2">
             <WifiOff className="w-4 h-4" aria-hidden="true" />
             {t("offline.banner")}
           </div>
@@ -303,82 +357,116 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           unverifiedEmail={user.emailVerified || support ? null : user.email}
         />
 
-        <main id="contenido" className="px-4 py-5 max-w-6xl mx-auto w-full">
+        <main id="contenido" className="px-4 py-5 md:px-8 md:py-8 max-w-6xl mx-auto w-full">
           {children}
         </main>
       </div>
 
       <nav
         aria-label={tr("Principal")}
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-slate-100 z-40 safe-area-bottom"
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-slate-200/70 z-40 safe-area-bottom"
       >
-        <div className="flex justify-around items-center px-1 py-1">
-          {primary.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(pathname, item.href) ? "page" : undefined}
-              className={cn(
-                "flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 transition-colors",
-                isActive(pathname, item.href) ? "text-brand-600" : "text-slate-500"
-              )}
-            >
-              <item.icon className="w-5 h-5" aria-hidden="true" />
-              <span className="text-[10px] font-medium truncate">{t(item.label)}</span>
-            </Link>
-          ))}
+        <div className="flex justify-around items-end px-1 pt-1.5 pb-1">
+          {bottom.map((item) => {
+            const on = isActive(pathname, item.href);
+            const main = item.href === "/ventas";
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={on ? "page" : undefined}
+                className="press relative flex flex-col items-center gap-1 min-w-0 flex-1 py-1"
+              >
+                <span
+                  className={cn(
+                    "flex items-center justify-center transition-colors",
+                    main
+                      ? "w-14 h-14 -mt-7 rounded-2xl bg-brand-600 text-white shadow-lg ring-4 ring-surface"
+                      : cn("w-14 h-8 rounded-full", on ? "bg-brand-50 text-brand-700 dark:text-brand-300" : "text-slate-600")
+                  )}
+                >
+                  <item.icon className={main ? "w-6 h-6" : "w-5 h-5"} aria-hidden="true" />
+                </span>
+                <span
+                  className={cn(
+                    "text-[11px] font-semibold truncate max-w-full",
+                    on ? "text-brand-700 dark:text-brand-300" : "text-slate-600"
+                  )}
+                >
+                  {t(item.label)}
+                </span>
+                {orderBadge(item, "absolute top-0 right-2 min-w-5 h-5 text-[10px]")}
+              </Link>
+            );
+          })}
           <button
             onClick={() => setMoreOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl min-w-0 flex-1 text-slate-500"
+            className="press flex flex-col items-center gap-1 min-w-0 flex-1 py-1 text-slate-600"
           >
-            <Menu className="w-5 h-5" aria-hidden="true" />
-            <span className="text-[10px] font-medium">{t("nav.more")}</span>
+            <span className="w-14 h-8 rounded-full flex items-center justify-center">
+              <Menu className="w-5 h-5" aria-hidden="true" />
+            </span>
+            <span className="text-[11px] font-semibold">{t("nav.more")}</span>
           </button>
         </div>
       </nav>
 
       {moreOpen && (
         <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t("nav.menu")}>
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 inset-x-0 bg-surface rounded-t-2xl p-4 animate-in safe-area-bottom">
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-semibold text-slate-900">{t("nav.menu")}</p>
+          <div className="absolute inset-0 bg-ink/50 backdrop-blur-[2px]" onClick={() => setMoreOpen(false)} />
+          <div className="absolute bottom-0 inset-x-0 max-h-[85vh] overflow-y-auto bg-surface rounded-t-3xl px-4 pt-3 pb-4 shadow-xl animate-in safe-area-bottom">
+            <span className="block mx-auto mb-2 w-10 h-1 rounded-full bg-slate-300" aria-hidden="true" />
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-display text-xl font-bold text-slate-900">{t("nav.menu")}</p>
               <button
                 onClick={() => setMoreOpen(false)}
                 aria-label={tr("Cerrar")}
-                className="p-2 rounded-xl hover:bg-slate-100"
+                className="press p-2.5 rounded-xl hover:bg-slate-100"
               >
-                <X className="w-5 h-5 text-slate-500" />
+                <X className="w-5 h-5 text-slate-600" />
               </button>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMoreOpen(false)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-1 p-3 rounded-xl text-xs font-medium",
-                    isActive(pathname, item.href)
-                      ? "bg-brand-50 text-brand-700 dark:text-brand-300"
-                      : "text-slate-600 bg-slate-50"
-                  )}
-                >
-                  <item.icon className="w-5 h-5" aria-hidden="true" />
-                  {t(item.label)}
-                  {badgeFor(item) > 0 && (
-                    <span className="absolute top-1 right-1 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center">
-                      {badgeFor(item)}
-                      <span className="sr-only"> {tr("nuevos")}</span>
-                    </span>
-                  )}
-                </Link>
+            <div className="space-y-4">
+              {groups.map((g) => (
+                <div key={g.label}>
+                  <p className="pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{tr(g.label)}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {g.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          "press relative flex flex-col items-center justify-center gap-1.5 min-h-20 p-2 rounded-2xl text-xs font-semibold text-center",
+                          isActive(pathname, item.href)
+                            ? "bg-brand-600 text-white"
+                            : "text-slate-700 bg-slate-100 hover:bg-slate-200/70"
+                        )}
+                      >
+                        <item.icon className="w-6 h-6" aria-hidden="true" />
+                        {t(item.label)}
+                        {orderBadge(item, "absolute top-1.5 right-1.5 min-w-5 h-5 text-[10px]")}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?"
   );
 }
 
@@ -405,7 +493,7 @@ function AccountNotices({
   return (
     <>
       {(support || isSuperAdmin) && (
-        <div role="status" className="bg-purple-50 text-purple-800 text-sm px-4 py-2 flex items-center justify-between gap-2">
+        <div role="status" className="bg-purple-50 text-purple-800 text-sm font-medium px-4 py-2.5 flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4" aria-hidden="true" />
             {support
@@ -432,7 +520,7 @@ function AccountNotices({
         </div>
       )}
       {warning?.kind === "trial" && (
-        <div role="status" className="bg-blue-50 text-blue-800 text-sm px-4 py-2">
+        <div role="status" className="bg-blue-50 text-blue-800 text-sm font-medium px-4 py-2.5">
           {tr("Tu periodo de prueba termina en {days} día(s). Contacta al administrador para activar tu plan.", {
             days: warning.daysLeft,
           })}
@@ -448,7 +536,7 @@ function AccountNotices({
       )}
       {unverifiedEmail && <VerifyEmailNotice email={unverifiedEmail} />}
       {warning?.kind === "overdue" && (
-        <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2">
+        <div role="status" className="bg-mango-50 text-mango-800 text-sm font-medium px-4 py-2.5">
           {tr("El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.")}
           {canPayOnline && (
             <>
@@ -481,7 +569,7 @@ function VerifyEmailNotice({ email }: { email: string }) {
     }
   }
   return (
-    <div role="status" className="bg-blue-50 text-blue-800 text-sm px-4 py-2">
+    <div role="status" className="bg-blue-50 text-blue-800 text-sm font-medium px-4 py-2.5">
       {tr("Confirma tu correo {email} con el enlace que te enviamos: así podrás recuperar tu contraseña.", { email })}{" "}
       <button type="button" onClick={resend} disabled={sending} className="font-medium underline disabled:opacity-60">
         {sending ? tr("Enviando…") : tr("Reenviar enlace")}

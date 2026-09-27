@@ -56,6 +56,8 @@
   --color-ink: #17211b;
   --color-ink-soft: #25302a;
   --color-ink-line: #34423a;
+  --color-ink-text: #c9d3cc;
+  --color-ink-muted: #93a097;
 
   --color-surface: #ffffff;
   --color-surface-secondary: #f6f4ee;
@@ -131,8 +133,10 @@
   --color-blue-50: #12223f;
   --color-blue-100: #172b50;
   --color-blue-700: #9dbcf5;
+  --color-blue-800: #b9cff7;
   --color-purple-50: #2a1745;
   --color-purple-700: #d8b4fe;
+  --color-purple-800: #e3ccfd;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 12px rgb(0 0 0 / 0.35);

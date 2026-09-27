@@ -132,6 +132,7 @@ export const en: Record<string, string> = {
   "Ajustar existencia": "Adjust stock",
   Ajuste: "Adjustment",
   "Ajuste de inventario": "Inventory adjustment",
+  Ajustes: "Settings",
   "Ajustó inventario": "Adjusted inventory",
   "Ajustó una función de un negocio": "Adjusted a business feature",
   "Al cambiarla se cierran las sesiones de los demás dispositivos.":
@@ -604,6 +605,7 @@ export const en: Record<string, string> = {
   "Dueño (acceso total)": "Owner (full access)",
   Décimo: "13th month",
   Día: "Day",
+  "Día a día": "Day to day",
   "Día del mes": "Day of the month",
   "Días de aviso": "Notice days",
   "Días de crédito": "Credit days",
@@ -840,6 +842,7 @@ export const en: Record<string, string> = {
   "Fiado por cobrar": "Credit receivable",
   Fila: "Row",
   Financiamiento: "Financing",
+  Finanzas: "Finances",
   "Finanzas y contabilidad": "Finance and accounting",
   "Flujo de caja proyectado": "Projected cash flow",
   "Flujo de caja y punto de equilibrio": "Cash flow and break-even",
