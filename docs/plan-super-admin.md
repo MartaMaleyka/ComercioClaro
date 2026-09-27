@@ -13,6 +13,38 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 | **Usuarios** (`/admin/usuarios`) | Nombrar o quitar administradores, bloquear y desbloquear, cerrar sesiones y generar una contraseña temporal. |
 | **Bitácora** (`/admin/bitacora`) | Quién cambió qué y cuándo. |
 
+## Registros, bajas y reactivaciones
+
+**Resumen** (`/admin`):
+
+- **Registros por semana** (8 semanas): cuántos negocios se registraron y, de esos, cuántos ya vendieron, pagaron o se dieron de baja (con porcentaje).
+- **Registros recientes** (7 días): tipo, plan y origen de cada uno.
+- *Requieren atención* también muestra los registros que esperan aprobación.
+
+**Negocios** (`/admin/negocios`):
+
+- **Aprobar a mano los registros nuevos:** un interruptor, apagado por defecto. Encendido, quien se registra queda *Por aprobar* (sin prueba) hasta que el super admin lo apruebe. El super admin recibe el correo "Registro por aprobar", y el dueño ve "Tu negocio está en revisión". Si hay registros esperando, aparece un aviso con *Ver por aprobar*, y cada uno se aprueba desde la lista.
+- **Filtros:** estado (incluye *Por aprobar* y *Dado de baja*), plan, país, tipo de negocio, origen (registro propio o alta del admin) y fechas de registro. Los filtros quedan en la dirección y se pueden quitar de un clic.
+- **Columnas:**
+  - Negocio: tipo, país, correo del dueño y si lo confirmó.
+  - Plan y estado (con el motivo si se dio de baja).
+  - Fecha de registro y origen.
+  - Actividad: último acceso de los dueños y última venta.
+  - Vencimiento, ventas y usuarios.
+- **Exportar CSV** con los mismos filtros, compatible con Excel. Queda en la bitácora.
+
+**Ficha del negocio:**
+
+- **Aprobar** (si está por aprobar): empieza la prueba del plan desde hoy y avisa al dueño.
+- **Dar de baja** (o **Rechazar** un registro):
+  - Pide un motivo obligatorio y deja elegir si se avisa al dueño.
+  - Nadie puede usar el negocio y se detiene el cobro automático. Los datos se conservan.
+- **Reactivar:** vuelve a su prueba si sigue vigente, o queda activo. Avisa al dueño.
+- **Usuarios:** si confirmaron el correo, su último acceso y cuándo aceptaron los términos.
+- El encabezado muestra el tipo de negocio y el origen. El estado de la suscripción no se cambia a mano mientras el negocio está por aprobar o dado de baja.
+
+Cada acción queda en la bitácora: *Aprobó un registro*, *Dio de baja un negocio*, *Reactivó un negocio*, *Exportó la lista de negocios* y *Cambió la aprobación de registros*.
+
 ## Funciones por plan y por negocio
 
 **Planes y precios → Funciones por plan** (`/admin/planes?vista=funciones`):
@@ -62,6 +94,8 @@ Cada cambio queda en la bitácora: *Cambió una función de un plan* o *Ajustó 
   - *En prueba*: se avisa en la última semana. Al vencer, el negocio se bloquea hasta que se active un plan.
   - *Pago vencido*: muestra un aviso. Con renovación automática (o si el super admin lo configura para todos), se suspende solo al pasar los días de gracia; ver [`plan-suscripcion.md`](plan-suscripcion.md).
   - *Suspendido*: los usuarios ven el motivo y no pueden usar el negocio. No se borra nada.
+  - *Por aprobar*: registro que espera la aprobación del super admin (solo si está encendida).
+  - *Dado de baja*: no se puede usar, sin cobro automático, con los datos conservados; se puede reactivar.
 - **Pagos.** Cada pago extiende la vigencia desde el vencimiento actual (o desde hoy, si ya venció) por los meses pagados. Además, activa una prueba y puede reactivar un negocio suspendido.
 - **Registro.** El negocio nuevo recibe el plan elegido en la página de precios (`/registro?plan=pro`) o el plan por defecto, con sus días de prueba.
 - **Sucursales.** Una sucursal nueva hereda el plan y el estado del negocio del que sale.

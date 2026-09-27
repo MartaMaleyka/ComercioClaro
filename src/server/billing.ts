@@ -113,7 +113,11 @@ export async function billingOverview(businessId: string) {
   return {
     provider,
     // Suspendido por el administrador (no por falta de pago): no se puede reactivar pagando.
-    canPay: Boolean(provider) && !(business.status === "SUSPENDED" && !business.suspendedByBilling),
+    canPay:
+      Boolean(provider) &&
+      business.status !== "PENDING" &&
+      business.status !== "CLOSED" &&
+      !(business.status === "SUSPENDED" && !business.suspendedByBilling),
     status: business.status,
     access: accessState(business),
     plan: business.plan ? { id: business.plan.id, name: business.plan.name, currency: business.plan.currency } : null,
@@ -163,6 +167,9 @@ export async function startCheckout(
     prisma.plan.findUnique({ where: { id: input.planId } }),
   ]);
   if (!plan || !plan.active || (!plan.isPublic && plan.id !== business.planId)) throw notFound("Plan");
+  if (business.status === "PENDING" || business.status === "CLOSED") {
+    throw new AppError(403, "Este negocio no puede pagar en línea ahora. Contacta al administrador.");
+  }
   if (business.status === "SUSPENDED" && !business.suspendedByBilling) {
     throw new AppError(403, "El administrador suspendió este negocio. Contacta al administrador.");
   }

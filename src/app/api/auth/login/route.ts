@@ -3,6 +3,7 @@ import { startSession } from "@/lib/auth";
 import { assertBelowRateLimit, rateLimit, resetRateLimit } from "@/lib/rate-limit";
 import { loginSchema } from "@/lib/validation";
 import { authenticate } from "@/server/account";
+import { prisma } from "@/lib/prisma";
 
 const IP_LIMIT = 20;
 const EMAIL_LIMIT = 8;
@@ -26,6 +27,7 @@ export const POST = handler(async (request) => {
   }
   const { user, businessId } = result;
   await resetRateLimit(emailKey);
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await startSession({ sub: user.id, bid: businessId, tv: user.tokenVersion });
 
   return {

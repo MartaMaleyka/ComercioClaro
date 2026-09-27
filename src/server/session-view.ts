@@ -53,7 +53,11 @@ export async function sessionData(auth: AuthContext): Promise<SessionData> {
       plan: business.plan ? { name: business.plan.name, code: business.plan.code } : null,
       access: auth.access,
       // Pago en línea del plan: si está configurado y si el negocio puede pagar (no lo suspendió el administrador).
-      onlineBilling: Boolean(providerName()) && !(business.status === "SUSPENDED" && !business.suspendedByBilling),
+      onlineBilling:
+        Boolean(providerName()) &&
+        business.status !== "PENDING" &&
+        business.status !== "CLOSED" &&
+        !(business.status === "SUSPENDED" && !business.suspendedByBilling),
     },
     businesses: memberships.map((m) => ({ id: m.business.id, name: m.business.name, role: m.role })),
   };

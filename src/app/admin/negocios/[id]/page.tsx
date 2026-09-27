@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { ArrowLeft, LifeBuoy, Plus } from "lucide-react";
+import { Archive, ArrowLeft, CheckCircle2, LifeBuoy, Plus, RotateCcw } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { useText } from "@/lib/client/i18n";
 import { adminFmt } from "@/lib/client/admin-format";
@@ -22,12 +22,13 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { SegmentedControl } from "@/components/ui/Switch";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 import type { PlanOption } from "@/components/admin/types";
 import { ACTION_LABELS } from "@/components/admin/labels";
+import { businessTypeLabel } from "@/lib/business-types";
 
 interface Plan extends PlanOption {
   priceYearly: number | null;
@@ -45,8 +46,12 @@ interface Detail {
   address: string | null;
   phone: string | null;
   createdAt: string;
-  status: "ACTIVE" | "TRIAL" | "SUSPENDED";
+  status: "ACTIVE" | "TRIAL" | "SUSPENDED" | "PENDING" | "CLOSED";
   access: AccessState;
+  businessType: string | null;
+  signupSource: "SELF" | "ADMIN" | null;
+  closedAt: string | null;
+  closedReason: string | null;
   plan: Plan | null;
   billingCycle: "MONTHLY" | "YEARLY";
   trialEndsAt: string | null;
@@ -55,7 +60,16 @@ interface Detail {
   adminNotes: string | null;
   featureOverrides: FeatureOverrides;
   features: FeatureKey[];
-  members: { id: string; name: string; email: string; role: string; disabledAt: string | null }[];
+  members: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    disabledAt: string | null;
+    emailVerifiedAt: string | null;
+    lastLoginAt: string | null;
+    termsAcceptedAt: string | null;
+  }[];
   payments: {
     id: string;
     amount: number;
@@ -98,6 +112,9 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
   const { data, error, mutate } = useSWR<Detail>(`/api/admin/businesses/${id}`, fetcher);
   const { data: plans } = useSWR<Plan[]>("/api/admin/plans", fetcher);
   const [paying, setPaying] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [acting, setActing] = useState(false);
+  const confirm = useConfirm();
 
   async function enterSupport() {
     try {
@@ -106,6 +123,38 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
       router.refresh();
     } catch (err) {
       toast.error(err);
+    }
+  }
+
+  async function approve() {
+    setActing(true);
+    try {
+      await api(`/api/admin/businesses/${id}/approve`, { method: "POST" });
+      toast.success(tr("Negocio aprobado: avisamos al dueño"));
+      mutate();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function reopen() {
+    const ok = await confirm({
+      title: tr("¿Reactivar {name}?", { name: data!.name }),
+      message: tr("El negocio vuelve a funcionar con su plan y se avisa al dueño."),
+      confirmLabel: tr("Reactivar"),
+    });
+    if (!ok) return;
+    setActing(true);
+    try {
+      await api(`/api/admin/businesses/${id}/reopen`, { method: "POST" });
+      toast.success(tr("Negocio reactivado"));
+      mutate();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setActing(false);
     }
   }
 
@@ -119,13 +168,54 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
       </Link>
       <PageHeader
         title={data.name}
-        description={`${data.country} · ${tr("Creado el {date}", { date: adminFmt.date(data.createdAt) })}`}
+        description={[
+          data.country,
+          data.businessType ? tr(businessTypeLabel(data.businessType) ?? data.businessType) : null,
+          data.signupSource === "SELF"
+            ? tr("Registro propio")
+            : data.signupSource === "ADMIN"
+              ? tr("Alta del admin")
+              : null,
+          tr("Creado el {date}", { date: adminFmt.date(data.createdAt) }),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         actions={
-          <Button variant="secondary" onClick={enterSupport}>
-            <LifeBuoy className="w-4 h-4" aria-hidden="true" /> {tr("Entrar como soporte")}
-          </Button>
+          <>
+            {data.status === "PENDING" && (
+              <Button onClick={approve} loading={acting}>
+                <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> {tr("Aprobar")}
+              </Button>
+            )}
+            {data.status === "CLOSED" ? (
+              <Button onClick={reopen} loading={acting}>
+                <RotateCcw className="w-4 h-4" aria-hidden="true" /> {tr("Reactivar")}
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={() => setClosing(true)}>
+                <Archive className="w-4 h-4" aria-hidden="true" />
+                {data.status === "PENDING" ? tr("Rechazar") : tr("Dar de baja")}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={enterSupport}>
+              <LifeBuoy className="w-4 h-4" aria-hidden="true" /> {tr("Entrar como soporte")}
+            </Button>
+          </>
         }
       />
+      {data.status === "PENDING" && (
+        <p role="status" className="rounded-xl bg-purple-50 text-purple-700 text-sm px-4 py-3">
+          {tr("Este registro espera tu aprobación. Al aprobarlo empieza su prueba y se avisa al dueño por correo.")}
+        </p>
+      )}
+      {data.status === "CLOSED" && (
+        <p role="status" className="rounded-xl bg-slate-100 text-slate-700 text-sm px-4 py-3">
+          {tr("Dado de baja el {date}. Motivo: {reason}. Los datos se conservan; al reactivarlo todo sigue ahí.", {
+            date: data.closedAt ? adminFmt.date(data.closedAt) : "—",
+            reason: data.closedReason ?? "—",
+          })}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 items-center">
         <StatusBadge status={data.status} access={data.access} />
         {data.plan && <Badge tone="purple">{data.plan.name}</Badge>}
@@ -218,9 +308,21 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                   <span>
                     {m.name}
                     <span className="block text-xs text-slate-500">{m.email}</span>
+                    <span className="block text-xs text-slate-500">
+                      {m.lastLoginAt
+                        ? tr("Último acceso: {date}", { date: adminFmt.dateTime(m.lastLoginAt) })
+                        : tr("Sin accesos registrados")}
+                      {m.termsAcceptedAt &&
+                        ` · ${tr("Aceptó términos el {date}", { date: adminFmt.date(m.termsAcceptedAt) })}`}
+                    </span>
                   </span>
-                  <span className="flex gap-1 items-start">
+                  <span className="flex flex-wrap gap-1 items-start justify-end">
                     <Badge>{m.role === "OWNER" ? tr("Dueño") : tr("Cajero")}</Badge>
+                    {m.emailVerifiedAt ? (
+                      <Badge tone="green">{tr("Correo confirmado")}</Badge>
+                    ) : (
+                      <Badge tone="amber">{tr("Correo sin confirmar")}</Badge>
+                    )}
                     {m.disabledAt && <Badge tone="red">{tr("Bloqueado")}</Badge>}
                   </span>
                 </li>
@@ -254,6 +356,16 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
         </Card>
       </div>
 
+      {closing && (
+        <CloseBusinessModal
+          detail={data}
+          onClose={() => setClosing(false)}
+          onClosed={() => {
+            setClosing(false);
+            mutate();
+          }}
+        />
+      )}
       {paying && (
         <PaymentModal
           detail={data}
@@ -272,6 +384,7 @@ function SubscriptionCard({ detail, plans, onSaved }: { detail: Detail; plans: P
   const tr = useText();
   const toast = useToast();
   const confirm = useConfirm();
+  const lifecycleLocked = detail.status === "PENDING" || detail.status === "CLOSED";
   const [form, setForm] = useState({
     planId: detail.plan?.id ?? "",
     billingCycle: detail.billingCycle,
@@ -301,7 +414,8 @@ function SubscriptionCard({ detail, plans, onSaved }: { detail: Detail; plans: P
         body: {
           planId: form.planId || null,
           billingCycle: form.billingCycle,
-          status: form.status,
+          // Pendiente o dado de baja se cambian con Aprobar / Reactivar, no aquí.
+          status: lifecycleLocked ? undefined : form.status,
           trialEndsAt: adminFmt.endOfDay(form.trialEndsAt),
           paidUntil: adminFmt.endOfDay(form.paidUntil),
           suspendedReason: form.suspendedReason || null,
@@ -360,7 +474,11 @@ function SubscriptionCard({ detail, plans, onSaved }: { detail: Detail; plans: P
               label={tr("Estado")}
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as Detail["status"] })}
+              disabled={lifecycleLocked}
+              hint={lifecycleLocked ? tr("Usa Aprobar o Reactivar arriba para cambiarlo.") : undefined}
             >
+              {detail.status === "PENDING" && <option value="PENDING">{tr("Por aprobar")}</option>}
+              {detail.status === "CLOSED" && <option value="CLOSED">{tr("Dado de baja")}</option>}
               <option value="ACTIVE">{tr("Activo")}</option>
               <option value="TRIAL">{tr("En prueba")}</option>
               <option value="SUSPENDED">{tr("Suspendido")}</option>
@@ -714,6 +832,78 @@ function PaymentModal({ detail, onClose, onSaved }: { detail: Detail; onClose: (
         <Button type="submit" className="w-full" loading={saving}>
           {tr("Registrar pago")}
         </Button>
+      </form>
+    </Modal>
+  );
+}
+
+/** Dar de baja (o rechazar un registro): motivo obligatorio y aviso opcional al dueño. */
+function CloseBusinessModal({
+  detail,
+  onClose,
+  onClosed,
+}: {
+  detail: Detail;
+  onClose: () => void;
+  onClosed: () => void;
+}) {
+  const tr = useText();
+  const toast = useToast();
+  const [reason, setReason] = useState("");
+  const [notify, setNotify] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const rejecting = detail.status === "PENDING";
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api(`/api/admin/businesses/${detail.id}/close`, { method: "POST", body: { reason, notify } });
+      toast.success(rejecting ? tr("Registro rechazado") : tr("Negocio dado de baja"));
+      onClosed();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={rejecting ? tr("Rechazar {name}", { name: detail.name }) : tr("Dar de baja {name}", { name: detail.name })}
+    >
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm text-slate-600">
+          {tr(
+            "Nadie podrá usar el negocio y se detiene el cobro automático. Los datos se conservan y puedes reactivarlo cuando quieras."
+          )}
+        </p>
+        <Textarea
+          label={tr("Motivo")}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          required
+          maxLength={300}
+          rows={3}
+          placeholder={
+            rejecting ? tr("Datos incompletos, registro duplicado…") : tr("Lo pidió el dueño, cierre del local…")
+          }
+        />
+        <Checkbox
+          label={tr("Avisar al dueño por correo")}
+          checked={notify}
+          onChange={(e) => setNotify(e.target.checked)}
+        />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {tr("Cancelar")}
+          </Button>
+          <Button type="submit" variant="danger" loading={saving} disabled={!reason.trim()}>
+            {rejecting ? tr("Rechazar registro") : tr("Dar de baja")}
+          </Button>
+        </div>
       </form>
     </Modal>
   );

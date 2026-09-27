@@ -132,7 +132,11 @@ export async function requireAuth(...roles: Role[]): Promise<AuthContext> {
       403,
       auth.access.reason === "trialEnded"
         ? "El periodo de prueba de este negocio terminó. Contacta al administrador para activar un plan."
-        : "Este negocio está suspendido. Contacta al administrador."
+        : auth.access.reason === "pending"
+          ? "Este negocio está en revisión. Te avisaremos por correo cuando esté aprobado."
+          : auth.access.reason === "closed"
+            ? "Este negocio fue dado de baja. Contacta al administrador."
+            : "Este negocio está suspendido. Contacta al administrador."
     );
   }
   return auth;

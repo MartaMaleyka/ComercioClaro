@@ -17,6 +17,35 @@ export function BlockedBusiness() {
   const router = useRouter();
   const access = business.access;
   const others = businesses.filter((b) => b.id !== business.id);
+  const reason = access.blocked ? access.reason : "suspended";
+  const copy =
+    reason === "trialEnded"
+      ? {
+          title: tr("Terminó tu periodo de prueba"),
+          body: tr("Para seguir usando {name}, contacta al administrador y activa un plan. Tus datos se conservan.", {
+            name: business.name,
+          }),
+        }
+      : reason === "pending"
+        ? {
+            title: tr("Tu negocio está en revisión"),
+            body: tr("Estamos revisando el registro de {name}. Te avisaremos por correo en cuanto esté aprobado.", {
+              name: business.name,
+            }),
+          }
+        : reason === "closed"
+          ? {
+              title: tr("Negocio dado de baja"),
+              body: tr("{name} fue dado de baja. Tus datos se conservan: contacta al administrador para reactivarlo.", {
+                name: business.name,
+              }),
+            }
+          : {
+              title: tr("Negocio suspendido"),
+              body: tr("{name} está suspendido. Contacta al administrador para reactivarlo. Tus datos se conservan.", {
+                name: business.name,
+              }),
+            };
 
   async function logout() {
     setBusy(true);
@@ -45,20 +74,8 @@ export function BlockedBusiness() {
         <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
           <Lock className="w-6 h-6" aria-hidden="true" />
         </div>
-        <h1 className="text-xl font-bold text-slate-900">
-          {access.blocked && access.reason === "trialEnded"
-            ? tr("Terminó tu periodo de prueba")
-            : tr("Negocio suspendido")}
-        </h1>
-        <p className="text-sm text-slate-600">
-          {access.blocked && access.reason === "trialEnded"
-            ? tr("Para seguir usando {name}, contacta al administrador y activa un plan. Tus datos se conservan.", {
-                name: business.name,
-              })
-            : tr("{name} está suspendido. Contacta al administrador para reactivarlo. Tus datos se conservan.", {
-                name: business.name,
-              })}
-        </p>
+        <h1 className="text-xl font-bold text-slate-900">{copy.title}</h1>
+        <p className="text-sm text-slate-600">{copy.body}</p>
         {access.blocked && access.message && (
           <p className="text-sm text-slate-700 bg-slate-50 rounded-xl p-3">
             {tr("Motivo")}: {access.message}
