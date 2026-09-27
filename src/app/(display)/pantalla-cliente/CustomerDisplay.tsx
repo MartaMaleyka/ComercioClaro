@@ -88,7 +88,7 @@ export function CustomerDisplay() {
           )}
         </section>
       ) : (
-        <div className="flex-1 grid lg:grid-cols-[minmax(0,1fr)_420px] gap-6 p-6 min-h-0">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-6 p-6 min-h-0">
           <section
             aria-labelledby="compra"
             className="bg-surface rounded-2xl border border-slate-100 p-5 overflow-y-auto"

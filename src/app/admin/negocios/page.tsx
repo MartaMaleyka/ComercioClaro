@@ -446,7 +446,7 @@ function NewBusinessModal({
             onChange={(e) => setForm({ ...form, businessName: e.target.value })}
             required
           />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label={tr("Nombre del dueño")}
               value={form.ownerName}
@@ -461,7 +461,7 @@ function NewBusinessModal({
               required
             />
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
               label={tr("País")}
               value={form.country}

@@ -80,7 +80,7 @@ export function ScaleSettingsCard() {
                 "Conéctala por USB o con un adaptador serie. En el punto de venta aparece el botón Pesar en los productos por libra o kilo."
               )}
             </p>
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
                 label={tr("Velocidad (baudios)")}
                 value={String(scale.config.baudRate)}
@@ -134,7 +134,7 @@ export function ScaleSettingsCard() {
             checked={label.enabled}
             onChange={(e) => setLabel({ ...label, enabled: e.target.checked })}
           />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
               label={tr("La etiqueta trae")}
               value={label.valueType}

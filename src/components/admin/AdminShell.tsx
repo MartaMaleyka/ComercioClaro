@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { LanguageContext, useText } from "@/lib/client/i18n";
+import { ThemeSwitch } from "@/components/providers/ThemeToggle";
 import { clearOfflineData } from "@/lib/client/offline-db";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,7 @@ function Shell({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ThemeSwitch className="inline-flex items-center justify-center w-10 min-h-10 rounded-xl border border-ink-line text-white hover:bg-white/[0.06]" />
             {hasBusiness && (
               <Link
                 href="/inicio"

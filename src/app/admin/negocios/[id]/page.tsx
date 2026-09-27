@@ -241,7 +241,7 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
         {data.plan && <Badge tone="purple">{data.plan.name}</Badge>}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SubscriptionCard
           key={`sub-${data.status}-${data.plan?.id}-${data.paidUntil}`}
           detail={data}
@@ -316,7 +316,7 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
 
       <FeaturesCard key={`features-${data.plan?.id}`} detail={data} onSaved={mutate} />
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <h2 className="font-semibold text-slate-900">{tr("Usuarios del negocio")}</h2>
@@ -477,7 +477,7 @@ function SubscriptionCard({ detail, plans, onSaved }: { detail: Detail; plans: P
       </CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
               label={tr("Plan")}
               value={form.planId}
@@ -507,7 +507,7 @@ function SubscriptionCard({ detail, plans, onSaved }: { detail: Detail; plans: P
               <option value="YEARLY">{tr("Anual")}</option>
             </Select>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
               label={tr("Estado")}
               value={form.status}

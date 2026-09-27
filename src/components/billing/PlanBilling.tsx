@@ -167,7 +167,7 @@ export function PlanBilling({ result }: { result?: string | null }) {
           </h2>
         </CardHeader>
         <CardContent>
-          <dl className="grid sm:grid-cols-3 gap-3 text-sm">
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
               <dt className="text-slate-500">{tr("Plan")}</dt>
               <dd className="font-medium text-slate-900">{data.plan?.name ?? tr("Sin plan")}</dd>
@@ -259,7 +259,7 @@ export function PlanBilling({ result }: { result?: string | null }) {
             <p className="text-sm text-slate-600">{tr("No hay planes disponibles para pagar en línea.")}</p>
           ) : (
             <>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Select label={tr("Plan")} value={selectedPlan?.id ?? ""} onChange={(e) => setPlanId(e.target.value)}>
                   {data.plans.map((p) => (
                     <option key={p.id} value={p.id}>

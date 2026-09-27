@@ -123,7 +123,7 @@ export function PlanFeaturesMatrix({ onChanged }: { onChanged?: () => void }) {
         <ListSkeleton rows={5} />
       ) : (
         <>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <SummaryTile label={tr("Funciones")} value={String(FEATURES.length)} />
             <SummaryTile label={tr("Nuevas")} value={String(NEW_FEATURE_KEYS.length)} accent />
             <SummaryTile label={tr("Negocios en la plataforma")} value={String(data.totalBusinesses)} />

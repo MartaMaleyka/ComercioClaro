@@ -248,7 +248,7 @@ function CampaignForm({ onClose, onSaved }: { onClose: () => void; onSaved: (id:
           placeholder={tr("Ej. Cumpleaños de octubre")}
           required
         />
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label={tr("A quién")} value={type} onChange={(e) => setType(e.target.value as SegmentType)}>
             {SEGMENTS.map((s) => (
               <option key={s.value} value={s.value}>

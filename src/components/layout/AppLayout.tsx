@@ -39,6 +39,7 @@ import useSWR from "swr";
 import { api, fetcher } from "@/lib/client/api";
 import { useOnline } from "@/lib/client/hooks";
 import { TranslationFeedbackButton } from "./TranslationFeedbackButton";
+import { ThemeSwitch, ThemeToggle } from "@/components/providers/ThemeToggle";
 import { OfflineSync } from "@/components/pwa/OfflineSync";
 import { clearOfflineData } from "@/lib/client/offline-db";
 import { useT, useText } from "@/lib/client/i18n";
@@ -211,7 +212,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {switcherOpen && (
         <div
           role="listbox"
-          className="absolute left-0 top-6 z-50 w-56 bg-surface border border-slate-200 rounded-2xl shadow-lg p-1 animate-in"
+          className="absolute left-0 top-6 z-50 w-56 bg-surface-raised border border-slate-200 rounded-2xl shadow-lg p-1 animate-in"
         >
           {businesses.map((b) => (
             <button
@@ -316,6 +317,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="block truncate text-xs text-ink-muted">{t(`role.${role}`)}</span>
             </p>
           </div>
+          <ThemeSwitch
+            withLabel
+            className="flex items-center gap-3 px-3 min-h-11 rounded-xl text-sm font-medium text-ink-text hover:bg-white/[0.06] hover:text-white w-full"
+          />
           <TranslationFeedbackButton className="press flex items-center gap-3 px-3 min-h-11 rounded-xl text-sm font-medium text-ink-text hover:bg-white/[0.06] hover:text-white w-full" />
           <button
             onClick={handleLogout}
@@ -331,13 +336,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="md:hidden sticky top-0 z-40 bg-surface/90 backdrop-blur-md border-b border-slate-200/70 px-4 py-2.5">
           <div className="flex items-center justify-between">
             {logo}
-            <button
+            <div className="flex items-center gap-1">
+              <ThemeSwitch className="p-2.5 hover:bg-slate-100 rounded-xl text-slate-600" />
+              <button
               onClick={handleLogout}
               aria-label={t("nav.logout")}
               className="press p-2.5 hover:bg-slate-100 rounded-xl"
             >
               <LogOut className="w-5 h-5 text-slate-600" />
             </button>
+            </div>
           </div>
         </header>
 
@@ -414,7 +422,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {moreOpen && (
         <div className="md:hidden fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t("nav.menu")}>
           <div className="absolute inset-0 bg-ink/50 backdrop-blur-[2px]" onClick={() => setMoreOpen(false)} />
-          <div className="absolute bottom-0 inset-x-0 max-h-[85vh] overflow-y-auto bg-surface rounded-t-3xl px-4 pt-3 pb-4 shadow-xl animate-in safe-area-bottom">
+          <div className="absolute bottom-0 inset-x-0 max-h-[85vh] overflow-y-auto bg-surface-raised rounded-t-3xl px-4 pt-3 pb-4 shadow-xl animate-in safe-area-bottom">
             <span className="block mx-auto mb-2 w-10 h-1 rounded-full bg-slate-300" aria-hidden="true" />
             <div className="flex items-center justify-between mb-2">
               <p className="font-display text-xl font-bold text-slate-900">{t("nav.menu")}</p>
@@ -451,6 +459,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
               ))}
+              <div>
+                <p className="pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{tr("Tema")}</p>
+                <ThemeToggle className="w-full" />
+              </div>
             </div>
           </div>
         </div>

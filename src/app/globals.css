@@ -60,6 +60,7 @@
   --color-ink-muted: #93a097;
 
   --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
   --color-surface-secondary: #f6f4ee;
   --color-border: #e4e0d6;
   --color-text: #17211b;
@@ -97,6 +98,8 @@
 .dark {
   color-scheme: dark;
   --color-surface: #16201b;
+  /* Capas: lo que flota (hojas, modales, menús) es un poco más claro que la tarjeta. */
+  --color-surface-raised: #1c2822;
   --color-surface-secondary: #0e1512;
   --color-border: #2c3a33;
   --color-text: #f1f4f1;
@@ -212,6 +215,13 @@ button {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Cambio de tema: fundido suave con View Transitions (se apaga con "reducir movimiento"). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Respuesta táctil: todo lo que se presiona se hunde un poco (120 ms). */

@@ -124,7 +124,7 @@ function Purchases() {
         <PayablesTab />
       ) : (
         <>
-          <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por proveedor o producto")} />
             <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
             <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
@@ -333,7 +333,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
   return (
     <Modal open={open} onClose={onClose} title={tr("Nueva compra")} size="lg">
       <div className="space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label={tr("Proveedor")} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
             <option value="">{tr("Otro / sin registrar")}</option>
             {suppliers?.map((s) => (
@@ -459,7 +459,7 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           )}
         </Select>
         {payment === "credit" && (
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label={tr("Número de factura")}
               value={invoiceNumber}

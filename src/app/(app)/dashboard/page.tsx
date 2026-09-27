@@ -228,7 +228,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {data.lowStockProducts.length > 0 && (
           <Card>
             <CardHeader className="flex items-center justify-between">

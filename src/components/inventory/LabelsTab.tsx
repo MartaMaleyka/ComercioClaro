@@ -65,7 +65,7 @@ export function LabelsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end">
         <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar producto")} />
         <Select aria-label={tr("Tamaño")} value={size} onChange={(e) => setSize(e.target.value)}>
           <option value="small">{tr("Chica 50×25 mm")}</option>

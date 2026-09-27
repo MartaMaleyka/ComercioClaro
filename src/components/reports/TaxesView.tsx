@@ -111,7 +111,7 @@ export function TaxesView() {
               {data.lines.length === 0 ? (
                 <p className="text-sm text-slate-500">{tr("Sin ventas en el periodo.")}</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Desglose por tasa")}>
                   <table className="w-full text-sm min-w-[520px]">
                     <caption className="sr-only">{tr("Impuestos por tasa")}</caption>
                     <thead>

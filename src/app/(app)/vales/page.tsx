@@ -89,7 +89,7 @@ export default function GiftCardsPage() {
           )}
         />
       ) : (
-        <ul className="grid md:grid-cols-2 gap-3">
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {data.map((c) => (
             <li key={c.id}>
               <Card>

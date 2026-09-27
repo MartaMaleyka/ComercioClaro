@@ -77,7 +77,7 @@ export function SeniorsView() {
               {data.sales.length === 0 ? (
                 <p className="text-sm text-slate-500">{tr("Sin ventas en el periodo.")}</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Detalle por venta")}>
                   <table className="w-full text-sm min-w-[520px]">
                     <caption className="sr-only">{tr("Descuentos de jubilado")}</caption>
                     <thead>

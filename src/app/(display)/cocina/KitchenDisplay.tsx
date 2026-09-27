@@ -96,7 +96,7 @@ export function KitchenDisplay() {
         </Link>
       </header>
       {data && data.length === 0 && <p className="text-center text-xl text-slate-500 py-20">{tr("Todo en orden")}</p>}
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data?.map((o) => {
           const wait = minutes(o.items[0]?.createdAt ?? o.createdAt);
           return (

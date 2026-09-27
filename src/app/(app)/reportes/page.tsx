@@ -306,7 +306,7 @@ export default function ReportsPage() {
                     <CardContent>
                       {showTable ? (
                         <div className="max-h-80 overflow-y-auto">
-                          <div className="overflow-x-auto">
+                          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Ventas y ganancia neta por día")}>
                             <table className="w-full text-sm min-w-[420px]">
                               <thead className="sticky top-0 bg-surface">
                                 <tr className="text-left text-xs text-slate-500">
@@ -385,7 +385,7 @@ export default function ReportsPage() {
                     </CardContent>
                   </Card>
 
-                  <div className="grid lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <Card>
                       <CardHeader>
                         <h2 className="font-semibold text-slate-900">{tr("Más vendidos")}</h2>
@@ -394,7 +394,7 @@ export default function ReportsPage() {
                         {data.bestSellers.length === 0 ? (
                           <p className="text-sm text-slate-500">{tr("Sin ventas en el periodo.")}</p>
                         ) : (
-                          <div className="overflow-x-auto">
+                          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Más vendidos")}>
                             <table className="w-full text-sm min-w-[420px]">
                               <thead>
                                 <tr className="text-left text-xs text-slate-500">
@@ -532,7 +532,7 @@ function ConsolidatedView({ data }: { data: Consolidated }) {
             {tr("Las sucursales usan monedas distintas; los totales suman importes sin convertir.")}
           </p>
         )}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Sucursales")}>
           <table className="w-full text-sm min-w-[420px]">
             <thead>
               <tr className="text-left text-xs text-slate-500">

@@ -345,7 +345,7 @@ function ImportExportTab() {
   ];
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <Card>
         <CardContent className="space-y-3">
           <h2 className="font-semibold text-slate-900 flex items-center gap-2">
