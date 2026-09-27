@@ -40,7 +40,7 @@ export function Tabs<T extends string>({
   }
 
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-slate-200 -mx-1 px-1">
+    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto p-1 bg-slate-100 rounded-2xl max-w-full w-fit">
       {tabs.map((t, i) => (
         <button
           key={t.value}
@@ -54,15 +54,15 @@ export function Tabs<T extends string>({
           onClick={() => onChange(t.value)}
           onKeyDown={(e) => onKeyDown(e, i)}
           className={cn(
-            "px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors",
+            "press px-4 min-h-10 rounded-xl text-sm font-semibold whitespace-nowrap",
             value === t.value
-              ? "border-brand-600 text-brand-700 dark:text-brand-300"
-              : "border-transparent text-slate-500 hover:text-slate-700"
+              ? "bg-surface text-slate-900 shadow-sm"
+              : "text-slate-600 hover:text-slate-900 hover:bg-surface/60"
           )}
         >
           {t.label}
           {t.count !== undefined && t.count > 0 && (
-            <span className="ml-1.5 text-xs bg-slate-100 text-slate-600 rounded-full px-1.5">{t.count}</span>
+            <span className="ml-1.5 text-xs bg-brand-600 text-white rounded-full px-1.5 py-px">{t.count}</span>
           )}
         </button>
       ))}

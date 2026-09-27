@@ -52,18 +52,26 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={t.id}
               role={t.kind === "error" ? "alert" : "status"}
               className={cn(
-                "pointer-events-auto flex items-start gap-3 rounded-xl px-4 py-3 shadow-lg text-sm animate-in border",
-                t.kind === "success" && "bg-brand-600 text-white border-brand-700",
-                t.kind === "error" && "bg-red-600 text-white border-red-700",
-                t.kind === "info" && "bg-slate-800 text-white border-slate-900"
+                "pointer-events-auto flex items-center gap-3 rounded-2xl pl-3 pr-3 py-3 shadow-xl text-[15px] font-medium animate-in bg-ink text-white border",
+                t.kind === "error" ? "border-red-600" : "border-ink-line"
               )}
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <span
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                  t.kind === "success" && "bg-brand-600",
+                  t.kind === "error" && "bg-red-600",
+                  t.kind === "info" && "bg-blue-600"
+                )}
+                aria-hidden="true"
+              >
+                <Icon className="w-5 h-5" />
+              </span>
               <p className="flex-1">{t.message}</p>
               <button
                 aria-label={tr("Cerrar")}
                 onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}
-                className="opacity-80 hover:opacity-100"
+                className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
               >
                 <X className="w-4 h-4" />
               </button>

@@ -31,8 +31,8 @@ export function Switch({
       disabled={disabled || busy}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed",
-        size === "sm" ? "h-5 w-9" : "h-6 w-11",
+        "relative inline-flex shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed",
+        size === "sm" ? "h-5 w-9" : "h-7 w-12",
         checked ? "bg-brand-600" : "bg-slate-500",
         (disabled || busy) && "opacity-60"
       )}
@@ -40,8 +40,8 @@ export function Switch({
       <span
         aria-hidden="true"
         className={cn(
-          "inline-block rounded-full bg-white shadow transition-transform",
-          size === "sm" ? "h-4 w-4" : "h-5 w-5",
+          "inline-block rounded-full bg-white shadow-md transition-transform duration-200 ease-[cubic-bezier(.2,.8,.2,1)]",
+          size === "sm" ? "h-4 w-4" : "h-6 w-6",
           checked ? (size === "sm" ? "translate-x-4.5" : "translate-x-5.5") : "translate-x-0.5"
         )}
       />
@@ -95,7 +95,7 @@ export function SegmentedControl<T extends string>({
   }
 
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex shrink-0 rounded-xl bg-slate-100 p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex shrink-0 rounded-xl bg-slate-100 p-1">
       {options.map((o, i) => {
         const selected = o.value === value;
         return (
@@ -113,7 +113,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
-              "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-60",
+              "press rounded-lg px-3 py-1.5 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-60",
               tone(o.value)
             )}
           >
