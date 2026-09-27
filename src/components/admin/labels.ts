@@ -2,6 +2,7 @@
 export const ACTION_LABELS: Record<string, string> = {
   "business.update": "Cambió la suscripción o las funciones",
   "business.create": "Dio de alta el negocio",
+  "business.register": "Se registró un negocio",
   "payment.record": "Registró un pago",
   "support.enter": "Entró como soporte",
   "plan.create": "Creó un plan",

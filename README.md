@@ -54,6 +54,12 @@ Investigación, plan y fuentes en [`docs/plan-panama-regiones.md`](docs/plan-pan
   - Productos de servicio sin existencias.
 - **Perfil capital o interior** en Configuración, que aplica los valores recomendados.
 
+### Registro y bienvenida
+
+- Registro con el plan elegido, tipo de negocio, teléfono y aceptación de términos y privacidad, con protección contra bots ([`docs/plan-registro.md`](docs/plan-registro.md)).
+- Correo de bienvenida con confirmación del correo, aviso al super admin de cada registro y guía de primeros pasos según el tipo de negocio.
+- Aviso por correo cuando la prueba está por terminar.
+
 ### Super admin: planes, precios y funciones
 
 Detalle en [`docs/plan-super-admin.md`](docs/plan-super-admin.md).

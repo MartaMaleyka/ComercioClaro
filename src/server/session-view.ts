@@ -17,6 +17,7 @@ export async function sessionData(auth: AuthContext): Promise<SessionData> {
       email: auth.user.email,
       language: auth.user.language,
       isSuperAdmin: auth.user.isSuperAdmin,
+      emailVerified: auth.user.emailVerified,
     },
     support: auth.support,
     role: auth.role,

@@ -2,11 +2,21 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { COOKIE_NAME, verifyToken } from "@/lib/session-token";
 
-const publicPages = ["/", "/login", "/registro", "/recuperar-contrasena", "/offline"];
+const publicPages = [
+  "/",
+  "/login",
+  "/registro",
+  "/recuperar-contrasena",
+  "/verificar-correo",
+  "/terminos",
+  "/privacidad",
+  "/offline",
+];
 const publicApi = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/reset-password",
+  "/api/auth/verify-email",
   "/api/auth/logout",
   "/api/cron/",
   "/api/yappy/ipn",

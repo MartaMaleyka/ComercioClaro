@@ -1,125 +1,29 @@
-"use client";
+import type { Metadata } from "next";
+import { publicPlans } from "@/server/admin";
+import { RegisterForm, type ChosenPlan } from "@/components/auth/RegisterForm";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Store } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+export const metadata: Metadata = { title: "Crea tu cuenta · ComercioClaro" };
+export const dynamic = "force-dynamic";
 
-export default function RegisterPage() {
-  const router = useRouter();
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    businessName: "",
-    country: "PA",
-  });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  function update(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+/** Registro: muestra el plan elegido en la página de precios (/registro?plan=pro). */
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ plan?: string }> }) {
+  const { plan: code } = await searchParams;
+  let plan: ChosenPlan | null = null;
+  if (code) {
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Plan elegido en la página de precios (/registro?plan=pro).
-        body: JSON.stringify({ ...form, plan: new URLSearchParams(window.location.search).get("plan") }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Error al crear la cuenta");
-        return;
+      const found = (await publicPlans()).find((p) => p.code === code);
+      if (found) {
+        plan = {
+          code: found.code,
+          name: found.name,
+          priceMonthly: Number(found.priceMonthly),
+          currency: found.currency,
+          trialDays: found.trialDays,
+        };
       }
-
-      router.push("/inicio");
-      router.refresh();
     } catch {
-      setError("Error de conexión. Intenta de nuevo.");
-    } finally {
-      setLoading(false);
+      // Sin base de datos (p. ej. al compilar) el registro se muestra sin el plan.
     }
   }
-
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-gradient-to-b from-brand-50 to-surface-secondary">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Store className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Crea tu cuenta</h1>
-          <p className="text-slate-600 mt-1">Empieza a organizar tu negocio hoy</p>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4"
-        >
-          {error && (
-            <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">
-              {error}
-            </div>
-          )}
-          <Input
-            label="Tu nombre"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-            placeholder="María García"
-            required
-          />
-          <Input
-            label="Nombre de tu negocio"
-            value={form.businessName}
-            onChange={(e) => update("businessName", e.target.value)}
-            placeholder="Miscelánea La Esperanza"
-            required
-          />
-          <Select label="País" value={form.country} onChange={(e) => update("country", e.target.value)}>
-            <option value="PA">Panamá</option>
-            <option value="MX">México</option>
-            <option value="OTHER">Otro país</option>
-          </Select>
-          <Input
-            label="Correo electrónico"
-            type="email"
-            value={form.email}
-            onChange={(e) => update("email", e.target.value)}
-            placeholder="tu@correo.com"
-            required
-          />
-          <Input
-            label="Contraseña"
-            type="password"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-            placeholder="Mínimo 8 caracteres"
-            required
-            minLength={8}
-            autoComplete="new-password"
-          />
-          <Button type="submit" className="w-full" loading={loading}>
-            Crear cuenta
-          </Button>
-        </form>
-
-        <p className="text-center text-sm text-slate-600 mt-6">
-          ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="text-brand-600 font-medium hover:text-brand-700">
-            Iniciar sesión
-          </Link>
-        </p>
-      </div>
-    </main>
-  );
+  return <RegisterForm plan={plan} />;
 }

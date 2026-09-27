@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CASH_DENOMINATIONS } from "./cash";
 import { FEATURE_KEYS, type FeatureKey } from "./features";
+import { BUSINESS_TYPE_KEYS } from "./business-types";
 import { isValidTimeZone } from "./dates";
 
 const MAX_MONEY = 99_999_999;
@@ -73,12 +74,18 @@ export const registerSchema = z.object({
   name: text(100, "Tu nombre es obligatorio"),
   businessName: text(120, "El nombre del negocio es obligatorio"),
   country: country.default("MX"),
+  phone: optText(30),
+  businessType: z.enum(BUSINESS_TYPE_KEYS).default("OTRO"),
+  acceptTerms: z.literal(true, { error: "Debes aceptar los términos y el aviso de privacidad" }),
   plan: z
     .string()
     .trim()
     .max(40)
     .nullish()
     .transform((v) => v || null),
+  // Anti-bots: campo oculto que una persona deja vacío y milisegundos desde que se abrió el formulario.
+  website: z.string().max(200).optional(),
+  elapsedMs: z.coerce.number().int().min(0).optional(),
 });
 
 export const loginSchema = z.object({
@@ -989,4 +996,8 @@ export const planFeatureSchema = z.object({
 export const businessFeatureSchema = z.object({
   feature: featureKey,
   mode: z.enum(["plan", "on", "off"]),
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/, "El enlace de confirmación no es válido"),
 });

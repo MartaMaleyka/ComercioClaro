@@ -393,6 +393,7 @@ export async function adminCreateBusiness(admin: Admin, input: AdminNewBusinessI
     const business = await tx.business.create({
       data: {
         name: input.businessName,
+        signupSource: "ADMIN",
         country: country.code,
         currency: country.currency,
         locale: country.locale,

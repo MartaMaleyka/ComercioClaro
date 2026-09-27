@@ -59,6 +59,7 @@ export interface AuthContext {
     mustChangePassword: boolean;
     language: string;
     isSuperAdmin: boolean;
+    emailVerified: boolean;
   };
   business: BusinessWithPlan;
   /** Funciones activas del negocio (plan + ajustes del super admin) */
@@ -111,6 +112,7 @@ export async function getAuth(): Promise<AuthContext | null> {
       mustChangePassword: user.mustChangePassword,
       language: user.language,
       isSuperAdmin: user.isSuperAdmin,
+      emailVerified: Boolean(user.emailVerifiedAt),
     },
     business,
     features: resolveFeatures(business),
