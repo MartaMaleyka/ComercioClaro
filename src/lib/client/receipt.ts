@@ -35,6 +35,9 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
       ? `Descuento de jubilado${sale.seniorId ? ` (${sale.seniorId})` : ""}: -${money(sale.seniorDiscount)}`
       : null,
     sale.discount > 0 ? `Descuento: -${money(sale.discount)}` : null,
+    sale.coupon && (sale.couponDiscount ?? 0) > 0
+      ? `Cupón ${sale.coupon.code}: -${money(sale.couponDiscount ?? 0)}`
+      : null,
     sale.pointsDiscount ? `Puntos canjeados (${sale.pointsRedeemed}): -${money(sale.pointsDiscount)}` : null,
     `*Total: ${money(sale.total)}*`,
     ...((sale.payments?.length ?? 0) > 1

@@ -50,6 +50,9 @@ const emptyForm = {
   creditDueDate: "",
   isSenior: false,
   seniorId: "",
+  marketingConsent: false,
+  birthday: "",
+  tags: "",
   ruc: "",
   dv: "",
   rfc: "",
@@ -102,6 +105,9 @@ export default function CustomersPage() {
             creditDueDate: c.creditDueDate ? c.creditDueDate.slice(0, 10) : "",
             isSenior: c.isSenior ?? false,
             seniorId: c.seniorId ?? "",
+            marketingConsent: c.marketingConsent ?? false,
+            birthday: c.birthday ? c.birthday.slice(0, 10) : "",
+            tags: (c.tags ?? []).join(", "),
             ruc: c.ruc ?? "",
             dv: c.dv ?? "",
             rfc: c.rfc ?? "",
@@ -126,6 +132,11 @@ export default function CustomersPage() {
           creditDays: Number(form.creditDays) || 0,
           creditDueDate: form.creditTerm === "FIXED" && form.creditDueDate ? form.creditDueDate : null,
           seniorId: form.isSenior ? form.seniorId || null : null,
+          birthday: form.birthday || null,
+          tags: form.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean),
         },
       });
       toast.success(tr("Cliente guardado"));
@@ -376,6 +387,31 @@ export default function CustomersPage() {
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
+          {business.features.includes("campaigns") && (
+            <fieldset className="rounded-xl border border-slate-100 p-3 space-y-3">
+              <legend className="text-sm font-medium text-slate-700 px-1">{tr("Promociones por WhatsApp")}</legend>
+              <Checkbox
+                label={tr("Acepta recibir promociones por WhatsApp (Ley 81 de protección de datos)")}
+                checked={form.marketingConsent}
+                onChange={(e) => setForm({ ...form, marketingConsent: e.target.checked })}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label={tr("Cumpleaños")}
+                  type="date"
+                  value={form.birthday}
+                  onChange={(e) => setForm({ ...form, birthday: e.target.value })}
+                />
+                <Input
+                  label={tr("Etiquetas")}
+                  value={form.tags}
+                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                  placeholder={tr("Ej. vip, vecino")}
+                  hint={tr("Separadas por coma")}
+                />
+              </div>
+            </fieldset>
+          )}
           <details className="rounded-xl border border-slate-100 p-3">
             <summary className="text-sm font-medium text-slate-700 cursor-pointer">
               {tr("Datos fiscales (para facturar)")}

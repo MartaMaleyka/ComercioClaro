@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { customerSchema } from "@/lib/validation";
-import { customersAging } from "@/server/customers";
+import { consentFields, customersAging } from "@/server/customers";
 
 const querySchema = z.object({
   search: z.string().trim().max(100).optional(),
@@ -43,7 +43,9 @@ export const POST = handler(async (request) => {
   const data = auth.role === "OWNER" ? input : { ...input, creditLimit: 0 };
   return created(
     await prisma.$transaction(async (tx) => {
-      const customer = await tx.customer.create({ data: { ...data, businessId: auth.businessId } });
+      const customer = await tx.customer.create({
+        data: { ...data, ...consentFields(data.marketingConsent), businessId: auth.businessId },
+      });
       await audit(tx, auth, "customer.create", "Customer", customer.id, { name: customer.name });
       return customer;
     })

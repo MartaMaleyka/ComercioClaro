@@ -7,6 +7,15 @@ import { getOpenSession } from "./cash";
 import { computeAging, type AgingResult } from "@/lib/aging";
 import { paidWith } from "./payments";
 
+/**
+ * Fecha del consentimiento para promociones (Ley 81): se guarda al aceptar y se borra al
+ * retirarlo; si ya había aceptado se conserva la fecha original.
+ */
+export function consentFields(accepts: boolean, existing?: { marketingConsent: boolean; consentAt: Date | null } | null) {
+  if (!accepts) return { marketingConsent: false, consentAt: null };
+  return { marketingConsent: true, consentAt: existing?.marketingConsent ? existing.consentAt : new Date() };
+}
+
 /** Ventas con parte fiada (fiado completo o pago dividido con fiado). */
 const creditSale = { payments: { some: { method: "CREDIT" as const } } };
 

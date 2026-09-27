@@ -63,6 +63,10 @@ export interface Customer {
   creditDueDate?: string | null;
   isSenior?: boolean;
   seniorId?: string | null;
+  marketingConsent?: boolean;
+  consentAt?: string | null;
+  birthday?: string | null;
+  tags?: string[];
   points?: number;
   balance: number;
   rfc: string | null;
@@ -96,6 +100,8 @@ export interface Sale {
   status: "ACTIVE" | "CANCELLED";
   paymentMethod: SalePaymentMethod;
   payments?: SalePayment[];
+  couponDiscount?: number;
+  coupon?: { code: string } | null;
   subtotal: number;
   discount: number;
   total: number;
