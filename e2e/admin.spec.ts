@@ -22,10 +22,19 @@ test("el super admin ve el resumen y desactiva una función a un negocio", async
   await page.getByRole("link", { name: "Negocios" }).click();
   await page.getByRole("link", { name: BUSINESS.panama }).click();
   await expect(page.getByRole("heading", { name: BUSINESS.panama })).toBeVisible();
-  const giftCards = page.getByLabel("Función Vales (tarjetas de regalo)");
-  await giftCards.selectOption("off");
-  await page.getByRole("button", { name: "Guardar funciones" }).click();
-  await expect(page.getByText("Funciones actualizadas")).toBeVisible();
+  // Cada función se ajusta con Plan / Sí / No y se guarda al momento.
+  const giftCards = page.getByRole("radiogroup", { name: "Función Vales (tarjetas de regalo)" });
+  const saveFeature = () =>
+    page.waitForResponse(
+      (r) => /\/api\/admin\/businesses\/[^/]+\/features$/.test(r.url()) && r.request().method() === "PUT"
+    );
+  let saved = saveFeature();
+  await giftCards.getByRole("radio", { name: "Desactivada solo para este negocio" }).click();
+  expect((await saved).ok()).toBe(true);
+  await expect(giftCards.getByRole("radio", { name: "Desactivada solo para este negocio" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
 
   const owner = await (await browser.newContext()).newPage();
   try {
@@ -35,12 +44,8 @@ test("el super admin ve el resumen y desactiva una función a un negocio", async
     expect(res.status()).toBe(403);
     expect((await res.json()).error).toMatch(/Tu plan no incluye/);
   } finally {
-    await page.getByLabel("Función Vales (tarjetas de regalo)").selectOption("plan");
-    // El aviso del primer guardado puede seguir visible: se espera la respuesta de este guardado.
-    const saved = page.waitForResponse(
-      (r) => r.url().includes("/api/admin/businesses/") && r.request().method() === "PATCH"
-    );
-    await page.getByRole("button", { name: "Guardar funciones" }).click();
+    saved = saveFeature();
+    await giftCards.getByRole("radio", { name: /^Según el plan/ }).click();
     expect((await saved).ok()).toBe(true);
   }
   await owner.goto("/dashboard");

@@ -15,6 +15,7 @@ import {
   Minus,
   Plus,
   Printer,
+  Scale,
   ScanBarcode,
   Share2,
   MonitorSmartphone,
@@ -49,6 +50,8 @@ import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
 import { ServicesModal } from "@/components/pos/ServicesModal";
 import { SplitPayment, newSplitRow, splitPayload, splitStatus, type SplitRow } from "@/components/pos/SplitPayment";
+import { convertWeight, isWeightUnit, labelQuantity, matchesPlu, parseWeightBarcode } from "@/lib/scale";
+import { useScale } from "@/lib/client/scale";
 
 interface OpenOrderData {
   id: string;
@@ -199,6 +202,9 @@ function useCachedList<T>(url: string, cacheKey: string) {
 export default function PosPage() {
   const tr = useText();
   const { business, role } = useSession();
+  // Funciones que el super admin puede apagar por plan o por negocio.
+  const canSplit = business.features.includes("splitPayments");
+  const canScale = business.features.includes("scale");
   const isOwner = role === "OWNER";
   const fmt = useFormat();
   const t = useT();
@@ -232,6 +238,15 @@ export default function PosPage() {
   const [giftBalance, setGiftBalance] = useState<{ code: string; balance: number; status: string } | null>(null);
   const online = useOnline();
   const [redeemPoints, setRedeemPoints] = useState("");
+  // Cupón de campaña: se consulta al aplicarlo y el servidor lo valida al cobrar.
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{
+    code: string;
+    kind: "PERCENT" | "AMOUNT";
+    value: number;
+    minPurchase: number | null;
+    problem: string | null;
+  } | null>(null);
   const [senior, setSenior] = useState(false);
   const [seniorId, setSeniorId] = useState("");
   const { data: promotionList } = useSWR<PromotionRule[]>(has("promotions") ? "/api/promotions" : null, fetcher);
@@ -434,8 +449,38 @@ export default function PosPage() {
       setSearch("");
       return true;
     }
+    // Etiqueta de balanza (EAN-13 con prefijo 20-29): trae el código del producto y el peso o el precio.
+    const label = canScale ? parseWeightBarcode(trimmed, business.weightBarcode) : null;
+    const weighed = label ? products.find((p) => matchesPlu(p, label.plu)) : undefined;
+    if (label && weighed) {
+      const quantity = labelQuantity(label.value, business.weightBarcode, weighed);
+      if (quantity && quantity > 0) {
+        addProduct(weighed, quantity);
+        setSearch("");
+        return true;
+      }
+      toast.error(tr("{name} no se vende por peso; revisa la unidad del producto", { name: weighed.name }));
+      return true;
+    }
     return false;
   };
+
+  // Balanza conectada por Web Serial (Chrome y Edge): llena la cantidad de lo que se vende por peso.
+  const scale = useScale();
+  const [weighing, setWeighing] = useState<string | null>(null);
+  async function weigh(line: CartLine) {
+    if (!isWeightUnit(line.unit)) return;
+    setWeighing(line.key);
+    try {
+      const reading = await scale.read();
+      const from = reading.unit ?? line.unit;
+      updateLine(line.key, { quantity: String(convertWeight(reading.weight, from, line.unit)) });
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setWeighing(null);
+    }
+  }
 
   function handleEnter() {
     if (addByCode(search)) return;
@@ -466,15 +511,26 @@ export default function PosPage() {
   );
   const subtotal = round2(cart.reduce((acc, l) => acc + lineTotal(l, isOwner, promotions, seniorRate), 0));
   const discount = Math.min(num(saleDiscount), subtotal);
+  // Mismo cálculo que el servidor: sobre el total después del descuento general.
+  const couponBase = round2(subtotal - discount);
+  const couponBlocked =
+    coupon?.problem ??
+    (coupon?.minPurchase && couponBase < coupon.minPurchase
+      ? tr("El cupón aplica en compras desde {amount}", { amount: fmt.money(coupon.minPurchase) })
+      : null);
+  const couponDiscount =
+    coupon && !couponBlocked
+      ? Math.min(round2(coupon.kind === "PERCENT" ? couponBase * coupon.value : coupon.value), couponBase)
+      : 0;
   const customerForPoints = customers.list?.find((c) => c.id === customerId);
   const pointValue = business.loyaltyPointValue;
   const maxRedeem =
     business.loyaltyEnabled && customerForPoints && pointValue > 0
-      ? Math.min(customerForPoints.points ?? 0, Math.floor((subtotal - discount) / pointValue + 1e-9))
+      ? Math.min(customerForPoints.points ?? 0, Math.floor((subtotal - discount - couponDiscount) / pointValue + 1e-9))
       : 0;
   const pointsToRedeem = Math.min(Math.max(0, Math.floor(num(redeemPoints))), maxRedeem);
   const pointsDiscount = round2(pointsToRedeem * pointValue);
-  const total = round2(subtotal - discount - pointsDiscount);
+  const total = round2(subtotal - discount - couponDiscount - pointsDiscount);
   const received = num(amountReceived);
   const splitInfo = split ? splitStatus(split, total) : null;
   const change = splitInfo
@@ -538,6 +594,8 @@ export default function PosPage() {
     !invalidLine &&
     !(usesCredit && !customerId) &&
     !creditExceeded &&
+    // El cupón se valida en el servidor: no se puede cobrar sin conexión.
+    !(couponDiscount > 0 && !online) &&
     (split
       ? Boolean(splitInfo?.valid) &&
         // El vale se valida en el servidor: no se puede cobrar sin conexión.
@@ -555,6 +613,8 @@ export default function PosPage() {
     setGiftCode("");
     setGiftBalance(null);
     setRedeemPoints("");
+    setCouponCode("");
+    setCoupon(null);
     setSenior(false);
     setSeniorId("");
     setYappyManual(false);
@@ -589,6 +649,7 @@ export default function PosPage() {
       giftCardCode: !split && paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
       openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
+      couponCode: coupon && couponDiscount > 0 ? coupon.code : null,
       customerId: customerId || null,
       senior: seniorActive,
       seniorId: seniorActive ? seniorId.trim() || null : null,
@@ -725,6 +786,18 @@ export default function PosPage() {
                       <Plus className="w-4 h-4" />
                     </button>
                     <span className="text-xs text-slate-500 ml-1">{UNIT_LABELS[line.unit]}</span>
+                    {canScale && scale.supported && scale.connected && isWeightUnit(line.unit) && (
+                      <button
+                        type="button"
+                        onClick={() => weigh(line)}
+                        disabled={weighing === line.key}
+                        aria-label={tr("Pesar {name}", { name: line.name })}
+                        className="ml-1 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 text-xs font-medium disabled:opacity-50"
+                      >
+                        <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                        {weighing === line.key ? tr("Pesando…") : tr("Pesar")}
+                      </button>
+                    )}
                   </div>
                   <input
                     aria-label={`Descuento de ${line.name}`}
@@ -758,21 +831,23 @@ export default function PosPage() {
       )}
 
       <div className="space-y-3 border-t border-slate-100 pt-3">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            aria-pressed={split !== null}
-            onClick={() =>
-              setSplit((current) =>
-                current ? null : [newSplitRow(paymentMethod === "CASH" ? "CARD" : paymentMethod), newSplitRow("CASH")]
-              )
-            }
-            className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
-          >
-            {split ? tr("Un solo pago") : tr("Dividir pago")}
-          </button>
-        </div>
-        {split && (
+        {canSplit && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-pressed={split !== null}
+              onClick={() =>
+                setSplit((current) =>
+                  current ? null : [newSplitRow(paymentMethod === "CASH" ? "CARD" : paymentMethod), newSplitRow("CASH")]
+                )
+              }
+              className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+            >
+              {split ? tr("Un solo pago") : tr("Dividir pago")}
+            </button>
+          </div>
+        )}
+        {split && canSplit && (
           <SplitPayment
             rows={split}
             onChange={setSplit}
@@ -990,6 +1065,49 @@ export default function PosPage() {
             ))}
           </div>
         )}
+        {has("campaigns") && (
+          <div className="space-y-1">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <Input
+                  label={tr("Cupón")}
+                  value={couponCode}
+                  onChange={(e) => {
+                    setCouponCode(e.target.value);
+                    setCoupon(null);
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                disabled={couponCode.trim().length < 3}
+                onClick={async () => {
+                  try {
+                    setCoupon(
+                      await api(withQuery("/api/coupons/lookup", { code: couponCode.trim(), amount: couponBase }))
+                    );
+                  } catch (err) {
+                    toast.error(err);
+                  }
+                }}
+              >
+                {tr("Aplicar")}
+              </Button>
+            </div>
+            {coupon && (
+              <p
+                role="status"
+                className={cn("text-sm", couponBlocked ? "text-red-600" : "text-brand-700 dark:text-brand-300")}
+              >
+                {couponBlocked ??
+                  tr("Cupón {code}: −{amount}", { code: coupon.code, amount: fmt.money(couponDiscount) })}
+              </p>
+            )}
+            {coupon && !online && (
+              <p className="text-sm text-amber-700">{tr("Para usar un cupón necesitas conexión.")}</p>
+            )}
+          </div>
+        )}
         <Input
           label={t("pos.notes")}
           value={notes}
@@ -1012,6 +1130,12 @@ export default function PosPage() {
             <div className="flex justify-between text-slate-600">
               <dt>{t("pos.discount")}</dt>
               <dd className="tabular-nums">-{fmt.money(discount)}</dd>
+            </div>
+          )}
+          {couponDiscount > 0 && (
+            <div className="flex justify-between text-slate-600">
+              <dt>{tr("Cupón {code}", { code: coupon?.code ?? "" })}</dt>
+              <dd className="tabular-nums">-{fmt.money(couponDiscount)}</dd>
             </div>
           )}
           {pointsDiscount > 0 && (

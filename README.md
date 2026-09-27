@@ -70,6 +70,7 @@ Detalle en [`docs/plan-super-admin.md`](docs/plan-super-admin.md).
   - Registrar pagos y entrar como soporte.
 - **Usuarios:** administradores, bloqueo, cierre de sesiones y contraseña temporal.
 - **Bitácora** de todo lo que hace el super admin.
+- **Funciones por plan** (pestaña de *Planes y precios*): interruptores por plan agrupados por categoría, con buscador y aviso de funciones nuevas; ajuste por negocio con *Plan / Sí / No* desde la ficha o desde *En uso*.
 
 ### Más ventas y control
 
@@ -131,6 +132,20 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Décimo tercer mes en sus tres partidas, vacaciones y prima de antigüedad acumuladas.
   - Adelantos que se descuentan en la siguiente planilla y comprobantes de pago.
   - Al pagarse genera el gasto y alimenta el flujo de caja y la contabilidad.
+- **Campañas por WhatsApp y cupones** ([`docs/plan-campanas.md`](docs/plan-campanas.md)):
+  - Solo a clientes que aceptaron (Ley 81).
+  - Segmentos: cumpleaños, clientes que no vuelven, frecuentes, con fiado vencido o por etiqueta.
+  - Mensajes con `{nombre}`, `{puntos}` y `{cupón}`.
+  - Envío asistido por enlace, o directo con la API de WhatsApp Business.
+  - Cupones que se aplican en el punto de venta, con resultados de canjes y ventas atribuidas.
+- **Balanza conectada** ([`docs/plan-balanza.md`](docs/plan-balanza.md)):
+  - Balanza por USB o puerto serie en Chrome y Edge. El botón *Pesar* llena la cantidad de lo que se vende por libra o kilo.
+  - Etiquetas de peso EAN-13 (prefijo 20-29) con el peso o el precio: al escanearlas se agrega el producto con su cantidad.
+- **Cobro automático de la suscripción** ([`docs/plan-suscripcion.md`](docs/plan-suscripcion.md)):
+  - *Mi plan*: el dueño paga en línea (Stripe Checkout o el proveedor simulado) y la tarjeta queda guardada.
+  - El webhook firmado registra el pago y extiende la vigencia.
+  - El cron diario avisa antes de cobrar, renueva, reintenta y suspende al pasar los días de gracia que fija el super admin.
+  - Pagar reactiva el negocio.
 
 ## Requisitos
 
@@ -194,7 +209,7 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 2. Variables de entorno: `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; sin ella la app no inicia ni valida sesiones) y `APP_URL`. Opcionales: `RESEND_API_KEY` y `EMAIL_FROM` (correos), `CRON_SECRET` (alertas), `FACTURAMA_USER`, `FACTURAMA_PASSWORD` y `FACTURAMA_SANDBOX` (CFDI México), `ALANUBE_API_URL` y `ALANUBE_TOKEN` (PAC Panamá), `YAPPY_PROVIDER=bg`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_DOMAIN` y `YAPPY_API_URL` (Yappy Comercial). Ver `.env.example`.
 3. `npm run db:deploy && npm run build && npm start`.
    Después, nombra al primer super admin con `npm run admin:grant -- correo@dominio.com` y crea los planes en `/admin/planes`. Mientras no haya planes, todos los negocios tienen todas las funciones.
-4. Tareas programadas (`vercel.json`): `GET /api/cron/low-stock` una vez al día y `GET /api/cron/einvoice` cada 15 minutos para reintentar las facturas en contingencia (en Vercel, un cron más frecuente que diario requiere el plan Pro). En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
+4. Tareas programadas (`vercel.json`): `GET /api/cron/low-stock` y `GET /api/cron/billing` (cobro de la suscripción) una vez al día, y `GET /api/cron/einvoice` cada 15 minutos para reintentar las facturas en contingencia (en Vercel, un cron más frecuente que diario requiere el plan Pro). En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
 
 ## Tecnologías
 

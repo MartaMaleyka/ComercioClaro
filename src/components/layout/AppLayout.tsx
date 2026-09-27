@@ -30,6 +30,7 @@ import {
   X,
   BookOpen,
   IdCard,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
@@ -90,6 +91,13 @@ const navItems: NavItem[] = [
     icon: Tag,
     roles: ["OWNER"],
     when: (b) => b.features.includes("promotions"),
+  },
+  {
+    href: "/campanas",
+    label: "nav.campaigns" as MessageKey,
+    icon: Megaphone,
+    roles: ["OWNER"],
+    when: (b) => b.features.includes("campaigns"),
   },
   { href: "/proveedores", label: "nav.suppliers" as MessageKey, icon: Truck, roles: ["OWNER"] },
   { href: "/gastos", label: "nav.expenses" as MessageKey, icon: Coins, roles: ["OWNER"] },
@@ -290,6 +298,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           businessName={business.name}
           access={business.access}
           isSuperAdmin={user.isSuperAdmin}
+          canPayOnline={role === "OWNER" && business.onlineBilling}
         />
 
         <main id="contenido" className="px-4 py-5 max-w-6xl mx-auto w-full">
@@ -377,11 +386,13 @@ function AccountNotices({
   businessName,
   access,
   isSuperAdmin,
+  canPayOnline,
 }: {
   support: boolean;
   businessName: string;
   access: SessionBusiness["access"];
   isSuperAdmin: boolean;
+  canPayOnline: boolean;
 }) {
   const tr = useText();
   const router = useRouter();
@@ -420,11 +431,27 @@ function AccountNotices({
           {tr("Tu periodo de prueba termina en {days} día(s). Contacta al administrador para activar tu plan.", {
             days: warning.daysLeft,
           })}
+          {canPayOnline && (
+            <>
+              {" "}
+              <Link href="/configuracion/plan" className="font-medium underline">
+                {tr("Pagar mi plan")}
+              </Link>
+            </>
+          )}
         </div>
       )}
       {warning?.kind === "overdue" && (
         <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2">
           {tr("El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.")}
+          {canPayOnline && (
+            <>
+              {" "}
+              <Link href="/configuracion/plan" className="font-medium underline">
+                {tr("Pagar mi plan")}
+              </Link>
+            </>
+          )}
         </div>
       )}
     </>

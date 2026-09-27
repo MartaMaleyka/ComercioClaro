@@ -205,6 +205,7 @@ export async function adminBusinessDetail(id: string) {
         orderBy: { createdAt: "asc" },
       },
       subscriptionPayments: { orderBy: { createdAt: "desc" }, take: 50, include: { plan: { select: { name: true } } } },
+      subscriptionCharges: { where: { status: "FAILED" }, orderBy: { createdAt: "desc" }, take: 5 },
     },
   });
   if (!business) throw notFound("Negocio");
@@ -243,6 +244,20 @@ export async function adminBusinessDetail(id: string) {
     features: resolveFeatures(business),
     members: business.memberships.map((m) => ({ role: m.role, ...m.user })),
     payments: business.subscriptionPayments,
+    billing: {
+      autoRenew: business.autoRenew,
+      card: business.billingCardLabel,
+      failures: business.billingFailures,
+      nextChargeAt: business.nextChargeAt,
+      suspendedByBilling: business.suspendedByBilling,
+      failedCharges: business.subscriptionCharges.map((c) => ({
+        id: c.id,
+        createdAt: c.createdAt,
+        amount: money(c.amount).toNumber(),
+        currency: c.currency,
+        error: c.error,
+      })),
+    },
     usage,
     sales30: { count: sales30._count, total: money(D(sales30._sum.total)).toNumber() },
     lastSaleAt: lastSale?.createdAt ?? null,
@@ -296,44 +311,64 @@ export async function adminUpdateBusiness(admin: Admin, id: string, input: Admin
  * si ya venció) por los meses pagados y activa el negocio.
  */
 export async function adminRecordPayment(admin: Admin, businessId: string, input: SubscriptionPaymentInput) {
-  const business = await prisma.business.findUnique({ where: { id: businessId }, include: { plan: true } });
+  return prisma.$transaction((tx) => recordSubscriptionPayment(tx, admin, businessId, input));
+}
+
+/**
+ * Lo mismo dentro de una transacción; también lo usa el cobro en línea (con `planChange` cuando
+ * el dueño paga otro plan o ciclo).
+ */
+export async function recordSubscriptionPayment(
+  tx: Tx,
+  admin: Admin,
+  businessId: string,
+  input: SubscriptionPaymentInput,
+  planChange?: { planId: string; billingCycle: "MONTHLY" | "YEARLY" }
+) {
+  const business = await tx.business.findUnique({ where: { id: businessId }, include: { plan: true } });
   if (!business) throw notFound("Negocio");
+  const plan = planChange ? await tx.plan.findUnique({ where: { id: planChange.planId } }) : business.plan;
   const now = new Date();
   const start =
     input.periodStart ?? (business.paidUntil && business.paidUntil > now ? business.paidUntil : now);
   const end = new Date(start);
   end.setUTCMonth(end.getUTCMonth() + input.months);
 
-  return prisma.$transaction(async (tx) => {
-    const payment = await tx.subscriptionPayment.create({
-      data: {
-        businessId,
-        planId: business.planId,
-        amount: money(input.amount),
-        currency: business.plan?.currency ?? "USD",
-        method: input.method,
-        reference: input.reference,
-        periodStart: start,
-        periodEnd: end,
-        notes: input.notes,
-        createdById: admin.id,
-      },
-    });
-    const reactivate = business.status === "TRIAL" || (business.status === "SUSPENDED" && input.reactivate);
-    await tx.business.update({
-      where: { id: businessId },
-      data: {
-        paidUntil: end,
-        ...(reactivate ? { status: "ACTIVE" as BusinessStatus, suspendedReason: null } : {}),
-      },
-    });
-    await adminAudit(tx, admin, "payment.record", "Business", businessId, {
-      amount: money(input.amount).toNumber(),
-      months: input.months,
-      paidUntil: end.toISOString(),
-    });
-    return payment;
+  const payment = await tx.subscriptionPayment.create({
+    data: {
+      businessId,
+      planId: plan?.id ?? business.planId,
+      amount: money(input.amount),
+      currency: plan?.currency ?? "USD",
+      method: input.method,
+      reference: input.reference,
+      periodStart: start,
+      periodEnd: end,
+      notes: input.notes,
+      createdById: admin.id,
+    },
   });
+  const reactivate = business.status === "TRIAL" || (business.status === "SUSPENDED" && input.reactivate);
+  await tx.business.update({
+    where: { id: businessId },
+    data: {
+      paidUntil: end,
+      // Pagado: se reinician los reintentos del cobro automático.
+      billingFailures: 0,
+      nextChargeAt: null,
+      ...(planChange && plan ? { planId: plan.id, billingCycle: planChange.billingCycle } : {}),
+      ...(reactivate
+        ? { status: "ACTIVE" as BusinessStatus, suspendedReason: null, suspendedByBilling: false }
+        : {}),
+    },
+  });
+  await adminAudit(tx, admin, "payment.record", "Business", businessId, {
+    amount: money(input.amount).toNumber(),
+    months: input.months,
+    paidUntil: end.toISOString(),
+    ...(planChange ? { planId: planChange.planId, billingCycle: planChange.billingCycle } : {}),
+  });
+  return payment;
 }
 
 /** Da de alta un negocio con su dueño (contraseña temporal que debe cambiar al entrar). */

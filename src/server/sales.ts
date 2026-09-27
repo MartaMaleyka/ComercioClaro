@@ -16,6 +16,7 @@ import { productModifiers } from "./catalog";
 import { recipesFor, type RecipeLine } from "./recipes";
 import { paidWith, resolvePayments, type PaymentInput } from "./payments";
 import { assertOpenPeriod, isClosedPeriod } from "./accounting";
+import { redeemCoupon } from "./campaigns";
 import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
@@ -42,7 +43,9 @@ export type SaleInput = Omit<
   | "senior"
   | "seniorId"
   | "payments"
+  | "couponCode"
 > & {
+  couponCode?: string | null;
   payments?: PaymentInput[] | null;
   senior?: boolean;
   seniorId?: string | null;
@@ -66,6 +69,7 @@ export const saleInclude = {
   customer: { select: { id: true, name: true, phone: true } },
   returns: { include: { items: true } },
   payments: { orderBy: { amount: "desc" } },
+  coupon: { select: { code: true } },
   invoice: { select: { id: true, status: true, uuid: true, kind: true, error: true, provider: true, qrUrl: true } },
 } satisfies Prisma.SaleInclude;
 
@@ -196,6 +200,15 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       const subtotal = sum(lines.map((l) => l.subtotal));
       const discount = money(Math.min(input.discount ?? 0, subtotal.toNumber()));
       let total = subtotal.minus(discount);
+
+      // Cupón de una campaña: se descuenta después del descuento general.
+      let coupon = null;
+      let couponDiscount = D(0);
+      if (input.couponCode) {
+        if (!canUse("campaigns")) throw new AppError(403, `Tu plan no incluye ${featureLabel("campaigns")}.`);
+        ({ coupon, discount: couponDiscount } = await redeemCoupon(tx, actor.businessId, input.couponCode, total));
+        total = total.minus(couponDiscount);
+      }
       const seniorDiscount = money(sum(lines.map((l) => l.seniorDiscount)));
 
       // Canje de puntos de lealtad como descuento.
@@ -337,6 +350,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           pointsRedeemed,
           pointsDiscount,
           seniorDiscount,
+          couponId: coupon?.id ?? null,
+          couponDiscount,
           seniorId: senior ? (input.seniorId ?? customer?.seniorId ?? null) : null,
           giftCardId: giftCard?.id ?? null,
           // Referencia principal (búsqueda y conciliación): la primera que haya.
@@ -415,6 +430,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           : {}),
         discount: discount.toNumber(),
         ...(senior ? { seniorDiscount: seniorDiscount.toNumber() } : {}),
+        ...(coupon ? { coupon: coupon.code, couponDiscount: couponDiscount.toNumber() } : {}),
       });
       return sale;
     });
@@ -577,6 +593,11 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
 
     // Si cerraba una cuenta abierta, la cuenta se reabre para corregirla y cobrarla de nuevo.
     await tx.openOrder.updateMany({ where: { saleId: sale.id }, data: { status: "OPEN", saleId: null } });
+
+    // El uso del cupón se devuelve.
+    if (sale.couponId) {
+      await tx.coupon.updateMany({ where: { id: sale.couponId, uses: { gt: 0 } }, data: { uses: { decrement: 1 } } });
+    }
 
     // Si cobraba un pedido en línea, el pedido vuelve a quedar listo para cobrarse de nuevo.
     await tx.onlineOrder.updateMany({ where: { saleId: sale.id }, data: { status: "READY", saleId: null } });
@@ -763,6 +784,7 @@ export function receiptText(
       ? `Descuento de jubilado${sale.seniorId ? ` (${sale.seniorId})` : ""}: -${fmt(sale.seniorDiscount)}`
       : null,
     D(sale.discount).gt(0) ? `Descuento: -${fmt(sale.discount)}` : null,
+    sale.coupon && D(sale.couponDiscount).gt(0) ? `Cupón ${sale.coupon.code}: -${fmt(sale.couponDiscount)}` : null,
     D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,
     sale.pointsEarned > 0 ? `Ganaste ${sale.pointsEarned} puntos` : null,
     `*Total: ${fmt(sale.total)}*`,

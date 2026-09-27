@@ -14,6 +14,7 @@ import { createSupplierBill, paySupplierBill } from "../src/server/payables";
 import { createRecurringExpense } from "../src/server/cashflow";
 import { closePeriod, createOwnerTransaction } from "../src/server/accounting";
 import { createAdvance, createEmployee, createPayrollRun, payPayrollRun } from "../src/server/payroll";
+import { createCampaign, markRecipientSent, saveCoupon } from "../src/server/campaigns";
 import { addDays, dayKey } from "../src/lib/dates";
 import type { Prisma } from "../src/generated/prisma/client";
 
@@ -882,6 +883,7 @@ const PLANS = [
       "inventoryCounts",
       "export",
       "cashflow",
+      "campaigns",
     ],
     isDefault: true,
     sortOrder: 2,
@@ -905,8 +907,9 @@ const PLANS = [
  * a los planes existentes (sin quitar lo que el super admin haya cambiado).
  */
 const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
-  pro: ["cashflow"],
-  empresarial: ["recipes", "cashflow", "accounting", "payroll"],
+  basico: ["payables", "splitPayments", "scale"],
+  pro: ["payables", "splitPayments", "scale", "cashflow", "campaigns"],
+  empresarial: ["payables", "splitPayments", "scale", "recipes", "cashflow", "accounting", "payroll", "campaigns"],
 };
 
 /** Planes, super admin y la suscripción de cada negocio de demostración. */
@@ -1199,6 +1202,106 @@ async function seedPayroll() {
   console.log("✅ Planilla de la fonda");
 }
 
+/** Campañas del minisúper: clientes que aceptaron promociones, un cupón y la campaña de cumpleaños. */
+async function seedCampaigns() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.coupon.findFirst({ where: { businessId: business.id } })) return;
+  const month = dayKey(new Date(), business.timezone).slice(5, 7);
+  const customers = await prisma.customer.findMany({ where: { businessId: business.id }, orderBy: { name: "asc" } });
+  for (const [i, c] of customers.entries()) {
+    await prisma.customer.update({
+      where: { id: c.id },
+      data: {
+        marketingConsent: true,
+        consentAt: new Date(),
+        phone: c.phone ?? `6555-00${String(i + 10).padStart(2, "0")}`,
+        tags: i === 0 ? ["vecina", "frecuente"] : ["vecino"],
+        birthday: new Date(`1975-${i === 0 ? month : "01"}-${String(10 + i).padStart(2, "0")}T00:00:00Z`),
+      },
+    });
+  }
+  const coupon = await saveCoupon(actor, {
+    code: "CUMPLE10",
+    kind: "PERCENT",
+    value: 0.1,
+    minPurchase: 5,
+    startsAt: null,
+    endsAt: null,
+    maxUses: null,
+    active: true,
+  });
+  await saveCoupon(actor, {
+    code: "VUELVE2",
+    kind: "AMOUNT",
+    value: 2,
+    minPurchase: 10,
+    startsAt: null,
+    endsAt: null,
+    maxUses: 50,
+    active: true,
+  });
+  const campaign = await createCampaign(
+    { ...actor, timezone: business.timezone },
+    {
+      name: "Cumpleaños del mes",
+      message: "¡Feliz cumpleaños, {nombre}! En Minisúper El Dorado te regalamos 10% con el cupón {cupón}. Tienes {puntos} puntos.",
+      segment: { type: "BIRTHDAY" },
+      couponId: coupon.id,
+    }
+  );
+  const first = await prisma.campaignRecipient.findFirst({ where: { campaignId: campaign.id } });
+  if (first) await markRecipientSent(actor, first.id);
+  console.log("✅ Campañas y cupones del minisúper");
+}
+
+/** Balanza: un producto por libra con código PLU para las etiquetas de peso del minisúper. */
+async function seedScale() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.product.findFirst({ where: { businessId: business.id, sku: "00406" } })) return;
+  await createProduct(actor, {
+    name: "Jamón de pierna (libra)",
+    description: "Se pesa en la balanza del mostrador; la etiqueta lleva el PLU 00406",
+    sku: "00406",
+    barcode: null,
+    unit: "LB",
+    price: 3.5,
+    cost: 2.6,
+    stock: 30,
+    minStock: 5,
+    taxRate: 0,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    satUnitKey: "LBR",
+    categoryId: null,
+  });
+}
+
+/** Cobro automático: reglas de la plataforma y una tarjeta de prueba guardada en la fonda. */
+async function seedBilling() {
+  await prisma.platformSettings.upsert({ where: { id: "platform" }, create: {}, update: {} });
+  const demo = await demoBusiness("Fonda La Chiricana");
+  if (!demo) return;
+  const { business } = demo;
+  if (business.billingCustomerId) return;
+  await prisma.business.update({
+    where: { id: business.id },
+    data: {
+      autoRenew: true,
+      billingCustomerId: `sim_cus_${business.id}`,
+      billingMethodId: "sim_pm_4242",
+      billingCardLabel: "Tarjeta de prueba •••• 4242",
+    },
+  });
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1212,6 +1315,9 @@ async function main() {
   await seedRecurringExpenses();
   await seedAccounting();
   await seedPayroll();
+  await seedCampaigns();
+  await seedScale();
+  await seedBilling();
 }
 
 main()

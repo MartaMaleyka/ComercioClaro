@@ -97,6 +97,12 @@ export default async function TicketPage({
             <span>-{money(sale.discount)}</span>
           </div>
         )}
+        {sale.coupon && sale.couponDiscount.gt(0) && (
+          <div className="flex justify-between">
+            <span>Cupón {sale.coupon.code}</span>
+            <span>-{money(sale.couponDiscount)}</span>
+          </div>
+        )}
         {sale.pointsDiscount.gt(0) && (
           <div className="flex justify-between">
             <span>Puntos ({sale.pointsRedeemed})</span>

@@ -16,6 +16,7 @@ interface Entry {
   entityId: string | null;
   details: Record<string, unknown> | null;
   createdAt: string;
+  userId: string;
   user: { name: string; email: string } | null;
 }
 
@@ -69,7 +70,9 @@ export default function AdminAuditPage() {
                     {e.entity !== "Business" && e.details?.email != null && ` · ${String(e.details.email)}`}
                     {e.entity === "Plan" && e.details?.code != null && ` · ${String(e.details.code)}`}
                   </p>
-                  <p className="text-xs text-slate-500">{e.user ? `${e.user.name} · ${e.user.email}` : ""}</p>
+                  <p className="text-xs text-slate-500">
+                    {e.user ? `${e.user.name} · ${e.user.email}` : e.userId === "billing" ? tr("Cobro automático") : ""}
+                  </p>
                 </div>
                 <span className="text-xs text-slate-500 shrink-0">{adminFmt.dateTime(e.createdAt)}</span>
               </div>

@@ -9,7 +9,7 @@ import { useText } from "@/lib/client/i18n";
 import { whatsappLink } from "@/lib/client/receipt";
 import type { Product, Supplier } from "@/lib/client/types";
 import { UNIT_LABELS } from "@/lib/utils";
-import { useSession } from "@/components/providers/SessionProvider";
+import { useFeature, useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
@@ -413,6 +413,7 @@ function ReceiveModal({ order, onClose, onSaved }: { order: PurchaseOrder; onClo
       ])
     )
   );
+  const canCredit = useFeature("payables");
   const [payment, setPayment] = useState<"paid" | "cash" | "credit">("paid");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -502,7 +503,7 @@ function ReceiveModal({ order, onClose, onSaved }: { order: PurchaseOrder; onClo
         >
           <option value="paid">{tr("De contado (banco u otro medio)")}</option>
           <option value="cash">{tr("Se pagó con dinero de la caja")}</option>
-          <option value="credit">{tr("A crédito (queda por pagar)")}</option>
+          {canCredit && <option value="credit">{tr("A crédito (queda por pagar)")}</option>}
         </Select>
         {payment === "credit" && (
           <div className="grid grid-cols-2 gap-3">

@@ -10,6 +10,7 @@ const publicApi = [
   "/api/auth/logout",
   "/api/cron/",
   "/api/yappy/ipn",
+  "/api/billing/webhook",
   "/api/catalog/",
 ];
 

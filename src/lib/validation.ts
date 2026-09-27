@@ -356,6 +356,7 @@ export const saleSchema = z.object({
   onlineOrderId: id.nullish(),
   openOrderId: id.nullish(),
   giftCardCode: optText(40),
+  couponCode: optText(40),
   redeemPoints: z.coerce.number().int().min(0).max(10_000_000).nullish(),
   customerId: id.nullish(),
   senior: z.boolean().default(false),
@@ -472,6 +473,13 @@ export const customerSchema = z.object({
   creditDueDate: z.coerce.date().nullish(),
   isSenior: z.boolean().default(false),
   seniorId: optText(30),
+  marketingConsent: z.boolean().default(false),
+  birthday: z.coerce.date().nullish(),
+  tags: z
+    .array(z.string().trim().min(1).max(30))
+    .max(20, "Máximo 20 etiquetas")
+    .default([])
+    .transform((list) => [...new Set(list.map((t) => t.toLowerCase()))]),
   ruc,
   dv,
   rfc: z
@@ -612,6 +620,46 @@ export const payrollSettingsSchema = z.object({
   isrTopRate: payrollRate,
   overtimeFactor: z.coerce.number().min(1).max(3),
   monthlyHours: z.coerce.number().int().min(1).max(400),
+});
+
+export const couponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z0-9-]{3,30}$/, "Usa de 3 a 30 letras, números o guiones"),
+    kind: z.enum(["PERCENT", "AMOUNT"]),
+    value: positiveMoney,
+    minPurchase: moneyInput.nullish().transform((v) => v ?? null),
+    startsAt: z.coerce.date().nullish().transform((v) => v ?? null),
+    endsAt: z.coerce.date().nullish().transform((v) => v ?? null),
+    maxUses: z.coerce.number().int().min(1).max(1_000_000).nullish().transform((v) => v ?? null),
+    active: z.boolean().default(true),
+  })
+  .refine((c) => !c.startsAt || !c.endsAt || c.startsAt <= c.endsAt, {
+    message: "La fecha final debe ser posterior a la inicial",
+    path: ["endsAt"],
+  });
+
+export const segmentSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ALL") }),
+  z.object({ type: z.literal("BIRTHDAY") }),
+  z.object({ type: z.literal("INACTIVE"), days: z.coerce.number().int().min(7).max(365).default(30) }),
+  z.object({
+    type: z.literal("FREQUENT"),
+    visits: z.coerce.number().int().min(2).max(100).default(4),
+    days: z.coerce.number().int().min(7).max(365).default(90),
+  }),
+  z.object({ type: z.literal("OVERDUE") }),
+  z.object({ type: z.literal("TAG"), tag: text(30, "Escribe la etiqueta") }),
+]);
+
+export const campaignSchema = z.object({
+  name: text(80, "Escribe el nombre de la campaña"),
+  message: text(1000, "Escribe el mensaje"),
+  segment: segmentSchema,
+  couponId: id.nullish().transform((v) => v ?? null),
 });
 
 export const cashflowQuerySchema = z.object({
@@ -899,4 +947,46 @@ export const adminListSchema = z.object({
   search: z.string().trim().max(100).optional(),
   status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "OVERDUE"]).optional(),
   planId: z.string().max(64).optional(),
+});
+
+/** Formato de las etiquetas de peso de la balanza etiquetadora. */
+export const weightBarcodeSchema = z.object({
+  enabled: z.boolean(),
+  valueType: z.enum(["WEIGHT", "PRICE"]),
+  pluDigits: z.union([z.literal(4), z.literal(5), z.literal(6)]),
+  decimals: z.coerce.number().int().min(0).max(3),
+  weightUnit: z.enum(["KG", "G", "LB", "OZ"]),
+});
+
+/** Pago en línea del plan desde "Mi plan". */
+export const billingCheckoutSchema = z.object({
+  planId: z.string().min(1).max(64),
+  billingCycle: z.enum(["MONTHLY", "YEARLY"]),
+});
+
+export const billingUpdateSchema = z.object({ autoRenew: z.boolean() });
+
+export const simulatedPaymentSchema = z.object({
+  chargeId: z.string().min(1).max(64),
+  card: z.enum(["4242", "0002"]),
+});
+
+/** Reglas del cobro automático (super admin). */
+export const platformSettingsSchema = z.object({
+  graceDays: z.coerce.number().int().min(0).max(60),
+  retryIntervalDays: z.coerce.number().int().min(1).max(15),
+  maxRetries: z.coerce.number().int().min(1).max(10),
+  noticeDays: z.coerce.number().int().min(1).max(15),
+  suspendManualPayers: z.boolean(),
+});
+
+/** Panel del super admin: una función en un plan o en un negocio. */
+export const planFeatureSchema = z.object({
+  feature: featureKey,
+  enabled: z.boolean(),
+});
+
+export const businessFeatureSchema = z.object({
+  feature: featureKey,
+  mode: z.enum(["plan", "on", "off"]),
 });

@@ -8,7 +8,14 @@ import { ArrowLeft, LifeBuoy, Plus } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { useText } from "@/lib/client/i18n";
 import { adminFmt } from "@/lib/client/admin-format";
-import { FEATURES, type AccessState, type FeatureKey, type FeatureOverrides } from "@/lib/features";
+import {
+  FEATURE_GROUPS,
+  FEATURES,
+  NEW_FEATURE_KEYS,
+  type AccessState,
+  type FeatureKey,
+  type FeatureOverrides,
+} from "@/lib/features";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -17,6 +24,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { SegmentedControl } from "@/components/ui/Switch";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 import type { PlanOption } from "@/components/admin/types";
 import { ACTION_LABELS } from "@/components/admin/labels";
@@ -60,10 +68,18 @@ interface Detail {
     createdAt: string;
     plan: { name: string } | null;
   }[];
+  billing: {
+    autoRenew: boolean;
+    card: string | null;
+    failures: number;
+    nextChargeAt: string | null;
+    suspendedByBilling: boolean;
+    failedCharges: { id: string; createdAt: string; amount: number; currency: string; error: string | null }[];
+  };
   usage: { users: number; products: number; branches: number };
   sales30: { count: number; total: number };
   lastSaleAt: string | null;
-  audit: { id: string; action: string; createdAt: string; userName: string | null; details: unknown }[];
+  audit: { id: string; action: string; createdAt: string; userId: string; userName: string | null; details: unknown }[];
 }
 
 const METHODS: Record<string, string> = {
@@ -133,7 +149,33 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <div className="text-sm rounded-xl bg-slate-50 px-3 py-2 space-y-1">
+                <p>
+                  {data.billing.card
+                    ? tr("Tarjeta: {card}", { card: data.billing.card })
+                    : tr("Sin tarjeta guardada (paga a mano)")}
+                  {" · "}
+                  {data.billing.autoRenew ? tr("Renovación automática") : tr("Sin renovación automática")}
+                </p>
+                {data.billing.failures > 0 && (
+                  <p className="text-red-700">
+                    {tr("{n} cobro(s) fallido(s)", { n: data.billing.failures })}
+                    {data.billing.nextChargeAt &&
+                      ` · ${tr("Próximo intento: {date}", { date: adminFmt.date(data.billing.nextChargeAt) })}`}
+                  </p>
+                )}
+                {data.billing.failedCharges.map((c) => (
+                  <p key={c.id} className="text-xs text-slate-500">
+                    {adminFmt.date(c.createdAt)} · {adminFmt.money(c.amount, c.currency)} · {c.error}
+                  </p>
+                ))}
+                {data.billing.suspendedByBilling && (
+                  <p className="text-xs text-slate-600">
+                    {tr("Suspendido por falta de pago: se reactiva al pagar en línea.")}
+                  </p>
+                )}
+              </div>
               {data.payments.length === 0 ? (
                 <p className="text-sm text-slate-500">{tr("Sin pagos registrados.")}</p>
               ) : (
@@ -162,11 +204,7 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      <FeaturesCard
-        key={`features-${JSON.stringify(data.featureOverrides)}-${data.plan?.id}`}
-        detail={data}
-        onSaved={mutate}
-      />
+      <FeaturesCard key={`features-${data.plan?.id}`} detail={data} onSaved={mutate} />
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>
@@ -203,7 +241,9 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                   <li key={a.id} className="py-2 flex justify-between gap-2">
                     <span>
                       {tr(ACTION_LABELS[a.action] ?? a.action)}
-                      <span className="block text-xs text-slate-500">{a.userName}</span>
+                      <span className="block text-xs text-slate-500">
+                        {a.userName ?? (a.userId === "billing" ? tr("Cobro automático") : null)}
+                      </span>
                     </span>
                     <span className="text-xs text-slate-500 shrink-0">{adminFmt.dateTime(a.createdAt)}</span>
                   </li>
@@ -413,77 +453,160 @@ type OverrideChoice = "plan" | "on" | "off";
 function FeaturesCard({ detail, onSaved }: { detail: Detail; onSaved: () => void }) {
   const tr = useText();
   const toast = useToast();
-  const [choices, setChoices] = useState<Record<FeatureKey, OverrideChoice>>(
-    () =>
-      Object.fromEntries(
-        FEATURES.map((f) => {
-          const o = detail.featureOverrides[f.key];
-          return [f.key, o === undefined ? "plan" : o ? "on" : "off"];
-        })
-      ) as Record<FeatureKey, OverrideChoice>
-  );
-  const [saving, setSaving] = useState(false);
+  const confirm = useConfirm();
+  const [overrides, setOverrides] = useState(detail.featureOverrides);
+  const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState<FeatureKey | null>(null);
   const inPlan = (key: FeatureKey) => (detail.plan ? detail.plan.features.includes(key) : true);
+  const modeOf = (key: FeatureKey): OverrideChoice =>
+    overrides[key] === undefined ? "plan" : overrides[key] ? "on" : "off";
+  const isActive = (key: FeatureKey) => (overrides[key] === undefined ? inPlan(key) : overrides[key]!);
+  const activeCount = FEATURES.filter((f) => isActive(f.key)).length;
+  const manual = Object.keys(overrides).length;
+  const q = query.trim().toLocaleLowerCase("es");
+  const visible = FEATURES.filter((f) => !q || `${tr(f.label)} ${f.label}`.toLocaleLowerCase("es").includes(q));
 
-  async function save() {
-    setSaving(true);
+  // Cada cambio se guarda al momento: no hay que acordarse de un botón Guardar.
+  async function change(key: FeatureKey, mode: OverrideChoice) {
+    const previous = overrides;
+    const next = { ...overrides };
+    if (mode === "plan") delete next[key];
+    else next[key] = mode === "on";
+    setOverrides(next);
+    setSaving(key);
     try {
-      const featureOverrides = Object.fromEntries(
-        Object.entries(choices)
-          .filter(([, c]) => c !== "plan")
-          .map(([key, c]) => [key, c === "on"])
-      );
-      await api(`/api/admin/businesses/${detail.id}`, { method: "PATCH", body: { featureOverrides } });
-      toast.success(tr("Funciones actualizadas"));
+      await api(`/api/admin/businesses/${detail.id}/features`, { method: "PUT", body: { feature: key, mode } });
+      const label = tr(FEATURES.find((f) => f.key === key)!.label);
+      const on = mode === "plan" ? inPlan(key) : mode === "on";
+      toast.success(on ? tr("{feature} activa", { feature: label }) : tr("{feature} apagada", { feature: label }));
+      onSaved();
+    } catch (err) {
+      setOverrides(previous);
+      toast.error(err);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function resetAll() {
+    const ok = await confirm({
+      title: tr("¿Volver todo a lo que dice el plan?"),
+      message: tr("Se quitan los {n} ajuste(s) a mano de este negocio.", { n: manual }),
+      confirmLabel: tr("Volver al plan"),
+    });
+    if (!ok) return;
+    try {
+      await api(`/api/admin/businesses/${detail.id}`, { method: "PATCH", body: { featureOverrides: {} } });
+      setOverrides({});
+      toast.success(tr("Funciones según el plan"));
       onSaved();
     } catch (err) {
       toast.error(err);
-    } finally {
-      setSaving(false);
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <h2 className="font-semibold text-slate-900">{tr("Funciones")}</h2>
-        <p className="text-sm text-slate-500">
-          {tr(
-            "Por defecto el negocio tiene las funciones de su plan. Puedes activar o desactivar cada una solo para este negocio."
-          )}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid md:grid-cols-2 gap-x-6 gap-y-3">
-          {FEATURES.map((f) => {
-            const choice = choices[f.key];
-            const enabled = choice === "plan" ? inPlan(f.key) : choice === "on";
-            return (
-              <div key={f.key} className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900 flex items-center gap-2">
-                    {tr(f.label)}
-                    <Badge tone={enabled ? "green" : "gray"}>{enabled ? tr("Activa") : tr("Inactiva")}</Badge>
-                  </p>
-                  <p className="text-xs text-slate-500">{tr(f.description)}</p>
-                </div>
-                <Select
-                  aria-label={tr("Función {name}", { name: tr(f.label) })}
-                  value={choice}
-                  onChange={(e) => setChoices({ ...choices, [f.key]: e.target.value as OverrideChoice })}
-                  className="w-40 shrink-0"
-                >
-                  <option value="plan">{inPlan(f.key) ? tr("Según el plan (sí)") : tr("Según el plan (no)")}</option>
-                  <option value="on">{tr("Activada")}</option>
-                  <option value="off">{tr("Desactivada")}</option>
-                </Select>
-              </div>
-            );
-          })}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-900">{tr("Funciones")}</h2>
+            <p className="text-sm text-slate-500">
+              {tr(
+                "Por defecto el negocio tiene las funciones de su plan. Cambia una solo para este negocio con Sí o No; se guarda al momento."
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge tone="green">{tr("{n} de {total} activas", { n: activeCount, total: FEATURES.length })}</Badge>
+            {manual > 0 && <Badge tone="amber">{tr("{n} ajuste(s) a mano", { n: manual })}</Badge>}
+          </div>
         </div>
-        <Button onClick={save} loading={saving}>
-          {tr("Guardar funciones")}
-        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="w-full sm:w-72">
+            <Input
+              label={tr("Buscar función")}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          {manual > 0 && (
+            <Button variant="secondary" size="sm" onClick={resetAll}>
+              {tr("Volver todo al plan")}
+            </Button>
+          )}
+        </div>
+        {FEATURE_GROUPS.map((group) => {
+          const rows = visible.filter((f) => f.group === group.key);
+          if (rows.length === 0) return null;
+          return (
+            <section key={group.key} aria-labelledby={`funciones-${group.key}`}>
+              <h3
+                id={`funciones-${group.key}`}
+                className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1"
+              >
+                {tr(group.label)}
+              </h3>
+              <ul className="divide-y divide-slate-100">
+                {rows.map((f) => {
+                  const mode = modeOf(f.key);
+                  const on = isActive(f.key);
+                  return (
+                    <li key={f.key} className="py-2.5 flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-slate-900 flex flex-wrap items-center gap-2">
+                          <span
+                            aria-hidden="true"
+                            className={on ? "w-2 h-2 rounded-full bg-brand-600" : "w-2 h-2 rounded-full bg-slate-400"}
+                          />
+                          {tr(f.label)}
+                          {NEW_FEATURE_KEYS.includes(f.key) && <Badge tone="purple">{tr("Nueva")}</Badge>}
+                          <span className="sr-only">{on ? tr("Activa") : tr("Inactiva")}</span>
+                        </p>
+                        <p className="text-xs text-slate-500">{tr(f.description)}</p>
+                      </div>
+                      <SegmentedControl<OverrideChoice>
+                        label={tr("Función {name}", { name: tr(f.label) })}
+                        value={mode}
+                        disabled={saving === f.key}
+                        onChange={(m) => change(f.key, m)}
+                        options={[
+                          {
+                            value: "plan",
+                            label: inPlan(f.key) ? tr("Plan (sí)") : tr("Plan (no)"),
+                            title: inPlan(f.key) ? tr("Según el plan (sí)") : tr("Según el plan (no)"),
+                          },
+                          { value: "on", label: tr("Sí"), title: tr("Activada solo para este negocio") },
+                          { value: "off", label: tr("No"), title: tr("Desactivada solo para este negocio") },
+                        ]}
+                        tone={(v) =>
+                          v !== mode
+                            ? "text-slate-600"
+                            : v === "on"
+                              ? "bg-brand-600 text-white shadow-sm"
+                              : v === "off"
+                                ? "bg-slate-700 text-white shadow-sm"
+                                : "bg-surface text-slate-900 shadow-sm"
+                        }
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          );
+        })}
+        {visible.length === 0 && (
+          <p className="text-sm text-slate-500 text-center py-4">{tr("Ninguna función coincide con la búsqueda.")}</p>
+        )}
+        <p className="text-xs text-slate-500">
+          <Link href="/admin/planes?vista=funciones" className="text-brand-700 dark:text-brand-300 underline">
+            {tr("Ver qué incluye cada plan")}
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );

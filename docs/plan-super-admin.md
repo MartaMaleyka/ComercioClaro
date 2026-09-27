@@ -9,9 +9,36 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 | **Resumen** (`/admin`) | Ingreso mensual recurrente, cobrado este mes y en los últimos 12 meses (por moneda), negocios por estado y por plan, pruebas por terminar y pagos vencidos. |
 | **Negocios** (`/admin/negocios`) | Buscar por negocio, dueño o correo; filtrar por estado y plan; dar de alta un negocio con su dueño (contraseña temporal). |
 | **Detalle del negocio** | Cambiar plan, ciclo (mensual o anual), estado (activo, en prueba, suspendido con motivo), fecha de fin de prueba y de pago, notas internas. Activar o desactivar cada función solo para ese negocio. Registrar pagos, ver uso contra los límites, usuarios, historial, y **entrar como soporte**. |
-| **Planes y precios** (`/admin/planes`) | Crear y editar planes: precio mensual y anual, moneda, días de prueba, límites de usuarios, sucursales y productos, funciones incluidas, plan por defecto y visibilidad en la página de precios. |
+| **Planes y precios** (`/admin/planes`) | Crear y editar planes: precio mensual y anual, moneda, días de prueba, límites de usuarios, sucursales y productos, funciones incluidas, plan por defecto y visibilidad en la página de precios. Reglas del **cobro automático**: días de gracia, reintentos, días entre reintentos y de aviso (ver [`plan-suscripcion.md`](plan-suscripcion.md)). |
 | **Usuarios** (`/admin/usuarios`) | Nombrar o quitar administradores, bloquear y desbloquear, cerrar sesiones y generar una contraseña temporal. |
 | **Bitácora** (`/admin/bitacora`) | Quién cambió qué y cuándo. |
+
+## Funciones por plan y por negocio
+
+**Planes y precios → Funciones por plan** (`/admin/planes?vista=funciones`):
+
+- Las funciones se agrupan por categoría: ventas y cobro, clientes y marketing, inventario y compras, finanzas y contabilidad, y operación y equipo.
+- Cada plan tiene un interruptor por función. El cambio se guarda al momento y se aplica a todos los negocios del plan, salvo los que tengan un ajuste a mano.
+- Quitar una función de un plan con negocios pide confirmación y dice a cuántos afecta. No se borra ningún dato: al volver a encenderla, todo sigue ahí.
+- Se puede buscar una función y filtrar por las **nuevas** o por las que **no están en todos los planes**. Un aviso señala las funciones nuevas que faltan en algún plan activo.
+- **En uso** muestra cuántos negocios tienen la función y cuántos ajustes a mano hay. Al abrirlo aparece la lista de negocios, y cada uno se ajusta con *Plan / Sí / No*.
+
+**Ficha del negocio → Funciones:**
+
+- Funciones agrupadas por categoría, cada una con *Plan (sí/no) / Sí / No*. Se guarda al momento, sin botón Guardar.
+- Buscador, contador "N de M activas", ajustes a mano y el botón *Volver todo al plan*.
+
+**Editor del plan:** las funciones van agrupadas, con *Todas / Ninguna* por grupo y la etiqueta *Nueva*.
+
+**Funciones que ahora se pueden apagar:**
+
+- **Cuentas por pagar:** la pestaña *Por pagar*, las compras a crédito, la tarjeta del tablero y las alertas por correo.
+- **Pagos divididos:** el botón *Dividir pago* y las ventas con varios pagos.
+- **Balanza conectada:** el botón *Pesar*, las etiquetas de peso y la configuración de la balanza.
+
+Antes estaban en todos los planes, y la migración `20260930100000_funciones_basicas` las agrega a los planes existentes: nadie pierde nada.
+
+Cada cambio queda en la bitácora: *Cambió una función de un plan* o *Ajustó una función de un negocio*.
 
 ## Reglas
 
@@ -22,7 +49,7 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
   - Modo restaurante, pantalla para el cliente, vales, y recargas y pago de servicios.
   - Órdenes de compra, sucursales y traspasos, y conciliación bancaria.
   - Reportes avanzados, variantes y extras, conteo físico y exportación a CSV.
-  - Recetas e insumos, flujo de caja y punto de equilibrio, contabilidad automática y planilla.
+  - Recetas e insumos, flujo de caja y punto de equilibrio, contabilidad automática, planilla, y campañas y cupones.
 - **Se validan en el servidor.** La API responde "Tu plan no incluye…" y las pantallas ocultan lo que no está incluido.
 - **Siempre incluido, en todos los planes:**
   - Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos y venta sin conexión.
@@ -33,7 +60,7 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 - **Límites.** Aplican a usuarios del negocio, sucursales del dueño y productos activos. Si un campo está vacío, no hay límite.
 - **Estados:**
   - *En prueba*: se avisa en la última semana. Al vencer, el negocio se bloquea hasta que se active un plan.
-  - *Pago vencido*: solo muestra un aviso. Suspender es una decisión del super admin.
+  - *Pago vencido*: muestra un aviso. Con renovación automática (o si el super admin lo configura para todos), se suspende solo al pasar los días de gracia; ver [`plan-suscripcion.md`](plan-suscripcion.md).
   - *Suspendido*: los usuarios ven el motivo y no pueden usar el negocio. No se borra nada.
 - **Pagos.** Cada pago extiende la vigencia desde el vencimiento actual (o desde hoy, si ya venció) por los meses pagados. Además, activa una prueba y puede reactivar un negocio suspendido.
 - **Registro.** El negocio nuevo recibe el plan elegido en la página de precios (`/registro?plan=pro`) o el plan por defecto, con sus días de prueba.

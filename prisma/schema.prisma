@@ -177,6 +177,8 @@ model Business {
   deliveryZones        Json?
   // Parámetros de planilla (tasas de CSS, seguro educativo, ISR...): ver src/lib/payroll.ts
   payrollSettings      Json?
+  // Etiquetas de balanza EAN-13 (prefijo 20-29): ver src/lib/scale.ts
+  weightBarcode        Json?
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
@@ -196,6 +198,21 @@ model Business {
   paidUntil            DateTime?
   billingCycle         BillingCycle   @default(MONTHLY)
   suspendedReason      String?
+  // Cobro automático de la suscripción (ver docs/plan-suscripcion.md)
+  autoRenew            Boolean        @default(false)
+  // Cliente y método de pago guardados en el proveedor (Stripe: cus_…, pm_…)
+  billingCustomerId    String?
+  billingMethodId      String?
+  // Tarjeta para mostrar: "Visa •••• 4242"
+  billingCardLabel     String?
+  // Cobros fallidos seguidos y cuándo se reintenta
+  billingFailures      Int            @default(0)
+  nextChargeAt         DateTime?
+  // Vencimiento para el que ya se envió el aviso de cobro y el de suspensión
+  renewalNoticeFor     DateTime?
+  suspensionNoticeFor  DateTime?
+  // Suspendido por falta de pago (se reactiva al pagar en línea)
+  suspendedByBilling   Boolean        @default(false)
   // Funciones activadas o desactivadas a mano sobre las del plan: { "promotions": false }
   featureOverrides     Json?
   adminNotes           String?
@@ -204,6 +221,7 @@ model Business {
 
   memberships          Membership[]
   subscriptionPayments SubscriptionPayment[]
+  subscriptionCharges  SubscriptionCharge[]
   categories           Category[]
   products             Product[]
   customers            Customer[]
@@ -240,6 +258,8 @@ model Business {
   employees            Employee[]
   payrollRuns          PayrollRun[]
   salaryAdvances       SalaryAdvance[]
+  coupons              Coupon[]
+  campaigns            Campaign[]
 }
 
 model Category {
@@ -318,40 +338,47 @@ model Product {
 }
 
 model Customer {
-  id            String    @id @default(cuid())
-  name          String
-  phone         String?
-  email         String?
-  notes         String?
-  creditLimit   Decimal   @default(0) @db.Decimal(12, 2)
+  id               String    @id @default(cuid())
+  name             String
+  phone            String?
+  email            String?
+  notes            String?
+  creditLimit      Decimal   @default(0) @db.Decimal(12, 2)
   // Días de crédito para calcular el vencimiento del fiado
-  creditDays    Int       @default(15)
+  creditDays       Int       @default(15)
   // DAYS (creditDays), QUINCENA (15 o fin de mes) o FIXED (fecha fija, p. ej. la cosecha)
-  creditTerm    String    @default("DAYS")
-  creditDueDate DateTime?
+  creditTerm       String    @default("DAYS")
+  creditDueDate    DateTime?
   // Jubilado o pensionado: se le aplica el descuento de ley
-  isSenior      Boolean   @default(false)
+  isSenior         Boolean   @default(false)
   // Número de cédula o carné (no se guarda foto del documento)
-  seniorId      String?
+  seniorId         String?
   // Puntos de lealtad acumulados
-  points        Int       @default(0)
+  points           Int       @default(0)
+  // Ley 81 de 2019: acepta recibir promociones por WhatsApp (y cuándo lo aceptó)
+  marketingConsent Boolean   @default(false)
+  consentAt        DateTime?
+  // Cumpleaños (día calendario) y etiquetas libres para campañas
+  birthday         DateTime?
+  tags             String[]  @default([])
   // Saldo pendiente de fiado (se actualiza en la misma transacción que ventas y abonos)
-  balance       Decimal   @default(0) @db.Decimal(12, 2)
-  rfc           String?
-  legalName     String?
-  taxRegime     String?
-  postalCode    String?
-  ruc           String?
-  dv            String?
-  businessId    String
-  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  archivedAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  balance          Decimal   @default(0) @db.Decimal(12, 2)
+  rfc              String?
+  legalName        String?
+  taxRegime        String?
+  postalCode       String?
+  ruc              String?
+  dv               String?
+  businessId       String
+  business         Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  archivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  sales    Sale[]
-  payments CustomerPayment[]
-  invoices Invoice[]
+  sales              Sale[]
+  payments           CustomerPayment[]
+  invoices           Invoice[]
+  campaignRecipients CampaignRecipient[]
 
   @@index([businessId, archivedAt, name])
 }
@@ -421,6 +448,10 @@ model Sale {
   // Descuento de jubilado aplicado (Ley 6) y cédula o carné presentado
   seniorDiscount   Decimal       @default(0) @db.Decimal(12, 2)
   seniorId         String?
+  // Cupón aplicado y su descuento (se resta después del descuento general)
+  couponId         String?
+  coupon           Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponDiscount   Decimal       @default(0) @db.Decimal(12, 2)
   yappyCharge      YappyCharge?
   onlineOrder      OnlineOrder?
   openOrder        OpenOrder?
@@ -1226,6 +1257,7 @@ model Plan {
 
   businesses Business[]
   payments   SubscriptionPayment[]
+  charges    SubscriptionCharge[]
 }
 
 /**
@@ -1521,4 +1553,145 @@ model SalaryAdvance {
   createdAt     DateTime      @default(now())
 
   @@index([employeeId, runId])
+}
+
+enum CouponKind {
+  PERCENT
+  AMOUNT
+}
+
+/**
+ * Cupón de descuento que se escribe o escanea en el punto de venta.
+ */
+model Coupon {
+  id          String     @id @default(cuid())
+  code        String
+  kind        CouponKind
+  // PERCENT: fracción (0.10 = 10%); AMOUNT: monto fijo
+  value       Decimal    @db.Decimal(12, 4)
+  minPurchase Decimal?   @db.Decimal(12, 2)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  // Usos permitidos (vacío = sin límite) y usados
+  maxUses     Int?
+  uses        Int        @default(0)
+  active      Boolean    @default(true)
+  businessId  String
+  business    Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  sales     Sale[]
+  campaigns Campaign[]
+
+  @@unique([businessId, code])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENT
+}
+
+/**
+ * Campaña por WhatsApp a un segmento de clientes que aceptaron recibir promociones.
+ */
+model Campaign {
+  id         String         @id @default(cuid())
+  name       String
+  // Plantilla con {nombre}, {puntos} y {cupón}
+  message    String
+  // { type: "BIRTHDAY" | "INACTIVE" | "FREQUENT" | "OVERDUE" | "TAG" | "ALL", days?, visits?, tag? }
+  segment    Json
+  couponId   String?
+  coupon     Coupon?        @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  status     CampaignStatus @default(DRAFT)
+  sentAt     DateTime?
+  userId     String?
+  businessId String
+  business   Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime       @default(now())
+
+  recipients CampaignRecipient[]
+
+  @@index([businessId, createdAt])
+}
+
+enum RecipientStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model CampaignRecipient {
+  id         String          @id @default(cuid())
+  campaignId String
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  phone      String
+  // Mensaje ya personalizado
+  message    String
+  status     RecipientStatus @default(PENDING)
+  sentAt     DateTime?
+  error      String?
+
+  @@unique([campaignId, customerId])
+}
+
+enum SubscriptionChargeKind {
+  CHECKOUT
+  RENEWAL
+}
+
+enum SubscriptionChargeStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+/**
+ * Intento de cobro en línea de la suscripción: pago del dueño (checkout) o renovación automática
+ * con la tarjeta guardada. Al confirmarse registra un SubscriptionPayment.
+ */
+model SubscriptionCharge {
+  id           String                   @id @default(cuid())
+  businessId   String
+  business     Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId       String?
+  plan         Plan?                    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  kind         SubscriptionChargeKind
+  status       SubscriptionChargeStatus @default(PENDING)
+  // stripe o simulado
+  provider     String
+  amount       Decimal                  @db.Decimal(10, 2)
+  currency     String                   @default("USD")
+  months       Int
+  billingCycle BillingCycle
+  // Id en el proveedor (sesión de checkout o intento de pago)
+  externalId   String?                  @unique
+  error        String?
+  paymentId    String?                  @unique
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
+}
+
+/**
+ * Reglas del cobro automático (una sola fila, las edita el super admin).
+ */
+model PlatformSettings {
+  id                  String   @id @default("platform")
+  // Días después del vencimiento antes de suspender
+  graceDays           Int      @default(7)
+  // Días entre reintentos y cuántos intentos se hacen
+  retryIntervalDays   Int      @default(2)
+  maxRetries          Int      @default(3)
+  // Días de anticipación de los avisos por correo (antes de cobrar y antes de suspender)
+  noticeDays          Int      @default(3)
+  // También suspender a quien paga a mano (transferencia) al pasar la gracia
+  suspendManualPayers Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
 }
