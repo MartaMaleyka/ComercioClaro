@@ -177,7 +177,7 @@ function BusinessSettings() {
       {business.features.includes("catalog") && <DeliveryZonesCard initial={data.deliveryZones ?? []} />}
       {business.features.includes("services") && <ServiceProvidersCard />}
       {business.features.includes("payroll") && <PayrollSettingsCard />}
-      <ScaleSettingsCard />
+      {business.features.includes("scale") && <ScaleSettingsCard />}
     </div>
   );
 }

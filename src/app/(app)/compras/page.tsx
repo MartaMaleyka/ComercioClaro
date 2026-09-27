@@ -112,7 +112,7 @@ function Purchases() {
           ...(business.features.includes("purchaseOrders")
             ? [{ value: "orders" as const, label: tr("Órdenes de compra") }]
             : []),
-          { value: "payables" as const, label: tr("Por pagar") },
+          ...(business.features.includes("payables") ? [{ value: "payables" as const, label: tr("Por pagar") }] : []),
         ]}
         value={tab}
         onChange={setTab}
@@ -120,7 +120,7 @@ function Purchases() {
 
       {tab === "orders" ? (
         <PurchaseOrdersTab />
-      ) : tab === "payables" ? (
+      ) : tab === "payables" && business.features.includes("payables") ? (
         <PayablesTab />
       ) : (
         <>
@@ -454,7 +454,9 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
         >
           <option value="paid">{tr("De contado (banco u otro medio)")}</option>
           <option value="cash">{tr("Se pagó con dinero de la caja")}</option>
-          <option value="credit">{tr("A crédito (queda por pagar)")}</option>
+          {business.features.includes("payables") && (
+            <option value="credit">{tr("A crédito (queda por pagar)")}</option>
+          )}
         </Select>
         {payment === "credit" && (
           <div className="grid sm:grid-cols-3 gap-3">

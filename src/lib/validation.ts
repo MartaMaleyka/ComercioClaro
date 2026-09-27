@@ -979,3 +979,14 @@ export const platformSettingsSchema = z.object({
   noticeDays: z.coerce.number().int().min(1).max(15),
   suspendManualPayers: z.boolean(),
 });
+
+/** Panel del super admin: una función en un plan o en un negocio. */
+export const planFeatureSchema = z.object({
+  feature: featureKey,
+  enabled: z.boolean(),
+});
+
+export const businessFeatureSchema = z.object({
+  feature: featureKey,
+  mode: z.enum(["plan", "on", "off"]),
+});

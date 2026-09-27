@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { escapeHtml, sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
 import { UNIT_LABELS, formatCurrency } from "@/lib/utils";
+import { resolveFeatures } from "@/lib/features";
 import { payablesDueSoon } from "./payables";
 
 /**
@@ -11,7 +12,10 @@ import { payablesDueSoon } from "./payables";
 export async function sendLowStockAlerts() {
   const businesses = await prisma.business.findMany({
     where: { lowStockEmailAlerts: true },
-    include: { memberships: { where: { role: "OWNER" }, include: { user: { select: { email: true, name: true } } } } },
+    include: {
+      plan: { select: { features: true } },
+      memberships: { where: { role: "OWNER" }, include: { user: { select: { email: true, name: true } } } },
+    },
   });
   const soon = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   let sent = 0;
@@ -29,7 +33,7 @@ export async function sendLowStockAlerts() {
         orderBy: { expiresAt: "asc" },
         take: 50,
       }),
-      payablesDueSoon(business.id, business.timezone),
+      resolveFeatures(business).includes("payables") ? payablesDueSoon(business.id, business.timezone) : [],
     ]);
     if (low.length === 0 && expiring.length === 0 && payables.length === 0) continue;
 

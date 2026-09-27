@@ -6,5 +6,7 @@ import { receivePurchaseOrder } from "@/server/purchase-orders";
 export const POST = handler<{ id: string }>(async (request, { params }) => {
   const auth = await requireAuth("OWNER");
   requireFeature(auth, "purchaseOrders");
-  return receivePurchaseOrder(auth, (await params).id, await parseBody(request, purchaseOrderReceiveSchema));
+  const input = await parseBody(request, purchaseOrderReceiveSchema);
+  if (input.onCredit) requireFeature(auth, "payables");
+  return receivePurchaseOrder(auth, (await params).id, input);
 });

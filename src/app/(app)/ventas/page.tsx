@@ -202,6 +202,9 @@ function useCachedList<T>(url: string, cacheKey: string) {
 export default function PosPage() {
   const tr = useText();
   const { business, role } = useSession();
+  // Funciones que el super admin puede apagar por plan o por negocio.
+  const canSplit = business.features.includes("splitPayments");
+  const canScale = business.features.includes("scale");
   const isOwner = role === "OWNER";
   const fmt = useFormat();
   const t = useT();
@@ -447,7 +450,7 @@ export default function PosPage() {
       return true;
     }
     // Etiqueta de balanza (EAN-13 con prefijo 20-29): trae el código del producto y el peso o el precio.
-    const label = parseWeightBarcode(trimmed, business.weightBarcode);
+    const label = canScale ? parseWeightBarcode(trimmed, business.weightBarcode) : null;
     const weighed = label ? products.find((p) => matchesPlu(p, label.plu)) : undefined;
     if (label && weighed) {
       const quantity = labelQuantity(label.value, business.weightBarcode, weighed);
@@ -783,7 +786,7 @@ export default function PosPage() {
                       <Plus className="w-4 h-4" />
                     </button>
                     <span className="text-xs text-slate-500 ml-1">{UNIT_LABELS[line.unit]}</span>
-                    {scale.supported && scale.connected && isWeightUnit(line.unit) && (
+                    {canScale && scale.supported && scale.connected && isWeightUnit(line.unit) && (
                       <button
                         type="button"
                         onClick={() => weigh(line)}
@@ -828,21 +831,23 @@ export default function PosPage() {
       )}
 
       <div className="space-y-3 border-t border-slate-100 pt-3">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            aria-pressed={split !== null}
-            onClick={() =>
-              setSplit((current) =>
-                current ? null : [newSplitRow(paymentMethod === "CASH" ? "CARD" : paymentMethod), newSplitRow("CASH")]
-              )
-            }
-            className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
-          >
-            {split ? tr("Un solo pago") : tr("Dividir pago")}
-          </button>
-        </div>
-        {split && (
+        {canSplit && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              aria-pressed={split !== null}
+              onClick={() =>
+                setSplit((current) =>
+                  current ? null : [newSplitRow(paymentMethod === "CASH" ? "CARD" : paymentMethod), newSplitRow("CASH")]
+                )
+              }
+              className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+            >
+              {split ? tr("Un solo pago") : tr("Dividir pago")}
+            </button>
+          </div>
+        )}
+        {split && canSplit && (
           <SplitPayment
             rows={split}
             onChange={setSplit}

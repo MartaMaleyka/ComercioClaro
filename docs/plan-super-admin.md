@@ -13,6 +13,33 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 | **Usuarios** (`/admin/usuarios`) | Nombrar o quitar administradores, bloquear y desbloquear, cerrar sesiones y generar una contraseña temporal. |
 | **Bitácora** (`/admin/bitacora`) | Quién cambió qué y cuándo. |
 
+## Funciones por plan y por negocio
+
+**Planes y precios → Funciones por plan** (`/admin/planes?vista=funciones`):
+
+- Las funciones se agrupan por categoría: ventas y cobro, clientes y marketing, inventario y compras, finanzas y contabilidad, y operación y equipo.
+- Cada plan tiene un interruptor por función. El cambio se guarda al momento y se aplica a todos los negocios del plan, salvo los que tengan un ajuste a mano.
+- Quitar una función de un plan con negocios pide confirmación y dice a cuántos afecta. No se borra ningún dato: al volver a encenderla, todo sigue ahí.
+- Se puede buscar una función y filtrar por las **nuevas** o por las que **no están en todos los planes**. Un aviso señala las funciones nuevas que faltan en algún plan activo.
+- **En uso** muestra cuántos negocios tienen la función y cuántos ajustes a mano hay. Al abrirlo aparece la lista de negocios, y cada uno se ajusta con *Plan / Sí / No*.
+
+**Ficha del negocio → Funciones:**
+
+- Funciones agrupadas por categoría, cada una con *Plan (sí/no) / Sí / No*. Se guarda al momento, sin botón Guardar.
+- Buscador, contador "N de M activas", ajustes a mano y el botón *Volver todo al plan*.
+
+**Editor del plan:** las funciones van agrupadas, con *Todas / Ninguna* por grupo y la etiqueta *Nueva*.
+
+**Funciones que ahora se pueden apagar:**
+
+- **Cuentas por pagar:** la pestaña *Por pagar*, las compras a crédito, la tarjeta del tablero y las alertas por correo.
+- **Pagos divididos:** el botón *Dividir pago* y las ventas con varios pagos.
+- **Balanza conectada:** el botón *Pesar*, las etiquetas de peso y la configuración de la balanza.
+
+Antes estaban en todos los planes, y la migración `20260930100000_funciones_basicas` las agrega a los planes existentes: nadie pierde nada.
+
+Cada cambio queda en la bitácora: *Cambió una función de un plan* o *Ajustó una función de un negocio*.
+
 ## Reglas
 
 - **Funciones por plan.** Estas son las funciones que se pueden habilitar o deshabilitar:
