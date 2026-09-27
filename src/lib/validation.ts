@@ -952,9 +952,23 @@ export const adminNewBusinessSchema = z.object({
 
 export const adminListSchema = z.object({
   search: z.string().trim().max(100).optional(),
-  status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "OVERDUE"]).optional(),
+  status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "OVERDUE", "PENDING", "CLOSED"]).optional(),
   planId: z.string().max(64).optional(),
+  country: country.optional(),
+  businessType: z.enum(BUSINESS_TYPE_KEYS).optional(),
+  source: z.enum(["SELF", "ADMIN"]).optional(),
+  // Registrados desde / hasta (YYYY-MM-DD, día completo en UTC)
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
+
+/** Baja de un negocio: el motivo es obligatorio y se puede avisar al dueño. */
+export const adminCloseBusinessSchema = z.object({
+  reason: text(300, "Indica el motivo de la baja"),
+  notify: z.boolean().default(true),
+});
+
+export const signupApprovalSchema = z.object({ enabled: z.boolean() });
 
 /** Formato de las etiquetas de peso de la balanza etiquetadora. */
 export const weightBarcodeSchema = z.object({

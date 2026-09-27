@@ -35,7 +35,13 @@ export async function registerAccount(input: RegisterInput, mail: typeof sendEma
   const country = countryConfig(input.country ?? "MX");
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError(409, "Ya existe una cuenta con este correo");
-  const { plan, data: subscription } = await initialSubscription(input.plan ?? null);
+  const initial = await initialSubscription(input.plan ?? null);
+  const { plan } = initial;
+  // Si el super admin exige aprobar los registros, el negocio espera en PENDING (la prueba empieza al aprobarlo).
+  const approval = (await prisma.platformSettings.findUnique({ where: { id: "platform" } }))?.requireSignupApproval ?? false;
+  const subscription: SubscriptionData = approval
+    ? { ...(plan ? { planId: plan.id } : {}), status: "PENDING" }
+    : initial.data;
   const type = input.businessType ?? "OTRO";
   const verifyToken = crypto.randomBytes(32).toString("hex");
   const now = new Date();
@@ -47,6 +53,7 @@ export async function registerAccount(input: RegisterInput, mail: typeof sendEma
         passwordHash: await hashPassword(input.password),
         name: input.name,
         termsAcceptedAt: now,
+        lastLoginAt: now,
         termsVersion: TERMS_VERSION,
         emailVerifyHash: hashToken(verifyToken),
         emailVerifyExpires: new Date(now.getTime() + VERIFY_TTL_MS),
@@ -94,10 +101,16 @@ export async function registerAccount(input: RegisterInput, mail: typeof sendEma
   const businessId = user.memberships[0].businessId;
 
   // Los correos no deben impedir el registro: si fallan, el dueño puede pedir otro enlace.
-  await sendWelcome(mail, user, input.businessName, verifyToken, subscription).catch(() => undefined);
-  await notifyAdminsOfSignup(mail, { business: input.businessName, owner: user, type, country: country.code, plan: plan?.name ?? null }).catch(
-    () => undefined
-  );
+  await sendWelcome(mail, user, input.businessName, verifyToken, subscription, approval).catch(() => undefined);
+  await notifyAdminsOfSignup(mail, {
+    business: input.businessName,
+    businessId,
+    owner: user,
+    type,
+    country: country.code,
+    plan: plan?.name ?? null,
+    pending: approval,
+  }).catch(() => undefined);
 
   // Un plan de pago sin prueba empieza pendiente de pago: lo primero es pagar en línea (si está disponible).
   const pendingPayment = Boolean(plan && subscription.status === "ACTIVE" && subscription.paidUntil);
@@ -110,10 +123,13 @@ async function sendWelcome(
   user: { email: string; name: string },
   businessName: string,
   verifyToken: string,
-  subscription: { trialEndsAt?: Date }
+  subscription: { trialEndsAt?: Date },
+  pending = false
 ) {
   const link = `${getAppUrl()}/verificar-correo?token=${verifyToken}`;
-  const trial = subscription.trialEndsAt
+  const trial = pending
+    ? "Estamos revisando tu registro: te avisaremos por correo en cuanto esté aprobado."
+    : subscription.trialEndsAt
     ? `Tu periodo de prueba termina el ${new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(subscription.trialEndsAt)}.`
     : "";
   const steps = [
@@ -127,7 +143,7 @@ async function sendWelcome(
     text: [
       `Hola ${user.name}:`,
       "",
-      `Ya puedes usar ComercioClaro en ${businessName}. ${trial}`,
+      `${pending ? "Recibimos el registro de" : "Ya puedes usar ComercioClaro en"} ${businessName}. ${trial}`,
       "",
       `Confirma tu correo (el enlace vale 24 horas): ${link}`,
       "",
@@ -136,14 +152,22 @@ async function sendWelcome(
       "",
       `Entrar: ${getAppUrl()}/login`,
     ].join("\n"),
-    html: `<p>Hola ${escapeHtml(user.name)}:</p><p>Ya puedes usar ComercioClaro en <strong>${escapeHtml(businessName)}</strong>. ${escapeHtml(trial)}</p><p><a href="${link}">Confirmar mi correo</a> (el enlace vale 24 horas)</p><p>Primeros pasos:</p><ul>${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>`,
+    html: `<p>Hola ${escapeHtml(user.name)}:</p><p>${pending ? "Recibimos el registro de" : "Ya puedes usar ComercioClaro en"} <strong>${escapeHtml(businessName)}</strong>. ${escapeHtml(trial)}</p><p><a href="${link}">Confirmar mi correo</a> (el enlace vale 24 horas)</p><p>Primeros pasos:</p><ul>${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>`,
   });
 }
 
 /** Aviso a los administradores de la plataforma de cada negocio que se registra. */
 async function notifyAdminsOfSignup(
   mail: typeof sendEmail,
-  info: { business: string; owner: { email: string; name: string }; type: string; country: string; plan: string | null }
+  info: {
+    business: string;
+    businessId: string;
+    owner: { email: string; name: string };
+    type: string;
+    country: string;
+    plan: string | null;
+    pending: boolean;
+  }
 ) {
   const admins = await prisma.user.findMany({ where: { isSuperAdmin: true, disabledAt: null }, select: { email: true } });
   const lines = [
@@ -153,12 +177,13 @@ async function notifyAdminsOfSignup(
     `País: ${info.country}`,
     `Plan: ${info.plan ?? "sin plan"}`,
   ];
+  const link = `${getAppUrl()}/admin/negocios/${info.businessId}`;
   for (const admin of admins) {
     await mail({
       to: admin.email,
-      subject: `Nuevo registro: ${info.business}`,
-      text: [...lines, "", `Ver en el panel: ${getAppUrl()}/admin/negocios`].join("\n"),
-      html: `<ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p><a href="${getAppUrl()}/admin/negocios">Ver en el panel</a></p>`,
+      subject: info.pending ? `Registro por aprobar: ${info.business}` : `Nuevo registro: ${info.business}`,
+      text: [...lines, "", `${info.pending ? "Aprobar o rechazar" : "Ver en el panel"}: ${link}`].join("\n"),
+      html: `<ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p><a href="${link}">${info.pending ? "Aprobar o rechazar" : "Ver en el panel"}</a></p>`,
     });
   }
 }
@@ -218,7 +243,7 @@ async function initialSubscription(code: string | null) {
 
 interface SubscriptionData {
   planId?: string;
-  status?: "TRIAL" | "ACTIVE";
+  status?: "TRIAL" | "ACTIVE" | "PENDING";
   trialEndsAt?: Date;
   paidUntil?: Date | null;
 }

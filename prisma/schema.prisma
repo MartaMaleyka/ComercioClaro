@@ -107,6 +107,8 @@ model User {
   isSuperAdmin       Boolean   @default(false)
   // Usuario bloqueado por el administrador: no puede iniciar sesión
   disabledAt         DateTime?
+  // Último inicio de sesión (para el panel del super admin)
+  lastLoginAt        DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -226,6 +228,9 @@ model Business {
   // Vencimiento para el que ya se envió el aviso de cobro y el de suspensión
   renewalNoticeFor      DateTime?
   suspensionNoticeFor   DateTime?
+  // Baja: cuándo y por qué (los datos se conservan)
+  closedAt              DateTime?
+  closedReason          String?
   // Suspendido por falta de pago (se reactiva al pagar en línea)
   suspendedByBilling    Boolean        @default(false)
   // Funciones activadas o desactivadas a mano sobre las del plan: { "promotions": false }
@@ -1236,6 +1241,10 @@ enum BusinessStatus {
   ACTIVE
   TRIAL
   SUSPENDED
+  // Registro esperando la aprobación del super admin (si la exige)
+  PENDING
+  // Dado de baja: no se puede usar, los datos se conservan y se puede reactivar
+  CLOSED
 }
 
 enum BillingCycle {
@@ -1698,15 +1707,17 @@ model SubscriptionCharge {
  * Reglas del cobro automático (una sola fila, las edita el super admin).
  */
 model PlatformSettings {
-  id                  String   @id @default("platform")
+  id                    String   @id @default("platform")
   // Días después del vencimiento antes de suspender
-  graceDays           Int      @default(7)
+  graceDays             Int      @default(7)
   // Días entre reintentos y cuántos intentos se hacen
-  retryIntervalDays   Int      @default(2)
-  maxRetries          Int      @default(3)
+  retryIntervalDays     Int      @default(2)
+  maxRetries            Int      @default(3)
   // Días de anticipación de los avisos por correo (antes de cobrar y antes de suspender)
-  noticeDays          Int      @default(3)
+  noticeDays            Int      @default(3)
   // También suspender a quien paga a mano (transferencia) al pasar la gracia
-  suspendManualPayers Boolean  @default(false)
-  updatedAt           DateTime @updatedAt
+  suspendManualPayers   Boolean  @default(false)
+  // Los registros nuevos esperan la aprobación del super admin antes de usarse
+  requireSignupApproval Boolean  @default(false)
+  updatedAt             DateTime @updatedAt
 }

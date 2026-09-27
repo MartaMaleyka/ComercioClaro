@@ -1,11 +1,36 @@
-import { expect, test, type Page } from "@playwright/test";
-import { expectAccessible } from "./helpers";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expectAccessible, loginAdmin } from "./helpers";
 
 // Registro público y primeros pasos. Requiere los planes de demostración (npm run db:seed).
 
 test.beforeEach(({ isMobile }) => {
   test.skip(isMobile, "Se cubre en escritorio");
 });
+
+// En serie: la prueba de aprobación enciende un ajuste global que afectaría al registro de las demás.
+test.describe.configure({ mode: "serial" });
+
+const unique = () => `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+const randomIp = () =>
+  `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`;
+
+/** Registro por la API como lo haría una persona (con su propia IP para no chocar con el límite). */
+async function registerViaApi(request: APIRequestContext, name: string) {
+  const res = await request.post("/api/auth/register", {
+    headers: { "x-forwarded-for": randomIp() },
+    data: {
+      name: "Dueña de prueba",
+      businessName: name,
+      email: `aprobacion-${unique()}@prueba.test`,
+      password: "Clave-Segura-2026",
+      country: "PA",
+      businessType: "MINISUPER",
+      acceptTerms: true,
+      elapsedMs: 8000,
+    },
+  });
+  expect(res.ok()).toBe(true);
+}
 
 const uniqueEmail = () => `registro-${Date.now()}-${Math.floor(Math.random() * 1000)}@prueba.test`;
 
@@ -88,3 +113,38 @@ for (const scheme of ["light", "dark"] as const) {
     await expectAccessible(page, `/verificar-correo?token=${"b".repeat(64)}`);
   });
 }
+
+test("con la aprobación encendida el registro espera y se aprueba desde la lista", async ({ page, playwright }) => {
+  await loginAdmin(page);
+  await page.goto("/admin/negocios");
+  const approval = page.getByRole("switch", { name: "Aprobar a mano los registros nuevos" });
+  await expect(approval).toHaveAttribute("aria-checked", "false");
+  await approval.click();
+  await expect(approval).toHaveAttribute("aria-checked", "true");
+
+  const name = `Pendiente ${unique()}`;
+  const owner = await playwright.request.newContext({ baseURL: test.info().project.use.baseURL });
+  try {
+    await registerViaApi(owner, name);
+    const waiting = await owner.get("/api/products");
+    expect(waiting.status()).toBe(403);
+    expect((await waiting.json()).error).toMatch(/en revisión/);
+
+    await page.reload();
+    await page.getByRole("button", { name: "Ver por aprobar" }).click();
+    await page.getByRole("button", { name: `Aprobar ${name}` }).click();
+    await expect(page.getByText(`${name} aprobado: avisamos al dueño`)).toBeVisible();
+    expect((await owner.get("/api/products")).ok()).toBe(true);
+  } finally {
+    await page.goto("/admin/negocios");
+    const toggle = page.getByRole("switch", { name: "Aprobar a mano los registros nuevos" });
+    if ((await toggle.getAttribute("aria-checked")) === "true") {
+      const saved = page.waitForResponse(
+        (r) => r.url().endsWith("/api/admin/signup-settings") && r.request().method() === "PUT"
+      );
+      await toggle.click();
+      await saved;
+    }
+    await owner.dispose();
+  }
+});
