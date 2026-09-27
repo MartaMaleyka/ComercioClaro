@@ -13,6 +13,43 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Segundo paso: la cuenta tiene verificación en dos pasos.
+  const [mfa, setMfa] = useState(false);
+  const [code, setCode] = useState("");
+
+  function done(data: { user?: { mustChangePassword?: boolean }; recoveryLeft?: number }) {
+    const next = new URLSearchParams(window.location.search).get("next");
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/inicio";
+    router.push(data.user?.mustChangePassword ? "/cambiar-contrasena" : safeNext);
+    router.refresh();
+  }
+
+  async function handleCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login/mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "El código no es correcto");
+        if (res.status === 401) {
+          setMfa(false);
+          setCode("");
+        }
+        return;
+      }
+      done(data);
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,10 +69,11 @@ export default function LoginPage() {
         return;
       }
 
-      const next = new URLSearchParams(window.location.search).get("next");
-      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/inicio";
-      router.push(data.user?.mustChangePassword ? "/cambiar-contrasena" : safeNext);
-      router.refresh();
+      if (data.mfaRequired) {
+        setMfa(true);
+        return;
+      }
+      done(data);
     } catch {
       setError("Error de conexión. Intenta de nuevo.");
     } finally {
@@ -54,6 +92,42 @@ export default function LoginPage() {
           <p className="text-slate-600 mt-1">Inicia sesión en tu cuenta</p>
         </div>
 
+        {mfa ? (
+          <form onSubmit={handleCode} className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+            {error && (
+              <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">
+                {error}
+              </div>
+            )}
+            <p className="text-sm text-slate-700">
+              Tu cuenta tiene verificación en dos pasos. Escribe el código de 6 dígitos de tu app de autenticación, o
+              uno de tus códigos de recuperación.
+            </p>
+            <Input
+              label="Código de verificación"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputMode="text"
+              autoComplete="one-time-code"
+              autoFocus
+              required
+            />
+            <Button type="submit" className="w-full" loading={loading}>
+              Verificar
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setMfa(false);
+                setCode("");
+                setError("");
+              }}
+              className="w-full text-sm text-slate-600 hover:underline"
+            >
+              Volver
+            </button>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="bg-surface rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
           {error && (
             <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
@@ -88,6 +162,7 @@ export default function LoginPage() {
             Iniciar sesión
           </Button>
         </form>
+        )}
 
         <p className="text-center text-sm text-slate-600 mt-6">
           ¿No tienes cuenta?{" "}

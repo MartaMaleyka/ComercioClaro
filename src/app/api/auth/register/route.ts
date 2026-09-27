@@ -1,9 +1,10 @@
-import { handler, parseBody, clientIp } from "@/lib/api";
+import { handler, parseBody, clientIp, requestMeta } from "@/lib/api";
 import { startSession } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
 import { rateLimit } from "@/lib/rate-limit";
 import { registerSchema } from "@/lib/validation";
 import { registerAccount } from "@/server/account";
+import { recordLogin } from "@/server/security";
 
 /** Menos de esto entre abrir el formulario y enviarlo no lo hace una persona. */
 const MIN_FILL_MS = 2500;
@@ -19,6 +20,8 @@ export const POST = handler(async (request) => {
     throw new AppError(400, "No pudimos crear la cuenta. Revisa los datos e intenta de nuevo.");
   }
   const { user, businessId, next } = await registerAccount(input);
-  await startSession({ sub: user.id, bid: businessId, tv: user.tokenVersion });
+  const meta = requestMeta(request);
+  await startSession({ sub: user.id, bid: businessId, tv: user.tokenVersion }, meta);
+  await recordLogin({ userId: user.id, email: user.email, success: true, reason: "OK", meta });
   return { user: { id: user.id, email: user.email, name: user.name }, next };
 });

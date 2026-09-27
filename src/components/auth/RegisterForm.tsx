@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff, Store } from "lucide-react";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/business-types";
+import { isCommonPassword } from "@/lib/password-policy";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
 
@@ -26,6 +27,8 @@ function passwordStrength(value: string) {
   if (/\d/.test(value)) score++;
   if (/[^A-Za-z0-9]/.test(value)) score++;
   if (value.length < 8) return { label: "Muy corta", tone: "text-red-600" };
+  if (isCommonPassword(value))
+    return { label: "Muy común: es de las primeras que se prueban, elige otra", tone: "text-red-600" };
   if (score <= 2) return { label: "Débil: agrega números, mayúsculas o símbolos", tone: "text-amber-700" };
   if (score === 3) return { label: "Aceptable", tone: "text-slate-600" };
   return { label: "Fuerte", tone: "text-brand-700" };

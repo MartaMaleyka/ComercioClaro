@@ -3,6 +3,8 @@ import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/auth";
 import { createProduct } from "../src/server/catalog";
 import { TERMS_VERSION } from "../src/lib/business-types";
+import { DEMO_ADMIN_TOTP_SECRET, sealSecret } from "../src/lib/totp";
+import { getJwtSecret } from "../src/lib/env";
 import { createPurchase } from "../src/server/purchases";
 import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
@@ -1328,6 +1330,23 @@ async function seedSignup() {
   }
 }
 
+/**
+ * Seguridad: el super admin de demostración tiene la verificación en dos pasos con una clave fija
+ * (DEMO_ADMIN_TOTP_SECRET, documentada en el README) para poder entrar y probar el panel.
+ */
+async function seedSecurity() {
+  const admin = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
+  if (!admin || admin.totpEnabledAt) return;
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: {
+      totpSecret: sealSecret(DEMO_ADMIN_TOTP_SECRET, Buffer.from(getJwtSecret()).toString("utf8")),
+      totpEnabledAt: new Date(),
+      totpRecoveryHashes: [],
+    },
+  });
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1345,6 +1364,7 @@ async function main() {
   await seedScale();
   await seedBilling();
   await seedSignup();
+  await seedSecurity();
 }
 
 main()

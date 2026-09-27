@@ -62,7 +62,26 @@ export function parseQuery<T>(request: NextRequest, schema: ZodType<T>): T {
   return schema.parse(Object.fromEntries(request.nextUrl.searchParams));
 }
 
-export function clientIp(request: NextRequest) {
-  const forwarded = request.headers.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+/**
+ * IP del cliente para los límites de intentos y el historial de inicios de sesión.
+ * Cada proxy agrega la IP que vio al final de `x-forwarded-for`; las primeras las puede inventar el
+ * cliente. Se toma la que puso el último proxy de confianza: TRUSTED_PROXY_HOPS (por defecto 1,
+ * como en Vercel o detrás de un solo nginx).
+ */
+export function clientIp(request: Pick<NextRequest, "headers">) {
+  const forwarded = request.headers
+    .get("x-forwarded-for")
+    ?.split(",")
+    .map((ip) => ip.trim())
+    .filter(Boolean);
+  if (forwarded && forwarded.length > 0) {
+    const hops = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS) || 1);
+    return forwarded[Math.max(0, forwarded.length - hops)];
+  }
+  return request.headers.get("x-real-ip") || "unknown";
+}
+
+/** IP y navegador del dispositivo (para sesiones e historial). */
+export function requestMeta(request: Pick<NextRequest, "headers">) {
+  return { ip: clientIp(request), userAgent: request.headers.get("user-agent") };
 }

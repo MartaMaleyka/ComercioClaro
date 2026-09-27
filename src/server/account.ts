@@ -316,6 +316,7 @@ export async function changePassword(userId: string, currentPassword: string, ne
 /** Cierra todas las sesiones del usuario en todos los dispositivos. */
 export async function revokeAllSessions(userId: string) {
   await prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+  await prisma.userSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
 export async function listMemberships(userId: string) {

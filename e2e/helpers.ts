@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
+import { DEMO_ADMIN_TOTP_SECRET, totpCode } from "../src/lib/totp";
 
 // Cuentas de demostración (npm run db:seed). El dueño y el cajero tienen acceso a todos los negocios de ejemplo.
 export const OWNER = "demo@comercioclaro.com";
@@ -39,11 +40,14 @@ export async function setLanguage(page: Page, language: "es" | "zh" | "en") {
 }
 
 /** El super admin entra directo al panel de administración. */
+/** Super admin: contraseña y luego el código de su app de autenticación (clave de demostración). */
 export async function loginAdmin(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Correo electrónico").fill(ADMIN);
   await page.getByLabel("Contraseña").fill("demo1234");
   await page.getByRole("button", { name: "Iniciar sesión" }).click();
+  await page.getByLabel("Código de verificación").fill(totpCode(DEMO_ADMIN_TOTP_SECRET));
+  await page.getByRole("button", { name: "Verificar" }).click();
   await page.waitForURL(/\/admin/);
 }
 

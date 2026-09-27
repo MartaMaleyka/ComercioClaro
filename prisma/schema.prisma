@@ -109,10 +109,16 @@ model User {
   disabledAt         DateTime?
   // Último inicio de sesión (para el panel del super admin)
   lastLoginAt        DateTime?
+  // Verificación en dos pasos (TOTP): secreto cifrado, activa desde, y códigos de recuperación (hash)
+  totpSecret         String?
+  totpEnabledAt      DateTime?
+  totpRecoveryHashes String[]  @default([])
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   memberships Membership[]
+  sessions    UserSession[]
+  loginEvents LoginEvent[]
 }
 
 model Membership {
@@ -231,6 +237,8 @@ model Business {
   // Baja: cuándo y por qué (los datos se conservan)
   closedAt              DateTime?
   closedReason          String?
+  // Todos los usuarios del negocio deben usar la verificación en dos pasos (lo exige el super admin)
+  requireMfa            Boolean        @default(false)
   // Suspendido por falta de pago (se reactiva al pagar en línea)
   suspendedByBilling    Boolean        @default(false)
   // Funciones activadas o desactivadas a mano sobre las del plan: { "promotions": false }
@@ -1720,4 +1728,43 @@ model PlatformSettings {
   // Los registros nuevos esperan la aprobación del super admin antes de usarse
   requireSignupApproval Boolean  @default(false)
   updatedAt             DateTime @updatedAt
+}
+
+/**
+ * Sesión abierta (un dispositivo): permite ver y cerrar cada una. El token de la cookie lleva su id.
+ */
+model UserSession {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Versión de token del usuario al abrirla (al cambiar la contraseña dejan de valer todas)
+  tokenVersion Int
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  expiresAt    DateTime
+  revokedAt    DateTime?
+
+  @@index([userId, createdAt])
+}
+
+/**
+ * Intento de inicio de sesión (correcto o fallido): historial de seguridad y aviso de dispositivo nuevo.
+ */
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Correo escrito (para intentos con un correo que no existe)
+  email     String
+  success   Boolean
+  // OK, BAD_PASSWORD, UNKNOWN_EMAIL, BLOCKED, MFA_REQUIRED, MFA_FAILED
+  reason    String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
