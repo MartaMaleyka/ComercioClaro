@@ -237,6 +237,7 @@ const productBase = {
   sendToKitchen: z.boolean().optional(),
   trackStock: z.boolean().optional(),
   seniorEligible: z.boolean().optional(),
+  isIngredient: z.boolean().optional(),
   variantLabel: optText(60).optional(),
   modifiers: z
     .array(
@@ -262,6 +263,18 @@ export const productUpdateSchema = z
     archived: z.boolean(),
   })
   .partial();
+
+export const recipeSchema = z.object({
+  recipeYield: number.gt(0, "Las porciones deben ser mayores a 0").max(10_000).nullish().transform((v) => v ?? null),
+  items: z
+    .array(
+      z.object({
+        ingredientId: id,
+        quantity: number.gt(0, "La cantidad debe ser mayor a 0").max(MAX_QTY, "Cantidad demasiado grande"),
+      })
+    )
+    .max(60, "Máximo 60 insumos por receta"),
+});
 
 export const stockAdjustmentSchema = z.object({
   mode: z.enum(["set", "delta"]),

@@ -1,19 +1,7 @@
-import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import { BUSINESS, CASHIER, OWNER, adminBusinessId, login, loginAdmin, setLanguage } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { BUSINESS, CASHIER, OWNER, adminBusinessId, expectAccessible, login, loginAdmin, setLanguage } from "./helpers";
 
 // Requiere los datos de demostración (npm run db:seed).
-
-const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-
-async function expectAccessible(page: Page, url: string) {
-  await page.goto(url);
-  // Algunas pantallas consultan al servidor cada pocos segundos; no esperar indefinidamente a la red inactiva.
-  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
-  const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-  const summary = violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
-  expect(summary, `${url} tiene problemas de accesibilidad`).toEqual([]);
-}
 
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`accesibilidad (${scheme === "light" ? "claro" : "oscuro"})`, () => {

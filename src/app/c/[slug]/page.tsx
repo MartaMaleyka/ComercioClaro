@@ -47,7 +47,12 @@ export default async function CatalogPage({ params }: { params: Promise<{ slug: 
   const zones = deliveryZones(business);
   const [products, promotions] = await Promise.all([
     prisma.product.findMany({
-      where: { businessId: business.id, archivedAt: null, id: { notIn: zones.map((z) => z.productId) } },
+      where: {
+        businessId: business.id,
+        archivedAt: null,
+        isIngredient: false,
+        id: { notIn: zones.map((z) => z.productId) },
+      },
       select: {
         id: true,
         name: true,

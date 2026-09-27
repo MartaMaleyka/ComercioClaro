@@ -35,6 +35,9 @@ export interface Product {
   sendToKitchen?: boolean;
   trackStock?: boolean;
   seniorEligible?: boolean;
+  isIngredient?: boolean;
+  recipeYield?: number | null;
+  _count?: { recipeItems: number };
   variantLabel?: string | null;
   modifiers?: { id: string; name: string; price: number }[] | null;
 }

@@ -64,10 +64,12 @@ export const en: Record<string, string> = {
   Agotado: "Out of stock",
   "Agrega ALANUBE_API_URL y ALANUBE_TOKEN en las variables del servidor. Alanube entrega un sandbox gratuito al solicitarlo.":
     "Add ALANUBE_API_URL and ALANUBE_TOKEN to the server variables. Alanube provides a free sandbox on request.",
+  "Agrega la receta de un plato desde Editar producto.": "Add a dish's recipe from Edit product.",
   "Agrega tu primer producto o importa tu catálogo desde Excel.":
     "Add your first product or import your catalog from Excel.",
   Agregar: "Add",
   "Agregar extra": "Add extra",
+  "Agregar insumo": "Add ingredient",
   "Agregar las {n} sugerencias de reabastecimiento": "Add the {n} restock suggestions",
   "Agregar producto": "Add product",
   "Agregar producto (nombre o código)": "Add product (name or code)",
@@ -83,6 +85,9 @@ export const en: Record<string, string> = {
   Ajuste: "Adjustment",
   "Ajustó inventario": "Adjusted inventory",
   "Al elegirlo se ajustan los días de venta sin conexión.": "Choosing it adjusts the offline sales days.",
+  "Al vender este producto se descuentan sus insumos en lugar de su propia existencia.":
+    "Selling this product deducts its ingredients instead of its own stock.",
+  "Alcanza para {n} platos": "Enough for {n} dishes",
   "Anaquel 90×40 mm": "Shelf 90×40 mm",
   Anual: "Yearly",
   Anulado: "Voided",
@@ -134,6 +139,8 @@ export const en: Record<string, string> = {
   CSV: "CSV",
   CUFE: "CUFE",
   "CUFE:": "CUFE:",
+  "Cada plato descuenta sus insumos al venderse; costo por plato y merma.":
+    "Each dish deducts its ingredients when sold; cost per dish and waste.",
   "Cada sucursal tiene su propio inventario, caja y ventas. En Reportes puedes ver el consolidado de todas.":
     "Each branch has its own inventory, register and sales. Reports show the combined totals.",
   Caducado: "Expired",
@@ -267,7 +274,9 @@ export const en: Record<string, string> = {
   Costo: "Cost",
   "Costo de lo vendido": "Cost of goods sold",
   "Costo por caja": "Cost per box",
+  "Costo por plato: {cost}": "Cost per dish: {cost}",
   "Costo unitario": "Unit cost",
+  "Costo {cost} · en {n} receta(s)": "Cost {cost} · in {n} recipe(s)",
   "Crea ofertas como 2x1 en cervezas o 10% en limpieza; el punto de venta las aplica automáticamente.":
     "Create offers like 2-for-1 beer or 10% off cleaning products; the POS applies them automatically.",
   "Crea una orden desde aquí o desde Inventario → Qué comprar y envíala al proveedor por WhatsApp.":
@@ -409,6 +418,7 @@ export const en: Record<string, string> = {
   "El saldo de {amount} dejará de poder usarse. No se devuelve dinero.":
     "The {amount} balance can no longer be used. No money is refunded.",
   "El vale está anulado": "The gift card is void",
+  "Elige un insumo": "Choose an ingredient",
   Eliminar: "Delete",
   "Eliminar gasto": "Delete expense",
   "Eliminó gasto": "Deleted expense",
@@ -451,6 +461,8 @@ export const en: Record<string, string> = {
   Equipo: "Team",
   "Eres administrador de la plataforma.": "You are a platform administrator.",
   Error: "Error",
+  "Es un insumo: se usa en recetas y no se vende en la caja":
+    "It's an ingredient: used in recipes and not sold at the register",
   "Es un servicio: no lleva existencias (entrega, reparación, recarga propia)":
     "It is a service: no stock (delivery, repair, own top-up)",
   "Escanea o busca cada producto del anaquel. Al terminar, las existencias se ajustan a lo contado y queda registrado el motivo.":
@@ -458,6 +470,8 @@ export const en: Record<string, string> = {
   "Escanea o escribe el código y Enter": "Scan or type the code and press Enter",
   "Escanear con la cámara": "Scan with the camera",
   "Escanear código": "Scan code",
+  "Escribe las cantidades de la receta completa; se dividen entre las porciones":
+    "Enter the quantities for the whole recipe; they are divided by the portions",
   "Escribe lo que realmente llegó. Si falta algo, la orden queda abierta para recibirlo después.":
     "Enter what actually arrived. If something is missing, the order stays open so you can receive it later.",
   Esperado: "Expected",
@@ -572,6 +586,8 @@ export const en: Record<string, string> = {
   "Indica qué cantidad se devuelve": "Enter the quantity returned",
   "Ingreso mensual recurrente": "Monthly recurring revenue",
   "Iniciar conteo": "Start count",
+  Insumo: "Ingredient",
+  Insumos: "Ingredients",
   "Interior o comarca": "Interior or indigenous comarca",
   Inventario: "Inventory",
   "Inventario inicial": "Initial stock",
@@ -641,6 +657,8 @@ export const en: Record<string, string> = {
   "Límite de crédito (fiado)": "Credit limit",
   "Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100 documentos al mes.":
     "Limits of DGI Resolution 201-6299 (since January 1, 2026): up to B/.36,000 of income per year and 100 documents per month.",
+  "Marca tus insumos (pollo, arroz, aceite) al crearlos y agrega la receta de cada plato desde Editar producto.":
+    "Mark your ingredients (chicken, rice, oil) when you create them and add each dish's recipe from Edit product.",
   "Marcar listo": "Mark ready",
   "Margen {n}%": "Margin {n}%",
   Mayoreo: "Wholesale",
@@ -650,6 +668,8 @@ export const en: Record<string, string> = {
   "Mercancía que entra al inventario": "Goods coming into inventory",
   "Mercancía recibida en el inventario": "Goods received into inventory",
   Merma: "Shrinkage",
+  "Merma por producto": "Waste by product",
+  "Merma total (a costo)": "Total waste (at cost)",
   Mes: "Month",
   "Meses que cubre": "Months covered",
   Metro: "Meter",
@@ -746,6 +766,7 @@ export const en: Record<string, string> = {
   Oscuro: "Dark",
   Otro: "Other",
   "Otro / sin registrar": "Other / not registered",
+  "Otros productos": "Other products",
   PAC: "PAC",
   PDF: "PDF",
   Paga: "Pay",
@@ -800,6 +821,7 @@ export const en: Record<string, string> = {
   "Plan por defecto al registrarse": "Default plan on sign-up",
   "Plan, estado, funciones y pagos de cada negocio": "Plan, status, features and payments of each business",
   "Planes y precios": "Plans and pricing",
+  "Platos con receta": "Dishes with a recipe",
   "Plazo para pagar cada venta fiada": "Time to pay each credit sale",
   "Podrá ver y cambiar todos los negocios, planes, pagos y usuarios.":
     "They will be able to see and change every business, plan, payment and user.",
@@ -812,6 +834,7 @@ export const en: Record<string, string> = {
   "Por monto y fecha": "By amount and date",
   "Por número de operación": "By transaction number",
   "Porcentaje de descuento": "Discount percentage",
+  "Porciones que rinde la receta": "Portions the recipe yields",
   Precio: "Price",
   "Precio anual": "Yearly price",
   "Precio de mayoreo": "Wholesale price",
@@ -819,6 +842,7 @@ export const en: Record<string, string> = {
   "Precio del paquete": "Bundle price",
   "Precio mensual": "Monthly price",
   "Precio por cantidad (3 por B/.1.00)": "Price per quantity (3 for B/.1.00)",
+  "Precio {price} · costo por plato {cost}": "Price {price} · cost per dish {cost}",
   Preparando: "Preparing",
   Preparar: "Start",
   Principal: "Main",
@@ -874,6 +898,9 @@ export const en: Record<string, string> = {
   Recarga: "Top-up",
   "Recargas y pago de servicios": "Top-ups and bill payments",
   "Recargas y servicios": "Top-ups and bill payments",
+  Receta: "Recipe",
+  "Receta (insumos por plato)": "Recipe (ingredients per dish)",
+  "Recetas e insumos": "Recipes and ingredients",
   Recibida: "Received",
   "Recibida en parte": "Partly received",
   Recibido: "Received",
@@ -900,6 +927,7 @@ export const en: Record<string, string> = {
   "Registrar devolución": "Record return",
   "Registrar factura de la venta #{folio}": "Register invoice for sale #{folio}",
   "Registrar gasto": "Record expense",
+  "Registrar merma": "Record waste",
   "Registrar pago": "Record payment",
   "Registro de cobros con comisión.": "Record collections with commission.",
   "Registro de quién hizo cada operación importante.": "A record of who did each important operation.",
@@ -979,6 +1007,8 @@ export const en: Record<string, string> = {
   "Sin gastos": "No expenses",
   "Sin gastos registrados en el periodo.": "No expenses recorded in the period.",
   "Sin límite": "No limit",
+  "Sin merma en el periodo. Se registra con Ajustar existencia y el motivo Merma, Caducidad o Dañado.":
+    "No waste in this period. Record it with Adjust stock and the reason Waste, Expiry or Damaged.",
   "Sin movimientos de fiado.": "No credit movements.",
   "Sin movimientos registrados.": "No movements recorded.",
   "Sin negocios": "No businesses",
@@ -991,6 +1021,7 @@ export const en: Record<string, string> = {
   "Sin promociones": "No promotions",
   "Sin proveedor": "No supplier",
   "Sin proveedores": "No suppliers",
+  "Sin recetas todavía": "No recipes yet",
   "Sin traspasos": "No transfers",
   "Sin vales": "No gift cards",
   "Sin ventas": "No sales",
@@ -1104,6 +1135,7 @@ export const en: Record<string, string> = {
   Vales: "Gift cards",
   "Vales (tarjetas de regalo)": "Gift cards",
   Valor: "Value",
+  "Valor a costo": "Value at cost",
   "Valor de cada punto al canjear": "Value of each point when redeemed",
   "Valor del inventario": "Inventory value",
   Variante: "Variant",
@@ -1174,6 +1206,7 @@ export const en: Record<string, string> = {
   nuevos: "new",
   "pagada de caja": "paid from the register",
   pendiente: "pending",
+  "receta e insumos": "recipe and ingredients",
   "variantes y extras": "variants and extras",
   "venta(s)": "sale(s)",
   'y usa "Facturar".': 'and use "Invoice".',

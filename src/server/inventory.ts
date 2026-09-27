@@ -202,6 +202,15 @@ export async function reorderSuggestions(businessId: string, coverDays = 14) {
   const soldMap = new Map(
     sold.map((s) => [s.productId, D(s._sum.quantity).minus(D(s._sum.returnedQuantity))])
   );
+  // Insumos: lo que consumieron los platos vendidos con receta.
+  const consumed = await prisma.saleItemIngredient.groupBy({
+    by: ["ingredientId"],
+    where: { saleItem: { sale: { businessId, status: "ACTIVE", createdAt: { gte: since } } } },
+    _sum: { quantity: true },
+  });
+  for (const c of consumed) {
+    soldMap.set(c.ingredientId, (soldMap.get(c.ingredientId) ?? D(0)).plus(D(c._sum.quantity)));
+  }
 
   const lastPurchases = await prisma.purchaseItem.findMany({
     where: { purchase: { businessId, status: "ACTIVE" }, productId: { in: products.map((p) => p.id) } },
@@ -250,6 +259,7 @@ export async function reorderSuggestions(businessId: string, coverDays = 14) {
         supplierContact: lastSupplier.get(p.id)?.supplierContact ?? null,
         packSize: p.packSize,
         lastCost: lastSupplier.get(p.id)?.lastCost ?? p.cost,
+        isIngredient: p.isIngredient,
         low,
         needs,
       };

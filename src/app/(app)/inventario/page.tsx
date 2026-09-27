@@ -30,8 +30,18 @@ import { CategoriesTab } from "@/components/inventory/CategoriesTab";
 import { CountTab } from "@/components/inventory/CountTab";
 import { LabelsTab } from "@/components/inventory/LabelsTab";
 import { TransfersTab } from "@/components/inventory/TransfersTab";
+import { IngredientsTab } from "@/components/inventory/IngredientsTab";
 
-type Tab = "productos" | "reabastecer" | "caducidad" | "conteo" | "traspasos" | "etiquetas" | "categorias" | "importar";
+type Tab =
+  | "productos"
+  | "insumos"
+  | "reabastecer"
+  | "caducidad"
+  | "conteo"
+  | "traspasos"
+  | "etiquetas"
+  | "categorias"
+  | "importar";
 
 export default function InventoryPage() {
   return (
@@ -53,6 +63,7 @@ function Inventory() {
 
   const tabs: { value: Tab; label: string }[] = [
     { value: "productos", label: tr("Productos") },
+    ...(isOwner && has("recipes") ? [{ value: "insumos" as Tab, label: tr("Insumos") }] : []),
     ...(isOwner ? [{ value: "reabastecer" as Tab, label: tr("Qué comprar") }] : []),
     { value: "caducidad", label: tr("Caducidad") },
     ...(isOwner
@@ -71,6 +82,7 @@ function Inventory() {
       <PageHeader title={tr("Inventario")} description={tr("Productos, existencias y alertas")} />
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === "productos" && <ProductsTab />}
+      {tab === "insumos" && isOwner && has("recipes") && <IngredientsTab />}
       {tab === "reabastecer" && isOwner && <ReorderTab />}
       {tab === "caducidad" && <ExpiringTab />}
       {tab === "conteo" && isOwner && <CountTab />}
@@ -207,7 +219,12 @@ function ProductsTab() {
                       )}
                       {p.wholesalePrice != null && <Badge tone="blue">{tr("Mayoreo")}</Badge>}
                       {p.trackExpiry && <Badge tone="purple">{tr("Caducidad")}</Badge>}
-                      {service && <Badge tone="blue">{tr("Servicio")}</Badge>}
+                      {p.isIngredient && <Badge tone="purple">{tr("Insumo")}</Badge>}
+                      {(p._count?.recipeItems ?? 0) > 0 ? (
+                        <Badge tone="green">{tr("Receta")}</Badge>
+                      ) : (
+                        service && <Badge tone="blue">{tr("Servicio")}</Badge>
+                      )}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

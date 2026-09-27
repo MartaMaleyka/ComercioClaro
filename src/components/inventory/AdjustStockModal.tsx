@@ -13,6 +13,8 @@ import { Modal } from "@/components/ui/Modal";
 
 interface AdjustProps {
   product: Product | null;
+  /** Motivo con el que abre (p. ej. merma); por defecto, conteo físico */
+  initialReason?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -21,13 +23,13 @@ export function AdjustStockModal({ product, ...rest }: AdjustProps) {
   return product ? <AdjustDialog key={product.id} product={product} {...rest} /> : null;
 }
 
-function AdjustDialog({ product, onClose, onSaved }: AdjustProps & { product: Product }) {
+function AdjustDialog({ product, initialReason = "COUNT", onClose, onSaved }: AdjustProps & { product: Product }) {
   const tr = useText();
   const fmt = useFormat();
   const toast = useToast();
-  const [mode, setMode] = useState<"set" | "delta">("set");
-  const [quantity, setQuantity] = useState(String(product.stock));
-  const [reason, setReason] = useState("COUNT");
+  const [mode, setMode] = useState<"set" | "delta">(initialReason === "COUNT" ? "set" : "delta");
+  const [quantity, setQuantity] = useState(initialReason === "COUNT" ? String(product.stock) : "");
+  const [reason, setReason] = useState(initialReason);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 

@@ -94,6 +94,15 @@ Plan y alcance en [`docs/plan-funciones-competencia.md`](docs/plan-funciones-com
 - **Variantes** (talla, color) y **extras con precio** ("Queso +0.50").
 - **Modo restaurante**: cuentas abiertas por mesa y **pantalla de cocina** (`/cocina`).
 
+### Prioridades de la investigación
+
+Cada prioridad llega en su propio PR, con su plan en `docs/`.
+
+- **Recetas e insumos** ([`docs/plan-recetas.md`](docs/plan-recetas.md)):
+  - Cada plato descuenta sus insumos al venderse. La receta muestra el costo por plato y el margen.
+  - Pestaña *Insumos* en Inventario y reporte de *Merma* valorado a costo.
+  - *Qué comprar* incluye los insumos.
+
 ## Requisitos
 
 - Node.js 20.19+ (recomendado 22)

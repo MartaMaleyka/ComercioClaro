@@ -227,6 +227,7 @@ model Business {
   giftCards            GiftCard[]
   giftCardMoves        GiftCardTransaction[]
   openOrders           OpenOrder[]
+  recipeItems          RecipeItem[]
 }
 
 model Category {
@@ -268,6 +269,10 @@ model Product {
   trackStock      Boolean     @default(true)
   // Aplica el descuento de jubilado (en farmacias, solo medicamentos)
   seniorEligible  Boolean     @default(true)
+  // Insumo: se usa en recetas y se compra, pero no se vende en la caja
+  isIngredient    Boolean     @default(false)
+  // Porciones que rinde la receta (las cantidades de la receta se dividen entre este número)
+  recipeYield     Decimal?    @db.Decimal(12, 3)
   // Impuestos (los precios incluyen impuestos)
   taxRate         Decimal     @default(0.16) @db.Decimal(5, 4)
   iepsRate        Decimal     @default(0) @db.Decimal(5, 4)
@@ -290,6 +295,9 @@ model Product {
   countLines     InventoryCountLine[]
   orderLines     PurchaseOrderLine[]
   openOrderItems OpenOrderItem[]
+  recipeItems    RecipeItem[]         @relation("RecipeDish")
+  usedInRecipes  RecipeItem[]         @relation("RecipeIngredient")
+  consumedIn     SaleItemIngredient[]
 
   @@unique([businessId, barcode])
   @@index([businessId, archivedAt, name])
@@ -455,9 +463,46 @@ model SaleItem {
   product           Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
 
   returnItems SaleReturnItem[]
+  ingredients SaleItemIngredient[]
 
   @@index([saleId])
   @@index([productId])
+}
+
+/**
+ * Insumos que se descontaron al vender un plato con receta (para revertirlos al
+ * cancelar o devolver y para saber cuánto se consume de cada insumo).
+ */
+model SaleItemIngredient {
+  id           String   @id @default(cuid())
+  // Cantidad total descontada para la cantidad vendida del renglón
+  quantity     Decimal  @db.Decimal(12, 3)
+  unitCost     Decimal  @db.Decimal(12, 4)
+  saleItemId   String
+  saleItem     SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Product  @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@index([saleItemId])
+  @@index([ingredientId])
+}
+
+/**
+ * Receta de un plato: cuánto de cada insumo lleva (en la unidad del insumo).
+ */
+model RecipeItem {
+  id           String   @id @default(cuid())
+  quantity     Decimal  @db.Decimal(12, 4)
+  productId    String
+  product      Product  @relation("RecipeDish", fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Product  @relation("RecipeIngredient", fields: [ingredientId], references: [id], onDelete: Restrict)
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, ingredientId])
+  @@index([ingredientId])
+  @@index([businessId])
 }
 
 model SaleReturn {

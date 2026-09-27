@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import type { Role } from "@/generated/prisma/enums";
 import { AppError, notFound } from "@/lib/errors";
-import { D, money, qty, sum, type Decimal } from "@/lib/decimal";
+import { D, money, qty, sum, unitCost, type Decimal } from "@/lib/decimal";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { dayRange } from "@/lib/dates";
@@ -13,6 +13,7 @@ import { applyStockChange, consumeBatches, restoreBatches, type Actor } from "./
 import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
 import { productModifiers } from "./catalog";
+import { recipesFor, type RecipeLine } from "./recipes";
 import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
@@ -130,6 +131,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       const lines = input.items.map((item) => {
         const product = productMap.get(item.productId);
         if (!product) throw new AppError(404, "Uno de los productos no existe o está archivado");
+        if (product.isIngredient) throw new AppError(400, `${product.name} es un insumo y no se vende en la caja`);
         const quantity = qty(item.quantity);
         if (product.unit === "PIECE" && !quantity.isInteger()) {
           throw new AppError(400, `${product.name} se vende por pieza; usa cantidades enteras`);
@@ -248,24 +250,54 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         if (!input.giftCardCode) throw new AppError(400, "Escribe o escanea el código del vale");
         giftCard = await redeemGiftCard(tx, actor, input.giftCardCode, total, saleId);
       }
-      // Orden estable por producto para evitar bloqueos cruzados entre ventas simultáneas.
-      const ordered = [...lines].sort((a, b) => a.product.id.localeCompare(b.product.id));
-      const itemCosts = new Map<(typeof lines)[number], Decimal>();
-      for (const line of ordered) {
-        // Servicios (entrega a domicilio y similares): no llevan existencias.
-        if (!line.product.trackStock) {
+      // Platos con receta: se descuentan sus insumos en lugar del plato.
+      const recipes = canUse("recipes")
+        ? await recipesFor(tx, actor.businessId, productIds)
+        : new Map<string, RecipeLine[]>();
+      type Line = (typeof lines)[number];
+      const changes: { productId: string; delta: Decimal; line: Line; ingredient: boolean }[] = [];
+      const lineIngredients = new Map<Line, { ingredientId: string; quantity: Decimal; unitCost: Decimal }[]>();
+      const itemCosts = new Map<Line, Decimal>();
+      for (const line of lines) {
+        const recipe = recipes.get(line.product.id);
+        if (recipe?.length) {
+          lineIngredients.set(line, []);
+          for (const r of recipe) {
+            const quantity = qty(r.perUnit.times(line.quantity));
+            if (quantity.gt(0))
+              changes.push({ productId: r.ingredientId, delta: quantity.neg(), line, ingredient: true });
+          }
+        } else if (line.product.trackStock) {
+          changes.push({ productId: line.product.id, delta: line.quantity.neg(), line, ingredient: false });
+        } else {
+          // Servicios (entrega a domicilio y similares): no llevan existencias.
           itemCosts.set(line, D(line.product.cost));
-          continue;
         }
+      }
+      // Orden estable por producto para evitar bloqueos cruzados entre ventas simultáneas.
+      changes.sort((a, b) => a.productId.localeCompare(b.productId));
+      for (const change of changes) {
         const updated = await applyStockChange(tx, actor, {
-          productId: line.product.id,
-          delta: line.quantity.neg(),
+          productId: change.productId,
+          delta: change.delta,
           type: "SALE",
-          requireAvailable: true,
+          // Los insumos pueden quedar en negativo: un conteo desactualizado no detiene la venta.
+          requireAvailable: !change.ingredient,
           referenceId: saleId,
         });
-        itemCosts.set(line, D(updated.cost));
-        if (line.product.trackExpiry) await consumeBatches(tx, line.product.id, line.quantity);
+        if (change.ingredient) {
+          lineIngredients
+            .get(change.line)!
+            .push({ ingredientId: change.productId, quantity: change.delta.abs(), unitCost: D(updated.cost) });
+        } else {
+          itemCosts.set(change.line, D(updated.cost));
+        }
+        if (updated.trackExpiry) await consumeBatches(tx, change.productId, change.delta.abs());
+      }
+      // Costo del plato: la suma de sus insumos al costo vigente.
+      for (const [line, used] of lineIngredients) {
+        const cost = sum(used.map((u) => u.quantity.times(u.unitCost)));
+        itemCosts.set(line, unitCost(cost.div(line.quantity)));
       }
 
       const costTotal = money(sum(lines.map((l) => l.quantity.times(itemCosts.get(l)!))));
@@ -315,6 +347,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
               unitCost: itemCosts.get(l)!,
               taxRate: l.product.taxRate,
               iepsRate: l.product.iepsRate,
+              ...(lineIngredients.get(l)?.length ? { ingredients: { create: lineIngredients.get(l) } } : {}),
             })),
           },
         },
@@ -413,7 +446,7 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id, businessId: actor.businessId },
-      include: { items: { include: { product: true } }, returns: true, invoice: true },
+      include: { items: { include: { product: true, ingredients: true } }, returns: true, invoice: true },
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta ya está cancelada");
@@ -427,18 +460,35 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
     });
     if (count === 0) throw new AppError(409, "La venta ya está cancelada");
 
-    for (const item of [...sale.items].sort((a, b) => a.productId.localeCompare(b.productId))) {
+    const restocks: { productId: string; quantity: Decimal; unitCost: Decimal }[] = [];
+    for (const item of sale.items) {
       const pending = D(item.quantity).minus(item.returnedQuantity);
-      if (pending.lte(0) || !item.product.trackStock) continue;
-      await applyStockChange(tx, actor, {
-        productId: item.productId,
-        delta: pending,
+      if (pending.lte(0)) continue;
+      if (item.ingredients.length > 0) {
+        // Plato con receta: regresan los insumos de lo no devuelto.
+        const share = pending.div(item.quantity);
+        for (const used of item.ingredients) {
+          restocks.push({
+            productId: used.ingredientId,
+            quantity: qty(D(used.quantity).times(share)),
+            unitCost: used.unitCost,
+          });
+        }
+      } else if (item.product.trackStock) {
+        restocks.push({ productId: item.productId, quantity: pending, unitCost: item.unitCost });
+      }
+    }
+    for (const r of restocks.sort((a, b) => a.productId.localeCompare(b.productId))) {
+      if (r.quantity.lte(0)) continue;
+      const product = await applyStockChange(tx, actor, {
+        productId: r.productId,
+        delta: r.quantity,
         type: "SALE_CANCEL",
-        unitCost: item.unitCost,
+        unitCost: r.unitCost,
         referenceId: sale.id,
         notes: reason,
       });
-      if (item.product.trackExpiry) await restoreBatches(tx, item.productId, pending);
+      if (product.trackExpiry) await restoreBatches(tx, r.productId, r.quantity);
     }
 
     if (sale.paymentMethod === "CREDIT" && sale.customerId) {
@@ -502,7 +552,7 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id, businessId: actor.businessId },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: { product: true, ingredients: true } } },
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta está cancelada");
@@ -549,16 +599,29 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
         data: { returnedQuantity: { increment: line.quantity } },
       });
       if (count === 0) throw new AppError(409, "La devolución excede lo vendido");
-      if (!line.item.product.trackStock) continue;
-      await applyStockChange(tx, actor, {
-        productId: line.item.productId,
-        delta: line.quantity,
-        type: "SALE_RETURN",
-        unitCost: line.item.unitCost,
-        referenceId: returnId,
-        notes: input.reason,
-      });
-      if (line.item.product.trackExpiry) await restoreBatches(tx, line.item.productId, line.quantity);
+      // Plato con receta: regresan sus insumos en proporción a lo devuelto.
+      const restocks =
+        line.item.ingredients.length > 0
+          ? line.item.ingredients.map((used) => ({
+              productId: used.ingredientId,
+              quantity: qty(D(used.quantity).times(line.quantity).div(line.item.quantity)),
+              unitCost: used.unitCost,
+            }))
+          : line.item.product.trackStock
+            ? [{ productId: line.item.productId, quantity: line.quantity, unitCost: line.item.unitCost }]
+            : [];
+      for (const r of restocks) {
+        if (r.quantity.lte(0)) continue;
+        const product = await applyStockChange(tx, actor, {
+          productId: r.productId,
+          delta: r.quantity,
+          type: "SALE_RETURN",
+          unitCost: r.unitCost,
+          referenceId: returnId,
+          notes: input.reason,
+        });
+        if (product.trackExpiry) await restoreBatches(tx, r.productId, r.quantity);
+      }
     }
 
     const saleReturn = await tx.saleReturn.create({
