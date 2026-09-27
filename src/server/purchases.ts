@@ -10,6 +10,7 @@ import type { listQuerySchema, purchaseSchema } from "@/lib/validation";
 import { applyStockChange, receiveStock, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
 import { cancelBillForPurchase, createBillInTx } from "./payables";
+import { assertOpenPeriod } from "./accounting";
 
 type CreditFields = "onCredit" | "invoiceNumber" | "dueDate";
 /** Los datos de crédito son opcionales: sin ellos la compra es de contado. */
@@ -29,6 +30,7 @@ export async function createPurchase(actor: Actor, input: PurchaseInput) {
 
 /** Registra la compra dentro de una transacción existente (también la usa la recepción de órdenes de compra). */
 export async function createPurchaseInTx(tx: Tx, actor: Actor, input: PurchaseInput, purchaseOrderId?: string) {
+  await assertOpenPeriod(tx, actor.businessId, new Date());
   const productIds = [...new Set(input.items.map((i) => i.productId))];
   const products = await tx.product.findMany({
     where: { id: { in: productIds }, businessId: actor.businessId },
@@ -189,6 +191,7 @@ export async function cancelPurchase(actor: Actor, id: string, reason: string) {
       include: { items: { include: { batches: true } } },
     });
     if (!purchase) throw notFound("Compra");
+    await assertOpenPeriod(tx, actor.businessId, purchase.createdAt);
 
     const { count } = await tx.purchase.updateMany({
       where: { id, status: "ACTIVE" },
@@ -230,6 +233,7 @@ export async function cancelPurchase(actor: Actor, id: string, reason: string) {
             type: "IN",
             amount: purchase.total,
             reason: `Cancelación de compra #${purchase.folio}`,
+            source: "PURCHASE_CANCEL",
             cashSessionId: open.id,
             businessId: actor.businessId,
             userId: actor.userId,

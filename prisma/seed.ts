@@ -12,6 +12,7 @@ import { saveRecipe } from "../src/server/recipes";
 import { adjustStock } from "../src/server/inventory";
 import { createSupplierBill, paySupplierBill } from "../src/server/payables";
 import { createRecurringExpense } from "../src/server/cashflow";
+import { closePeriod, createOwnerTransaction } from "../src/server/accounting";
 import { addDays, dayKey } from "../src/lib/dates";
 import type { Prisma } from "../src/generated/prisma/client";
 
@@ -904,7 +905,7 @@ const PLANS = [
  */
 const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
   pro: ["cashflow"],
-  empresarial: ["recipes", "cashflow"],
+  empresarial: ["recipes", "cashflow", "accounting"],
 };
 
 /** Planes, super admin y la suscripción de cada negocio de demostración. */
@@ -1134,6 +1135,32 @@ async function seedRecurringExpenses() {
   console.log("✅ Gastos recurrentes del minisúper");
 }
 
+/** Contabilidad del minisúper: capital inicial, un retiro del dueño y el mes de hace dos meses cerrado. */
+async function seedAccounting() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.ownerTransaction.findFirst({ where: { businessId: business.id } })) return;
+  const day = 24 * 60 * 60 * 1000;
+  await createOwnerTransaction(actor, {
+    type: "CONTRIBUTION",
+    amount: 2500,
+    method: "TRANSFER",
+    date: new Date(Date.now() - 45 * day),
+    notes: "Capital para abrir el minisúper",
+  });
+  await createOwnerTransaction(actor, {
+    type: "WITHDRAWAL",
+    amount: 150,
+    method: "TRANSFER",
+    date: new Date(Date.now() - 2 * day),
+    notes: "Gastos de la casa",
+  });
+  const twoMonthsAgo = dayKey(new Date(Date.now() - 62 * day), business.timezone).slice(0, 7);
+  await closePeriod({ ...actor, timezone: business.timezone }, twoMonthsAgo);
+  console.log("✅ Contabilidad del minisúper (aportes, retiros y cierre de mes)");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1145,6 +1172,7 @@ async function main() {
   await seedPayables();
   await seedSplitPayments();
   await seedRecurringExpenses();
+  await seedAccounting();
 }
 
 main()

@@ -15,6 +15,7 @@ import { assertChargeForSale } from "./yappy";
 import { productModifiers } from "./catalog";
 import { recipesFor, type RecipeLine } from "./recipes";
 import { paidWith, resolvePayments, type PaymentInput } from "./payments";
+import { assertOpenPeriod, isClosedPeriod } from "./accounting";
 import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
@@ -231,12 +232,19 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
 
       // La fecha del dispositivo solo se respeta en ventas hechas sin conexión (con clientRequestId).
       const offlineDate = input.clientRequestId ? input.createdAt : null;
-      const createdAt =
+      let createdAt =
         offlineDate &&
         offlineDate.getTime() <= Date.now() &&
         Date.now() - offlineDate.getTime() < business.offlineDays * DAY_MS
           ? offlineDate
           : new Date();
+      // Una venta sin conexión con fecha en un mes ya cerrado se registra con la fecha de hoy.
+      if (createdAt !== offlineDate || !(await isClosedPeriod(tx, actor.businessId, createdAt))) {
+        await assertOpenPeriod(tx, actor.businessId, createdAt);
+      } else {
+        createdAt = new Date();
+        await assertOpenPeriod(tx, actor.businessId, createdAt);
+      }
 
       // Cobro de Yappy confirmado por la pasarela: su número de operación queda como referencia.
       let yappyCharge = null;
@@ -476,6 +484,7 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta ya está cancelada");
+    await assertOpenPeriod(tx, actor.businessId, sale.createdAt);
     if (sale.invoice && sale.invoice.status === "STAMPED" && sale.invoice.kind === "INDIVIDUAL") {
       throw new AppError(409, "La venta está facturada. Cancela primero la factura.");
     }
@@ -544,6 +553,7 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
               type: "OUT",
               amount,
               reason: `Cancelación de venta #${sale.folio}`,
+              source: "SALE_CANCEL",
               cashSessionId: open.id,
               businessId: actor.businessId,
               userId: actor.userId,
@@ -588,6 +598,7 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta está cancelada");
+    await assertOpenPeriod(tx, actor.businessId, new Date());
 
     // Límite de cada forma de reembolso: el fiado se descuenta del saldo, el vale vuelve al vale y el
     // dinero (efectivo, tarjeta, transferencia, Yappy) se devuelve hasta lo cobrado en dinero.

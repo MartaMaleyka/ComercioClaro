@@ -537,6 +537,35 @@ export const recurringExpenseSchema = z.object({
   active: z.boolean().default(true),
 });
 
+const monthKey = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Mes inválido");
+
+export const accountingQuerySchema = z.object({
+  from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  format: z.enum(["json", "csv", "xls"]).default("json"),
+});
+
+export const ownerTransactionSchema = z.object({
+  type: z.enum(["CONTRIBUTION", "WITHDRAWAL"]),
+  amount: positiveMoney,
+  method: immediatePaymentMethod.default("CASH"),
+  date: z.coerce.date().nullish(),
+  notes: optText(200),
+});
+
+export const periodSchema = z.object({ month: monthKey });
+
+export const reopenPeriodSchema = z.object({
+  month: monthKey,
+  reason: text(300, "Indica por qué se reabre el mes"),
+});
+
 export const cashflowQuerySchema = z.object({
   days: z.coerce.number().int().refine((d) => [30, 60, 90].includes(d), "Periodo inválido").default(30),
   opening: z.coerce.number().min(-MAX_MONEY).max(MAX_MONEY).optional(),

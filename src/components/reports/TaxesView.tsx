@@ -26,6 +26,8 @@ interface TaxReport {
     tax: number;
   }[];
   totals: { sales: number; returns: number; total: number; base: number; ieps: number; tax: number };
+  purchases?: { count: number; credit: number };
+  netTax?: number;
 }
 
 const pct = (n: number) => `${Math.round(n * 10000) / 100}%`;
@@ -77,6 +79,25 @@ export function TaxesView() {
             />
             <Stat label={tr("Devoluciones del mes")} value={fmt.money(data.totals.returns)} />
           </div>
+          {data.purchases && data.netTax !== undefined && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Stat
+                label={tr("Crédito fiscal (compras)")}
+                value={fmt.money(data.purchases.credit)}
+                hint={tr("{tax} de {n} compras del mes", { tax: data.taxName, n: data.purchases.count })}
+              />
+              <Stat
+                label={tr("{tax} a pagar (neto)", { tax: data.taxName })}
+                value={fmt.money(Math.max(0, data.netTax))}
+                hint={
+                  data.netTax < 0
+                    ? tr("Saldo a favor: {amount}", { amount: fmt.money(-data.netTax) })
+                    : tr("A declarar menos el crédito fiscal")
+                }
+                tone="warning"
+              />
+            </div>
+          )}
           <Card>
             <CardHeader>
               <h2 className="font-semibold text-slate-900">{tr("Desglose por tasa")}</h2>

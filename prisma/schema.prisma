@@ -233,6 +233,8 @@ model Business {
   supplierBills        SupplierBill[]
   supplierPayments     SupplierPayment[]
   recurringExpenses    RecurringExpense[]
+  ownerTransactions    OwnerTransaction[]
+  accountingPeriods    AccountingPeriod[]
 }
 
 model Category {
@@ -697,6 +699,8 @@ model CashMovement {
   type          CashMovementType
   amount        Decimal          @db.Decimal(12, 2)
   reason        String
+  // Movimiento generado por el sistema (cancelaciones, anulaciones, dueño); vacío = registrado a mano
+  source        String?
   cashSessionId String
   cashSession   CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
   userId        String?
@@ -1345,4 +1349,48 @@ model RecurringExpense {
   expenses Expense[]
 
   @@index([businessId, active])
+}
+
+enum OwnerTransactionType {
+  CONTRIBUTION
+  WITHDRAWAL
+}
+
+/**
+ * Aporte o retiro del dueño: separa el dinero personal del negocio. En efectivo entra o sale
+ * de la caja abierta.
+ */
+model OwnerTransaction {
+  id            String               @id @default(cuid())
+  type          OwnerTransactionType
+  amount        Decimal              @db.Decimal(12, 2)
+  method        PaymentMethod
+  date          DateTime
+  notes         String?
+  cashSessionId String?
+  userId        String?
+  businessId    String
+  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime             @default(now())
+
+  @@index([businessId, date])
+}
+
+/**
+ * Mes contable cerrado: no se registran, cancelan ni editan ventas, compras ni gastos con
+ * fecha en ese mes. El dueño puede reabrirlo y queda en la bitácora.
+ */
+model AccountingPeriod {
+  id         String    @id @default(cuid())
+  // "YYYY-MM"
+  month      String
+  closedAt   DateTime?
+  closedById String?
+  reopenedAt DateTime?
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([businessId, month])
 }
