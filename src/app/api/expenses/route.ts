@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { expenseSchema, listQuerySchema } from "@/lib/validation";
 import { getOpenSession } from "@/server/cash";
+import { assertOpenPeriod } from "@/server/accounting";
 
 export const GET = handler(async (request) => {
   const auth = await requireAuth("OWNER");
@@ -48,6 +49,7 @@ export const POST = handler(async (request) => {
   }
   return created(
     await prisma.$transaction(async (tx) => {
+      await assertOpenPeriod(tx, auth.businessId, input.date ?? new Date());
       const cashSession = input.paymentMethod === "CASH" ? await getOpenSession(tx, auth.businessId) : null;
       const expense = await tx.expense.create({
         data: {

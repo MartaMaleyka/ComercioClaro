@@ -28,6 +28,7 @@ import {
   Wallet,
   WifiOff,
   X,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
@@ -92,6 +93,13 @@ const navItems: NavItem[] = [
   { href: "/proveedores", label: "nav.suppliers" as MessageKey, icon: Truck, roles: ["OWNER"] },
   { href: "/gastos", label: "nav.expenses" as MessageKey, icon: Coins, roles: ["OWNER"] },
   { href: "/reportes", label: "nav.reports" as MessageKey, icon: BarChart3, roles: ["OWNER"] },
+  {
+    href: "/contabilidad",
+    label: "nav.accounting" as MessageKey,
+    icon: BookOpen,
+    roles: ["OWNER"],
+    when: (b) => b.features.includes("accounting"),
+  },
   { href: "/facturas", label: "nav.invoices" as MessageKey, icon: FileText, roles: ["OWNER"] },
   { href: "/configuracion", label: "nav.settings" as MessageKey, icon: Settings, roles: ["OWNER", "CASHIER"] },
 ];

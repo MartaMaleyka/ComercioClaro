@@ -118,6 +118,13 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Proyección a 30, 60 y 90 días, semana a semana: ventas, cobros de fiado, facturas por pagar, gastos fijos y compras.
   - Alerta si el saldo baja de cero.
   - Ventas necesarias para no perder, en monto y en días del mes.
+- **Contabilidad automática** ([`docs/plan-contabilidad.md`](docs/plan-contabilidad.md)):
+  - Los asientos se generan de las ventas, compras, pagos, gastos y caja, sin doble captura.
+  - Estado de resultados, balance general (que cuadra) y flujo de efectivo.
+  - Libro diario y mayor en CSV y Excel.
+  - Aportes y retiros del dueño.
+  - ITBMS a pagar menos el crédito fiscal.
+  - Cierre de mes con reapertura registrada en la bitácora.
 
 ## Requisitos
 

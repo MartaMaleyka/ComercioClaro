@@ -30,7 +30,7 @@ type TaxRow = { taxRate: Decimal; iepsRate: Decimal; amount: Decimal | null; cou
  */
 export async function taxReport(business: { id: string; timezone: string; country: string }, month?: string | null) {
   const range = monthRange(business.timezone, month);
-  const [sales, returns, count] = await Promise.all([
+  const [sales, returns, count, purchases, manualBills] = await Promise.all([
     prisma.$queryRaw<TaxRow[]>`
       SELECT si."taxRate" AS "taxRate", si."iepsRate" AS "iepsRate",
         SUM(si."subtotal" * s."total" / NULLIF(s."subtotal", 0)) AS amount
@@ -49,6 +49,21 @@ export async function taxReport(business: { id: string; timezone: string; countr
       GROUP BY 1, 2`,
     prisma.sale.count({
       where: { businessId: business.id, status: "ACTIVE", createdAt: { gte: range.start, lt: range.end } },
+    }),
+    // Crédito fiscal: el impuesto de las compras del mes y de las facturas registradas a mano.
+    prisma.purchase.aggregate({
+      where: { businessId: business.id, status: "ACTIVE", createdAt: { gte: range.start, lt: range.end } },
+      _sum: { tax: true },
+      _count: true,
+    }),
+    prisma.supplierBill.aggregate({
+      where: {
+        businessId: business.id,
+        purchaseId: null,
+        status: { not: "CANCELLED" },
+        date: { gte: new Date(`${range.fromKey}T00:00:00Z`), lte: new Date(`${range.toKey}T00:00:00Z`) },
+      },
+      _sum: { tax: true },
     }),
   ]);
 
@@ -94,6 +109,12 @@ export async function taxReport(business: { id: string; timezone: string; countr
     salesCount: count,
     lines,
     totals,
+    purchases: {
+      count: purchases._count,
+      credit: money(D(purchases._sum.tax).plus(D(manualBills._sum.tax))).toNumber(),
+    },
+    // Impuesto a pagar menos el crédito fiscal (si queda negativo, es saldo a favor).
+    netTax: money(D(totals.tax).minus(D(purchases._sum.tax)).minus(D(manualBills._sum.tax))).toNumber(),
   };
 }
 

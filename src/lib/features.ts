@@ -43,6 +43,11 @@ export const FEATURES = [
     label: "Flujo de caja y punto de equilibrio",
     description: "Proyección a 30, 60 y 90 días, gastos recurrentes y ventas necesarias para no perder.",
   },
+  {
+    key: "accounting",
+    label: "Contabilidad automática",
+    description: "Libro diario y mayor, estados financieros, aportes y retiros del dueño y cierre de mes.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

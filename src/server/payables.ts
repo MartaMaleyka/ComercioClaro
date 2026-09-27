@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { addDays, dayKey, dayKeysBetween } from "@/lib/dates";
 import type { Actor } from "./inventory";
 import { getOpenSession } from "./cash";
+import { assertOpenPeriod } from "./accounting";
 
 /**
  * Cuentas por pagar a proveedores. Las fechas de la factura y del vencimiento se guardan
@@ -71,6 +72,7 @@ export async function createBillInTx(tx: Tx, actor: Actor, input: BillInput & { 
   const date = input.date ?? today;
   const due = input.dueDate ?? addDays(date, creditDays);
   if (due < date) throw new AppError(400, "El vencimiento no puede ser anterior a la fecha de la factura");
+  await assertOpenPeriod(tx, actor.businessId, calendarDay(date));
   const total = money(input.total);
   const tax = money(input.tax ?? 0);
   if (tax.gt(total)) throw new AppError(400, "El impuesto no puede ser mayor al total");
@@ -177,6 +179,7 @@ export async function voidSupplierPayment(actor: Actor, paymentId: string, reaso
             type: "IN",
             amount: payment.amount,
             reason: `Abono a proveedor anulado (${payment.bill.supplierName ?? ""})`.trim(),
+            source: "SUPPLIER_PAYMENT_VOID",
             cashSessionId: open.id,
             businessId: actor.businessId,
             userId: actor.userId,
@@ -219,6 +222,7 @@ export async function cancelSupplierBill(actor: Actor, billId: string, reason: s
     if (bill.purchaseId) throw new AppError(400, "Esta factura viene de una compra: cancela la compra");
     if (bill.status === "CANCELLED") throw new AppError(409, "La factura ya está cancelada");
     if (bill.payments.length > 0) throw new AppError(409, "La factura tiene abonos. Anúlalos antes de cancelarla.");
+    await assertOpenPeriod(tx, actor.businessId, bill.date);
     const cancelled = await tx.supplierBill.update({
       where: { id: billId },
       data: {
