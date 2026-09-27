@@ -7,6 +7,7 @@ import useSWR from "swr";
 import {
   AlertTriangle,
   Banknote,
+  Check,
   ClipboardList,
   CreditCard,
   Gift,
@@ -183,6 +184,31 @@ function lineTotal(line: CartLine, isOwner: boolean, promotions: PromotionRule[]
 }
 
 /** Datos con respaldo local: si no hay red se usa la última copia guardada. */
+/** Tinte estable por producto para reconocerlo de un vistazo (se calcula del nombre). */
+const TILE_TINTS = [
+  "bg-brand-50 text-brand-700 dark:text-brand-300",
+  "bg-mango-50 text-mango-800",
+  "bg-blue-50 text-blue-700",
+  "bg-red-50 text-red-700",
+  "bg-purple-50 text-purple-700",
+  "bg-slate-100 text-slate-700",
+];
+
+function tileTint(name: string) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return TILE_TINTS[h % TILE_TINTS.length];
+}
+
+function tileInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter((w) => /^\p{L}/u.test(w))
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("") || name.trim().charAt(0).toUpperCase();
+}
+
 function useCachedList<T>(url: string, cacheKey: string) {
   const [fallback, setFallback] = useState<T[] | undefined>(undefined);
   const swr = useSWR<{ items: T[] } | T[]>(url, fetcher, {
@@ -715,12 +741,14 @@ export default function PosPage() {
         </p>
       )}
       {cart.length === 0 ? (
-        <div className="text-center py-8 text-sm text-slate-500">
-          <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-slate-300" aria-hidden="true" />
+        <div className="text-center py-8 px-4 text-sm text-slate-500 border-[1.5px] border-dashed border-slate-300 rounded-2xl">
+          <span className="mx-auto mb-3 w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center" aria-hidden="true">
+            <ScanBarcode className="w-6 h-6 text-brand-600" />
+          </span>
           {t("pos.empty")}
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="space-y-2">
           {cart.map((line) => {
             const fractional = isFractionalUnit(line.unit);
             const price = unitPrice(line, isOwner);
@@ -728,10 +756,10 @@ export default function PosPage() {
             const auto = lineAutoDiscount(line, isOwner, promotions, seniorRate);
             const promo = auto.promotion;
             return (
-              <li key={line.key} className="py-3 space-y-2">
+              <li key={line.key} className="p-3 rounded-2xl bg-slate-50 space-y-2 animate-in">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{line.name}</p>
+                    <p className="text-[15px] font-semibold text-slate-900 truncate">{line.name}</p>
                     {line.modifiers.length > 0 && (
                       <p className="text-xs text-slate-600">{line.modifiers.map((m) => `+${m.name}`).join(", ")}</p>
                     )}
@@ -754,16 +782,16 @@ export default function PosPage() {
                       )}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold tabular-nums">
+                  <p className="text-base font-bold tabular-nums text-slate-900">
                     {fmt.money(lineTotal(line, isOwner, promotions, seniorRate))}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 bg-surface border border-slate-200 rounded-xl p-0.5">
                     <button
                       aria-label={`Quitar uno de ${line.name}`}
                       onClick={() => stepLine(line, fractional ? -0.25 : -1)}
-                      className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"
+                      className="press w-10 h-10 rounded-lg hover:bg-brand-50 text-slate-700 flex items-center justify-center"
                     >
                       {num(line.quantity) <= (fractional ? 0.25 : 1) ? (
                         <Trash2 className="w-4 h-4" />
@@ -776,12 +804,12 @@ export default function PosPage() {
                       inputMode={fractional ? "decimal" : "numeric"}
                       value={line.quantity}
                       onChange={(e) => updateLine(line.key, { quantity: e.target.value })}
-                      className="w-16 text-center py-1.5 bg-surface border border-slate-200 rounded-lg text-sm"
+                      className="w-14 text-center py-2 bg-transparent font-bold text-base focus:outline-none focus:ring-2 focus:ring-brand-600/30 rounded-lg"
                     />
                     <button
                       aria-label={`Agregar uno de ${line.name}`}
                       onClick={() => stepLine(line, fractional ? 0.25 : 1)}
-                      className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center"
+                      className="press w-10 h-10 rounded-lg hover:bg-brand-50 text-slate-700 flex items-center justify-center"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -792,7 +820,7 @@ export default function PosPage() {
                         onClick={() => weigh(line)}
                         disabled={weighing === line.key}
                         aria-label={tr("Pesar {name}", { name: line.name })}
-                        className="ml-1 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 text-xs font-medium disabled:opacity-50"
+                        className="press ml-1 inline-flex items-center gap-1 px-3 min-h-10 rounded-lg bg-mango-50 text-mango-800 text-xs font-semibold disabled:opacity-50"
                       >
                         <Scale className="w-3.5 h-3.5" aria-hidden="true" />
                         {weighing === line.key ? tr("Pesando…") : tr("Pesar")}
@@ -805,7 +833,7 @@ export default function PosPage() {
                     placeholder={t("pos.lineDiscount")}
                     value={line.discount}
                     onChange={(e) => updateLine(line.key, { discount: e.target.value })}
-                    className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
+                    className="w-24 min-h-10 px-2.5 bg-surface border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-600"
                   />
                   {isOwner && (
                     <input
@@ -814,7 +842,7 @@ export default function PosPage() {
                       placeholder={t("pos.price")}
                       value={line.priceOverride}
                       onChange={(e) => updateLine(line.key, { priceOverride: e.target.value })}
-                      className="w-20 py-1.5 px-2 bg-surface border border-slate-200 rounded-lg text-sm"
+                      className="w-24 min-h-10 px-2.5 bg-surface border-[1.5px] border-slate-200 rounded-xl text-sm focus:outline-none focus:border-brand-600"
                     />
                   )}
                 </div>
@@ -868,14 +896,14 @@ export default function PosPage() {
               aria-checked={paymentMethod === o.value}
               onClick={() => setPaymentMethod(o.value)}
               className={cn(
-                "flex flex-col items-center gap-1 py-2 px-0.5 rounded-xl font-medium border min-w-0",
+                "press flex flex-col items-center justify-center gap-1 min-h-16 py-2 px-0.5 rounded-2xl font-semibold border-[1.5px] min-w-0",
                 paymentOptions.length > 4 ? "text-[11px]" : "text-xs",
                 paymentMethod === o.value
-                  ? "bg-brand-600 text-white border-brand-600"
-                  : "bg-surface text-slate-600 border-slate-200"
+                  ? "bg-brand-600 text-white border-brand-600 shadow-sm"
+                  : "bg-surface text-slate-700 border-slate-200 hover:border-slate-400"
               )}
             >
-              <o.icon className="w-4 h-4" aria-hidden="true" />
+              <o.icon className="w-5 h-5" aria-hidden="true" />
               <span className="truncate max-w-full">{t(`pay.${o.value}`)}</span>
             </button>
           ))}
@@ -1053,12 +1081,18 @@ export default function PosPage() {
           )}
         </div>
         {!split && paymentMethod === "CASH" && total > 0 && (
-          <div className="flex gap-1.5 flex-wrap">
+          <div className="grid grid-cols-4 gap-1.5">
             {[...new Set([total, ...[50, 100, 200, 500, 1000].filter((b) => b > total)].slice(0, 4))].map((b) => (
               <button
                 key={b}
                 onClick={() => setAmountReceived(String(b))}
-                className="px-2.5 py-1 rounded-lg bg-slate-100 text-xs font-medium"
+                aria-pressed={amountReceived !== "" && num(amountReceived) === b}
+                className={cn(
+                  "press min-h-11 px-1 rounded-xl text-sm font-semibold tabular-nums border-[1.5px] truncate",
+                  amountReceived !== "" && num(amountReceived) === b
+                    ? "bg-slate-900 text-surface border-slate-900"
+                    : "bg-surface text-slate-800 border-slate-200 hover:border-slate-400"
+                )}
               >
                 {b === total ? t("pos.exact") : fmt.money(b)}
               </button>
@@ -1144,21 +1178,26 @@ export default function PosPage() {
               <dd className="tabular-nums">-{fmt.money(pointsDiscount)}</dd>
             </div>
           )}
-          <div className="flex justify-between text-lg font-bold text-slate-900">
-            <dt>{t("pos.total")}</dt>
-            <dd className="tabular-nums">{fmt.money(total)}</dd>
+          <div className="flex justify-between items-baseline pt-1 text-slate-900">
+            <dt className="text-base font-semibold">{t("pos.total")}</dt>
+            <dd className="tabular-nums text-4xl font-extrabold tracking-tight">{fmt.money(total)}</dd>
           </div>
           {!split && paymentMethod === "CASH" && amountReceived !== "" && (
-            <div className={cn("flex justify-between font-semibold", change < 0 ? "text-red-600" : "text-brand-600")}>
-              <dt>{change < 0 ? t("pos.missing") : t("pos.change")}</dt>
-              <dd className="tabular-nums">{fmt.money(Math.abs(change))}</dd>
+            <div
+              className={cn(
+                "flex justify-between items-center rounded-2xl px-4 py-3 mt-2 animate-in",
+                change < 0 ? "bg-red-50 text-red-700" : "bg-mango-50 text-mango-800"
+              )}
+            >
+              <dt className="font-semibold">{change < 0 ? t("pos.missing") : t("pos.change")}</dt>
+              <dd className="tabular-nums text-2xl font-extrabold text-slate-900">{fmt.money(Math.abs(change))}</dd>
             </div>
           )}
         </dl>
 
         <Button
-          className={cn("w-full", !split && paymentMethod === "YAPPY" && yappyApi && "hidden")}
-          size="lg"
+          className={cn("w-full text-xl", !split && paymentMethod === "YAPPY" && yappyApi && "hidden")}
+          size="xl"
           onClick={() => charge()}
           loading={saving}
           disabled={!canCharge}
@@ -1178,7 +1217,7 @@ export default function PosPage() {
   );
 
   return (
-    <div className="space-y-4 pb-24 lg:pb-0">
+    <div className="space-y-4 pb-32 lg:pb-0">
       <h1 className="sr-only">{t("nav.sell")}</h1>
       {/* Anuncia el total al agregar o quitar productos, para quien usa lector de pantalla. */}
       <p className="sr-only" aria-live="polite" aria-atomic="true">
@@ -1246,17 +1285,17 @@ export default function PosPage() {
           </div>
 
           {categories.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {[{ id: "", name: t("pos.all") }, ...categories].map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setCategoryId(c.id)}
                   aria-pressed={categoryId === c.id}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border",
+                    "press px-4 min-h-10 rounded-full text-sm font-semibold whitespace-nowrap border-[1.5px]",
                     categoryId === c.id
-                      ? "bg-brand-600 text-white border-brand-600"
-                      : "bg-surface text-slate-600 border-slate-200"
+                      ? "bg-slate-900 text-surface border-slate-900"
+                      : "bg-surface text-slate-700 border-slate-200 hover:border-slate-400"
                   )}
                 >
                   {c.name}
@@ -1266,9 +1305,9 @@ export default function PosPage() {
           )}
 
           {catalog.list === undefined ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-3">
               {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="h-20 rounded-xl bg-slate-100 animate-pulse" />
+                <div key={i} className="h-28 rounded-2xl bg-slate-200/70 animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -1287,7 +1326,7 @@ export default function PosPage() {
               )}
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-4 gap-3">
               {gridItems.map((item) => {
                 const isGroup = item.kind === "group";
                 const p = isGroup ? item.variants[0] : item.product;
@@ -1306,22 +1345,34 @@ export default function PosPage() {
                     disabled={out}
                     aria-haspopup={isGroup || (p.modifiers?.length ?? 0) > 0 ? "dialog" : undefined}
                     className={cn(
-                      "relative text-left p-3 rounded-xl border bg-surface transition-[color,border-color,transform] motion-safe:active:scale-[0.98] disabled:opacity-50",
-                      inCart > 0 ? "border-brand-600 ring-1 ring-brand-600" : "border-slate-100 hover:border-slate-300"
+                      "press relative text-left p-3 rounded-2xl border-[1.5px] bg-surface hover:shadow-md disabled:opacity-50 disabled:hover:shadow-none",
+                      inCart > 0 ? "border-brand-600 ring-2 ring-brand-600/20" : "border-slate-200/80 hover:border-slate-400"
                     )}
                   >
                     {inCart > 0 && (
                       <span
+                        key={inCart}
                         aria-hidden="true"
-                        className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center shadow tabular-nums"
+                        className="absolute -top-2 -right-2 min-w-7 h-7 px-1.5 rounded-full bg-brand-600 text-white text-sm font-bold flex items-center justify-center shadow-md ring-2 ring-surface tabular-nums animate-[pop_360ms_cubic-bezier(.2,.8,.2,1)]"
                       >
                         {fmt.number(inCart)}
                       </span>
                     )}
-                    <p className="text-sm font-medium text-slate-900 line-clamp-2 pr-3">
-                      {isGroup ? item.group : p.name}
-                    </p>
-                    <p className="text-sm font-semibold text-brand-700 dark:text-brand-300 mt-1">
+                    <span className="flex items-start gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "w-10 h-10 rounded-xl shrink-0 flex items-center justify-center font-display font-extrabold text-[15px]",
+                          tileTint(isGroup ? item.group : p.name)
+                        )}
+                      >
+                        {tileInitials(isGroup ? item.group : p.name)}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900 line-clamp-2 pr-2 pt-0.5">
+                        {isGroup ? item.group : p.name}
+                      </span>
+                    </span>
+                    <p className="text-lg font-extrabold text-slate-900 mt-2 tabular-nums">
                       {minPrice === maxPrice ? fmt.money(minPrice) : `${fmt.money(minPrice)} – ${fmt.money(maxPrice)}`}
                       {p.unit !== "PIECE" && (
                         <span className="text-xs font-normal text-slate-500">/{UNIT_LABELS[p.unit]}</span>
@@ -1348,16 +1399,22 @@ export default function PosPage() {
           )}
         </div>
 
-        <Card className="hidden lg:block p-4 sticky top-4">
-          <h2 className="font-semibold text-slate-900 mb-2">{t("pos.currentSale")}</h2>
+        <Card className="hidden lg:block p-5 sticky top-6 shadow-md">
+          <h2 className="text-xl font-bold text-slate-900 mb-3 flex items-baseline gap-2">
+            {t("pos.currentSale")}
+            {itemsCount > 0 && <span className="text-sm font-semibold text-slate-500 tabular-nums">· {itemsCount}</span>}
+          </h2>
           {cartPanel}
         </Card>
       </div>
 
       {cart.length > 0 && (
-        <div className="lg:hidden fixed bottom-16 inset-x-0 px-4 pb-2 z-30">
-          <Button className="w-full shadow-lg" size="lg" onClick={() => setCheckoutOpen(true)}>
-            <ShoppingCart className="w-5 h-5" /> {t("pos.viewCart")} ({itemsCount}) · {fmt.money(total)}
+        <div className="lg:hidden fixed bottom-[104px] inset-x-0 px-3 z-30 animate-in">
+          <Button className="w-full shadow-xl justify-between px-4" size="xl" onClick={() => setCheckoutOpen(true)}>
+            <span className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5" /> {t("pos.viewCart")} ({itemsCount})
+            </span>
+            <span className="tabular-nums text-xl font-extrabold">{fmt.money(total)}</span>
           </Button>
         </div>
       )}
@@ -1459,15 +1516,24 @@ export default function PosPage() {
       >
         {completed && (
           <div className="space-y-4 text-center">
+            <span
+              className="mx-auto w-20 h-20 rounded-full bg-brand-600 text-white flex items-center justify-center ring-8 ring-brand-50 animate-[pop_360ms_cubic-bezier(.2,.8,.2,1)]"
+              aria-hidden="true"
+            >
+              <Check className="w-10 h-10" strokeWidth={3} />
+            </span>
             {completed.sale && (
               <p className="text-sm text-slate-500">
                 {t("pos.ticket")} #{completed.sale.folio}
               </p>
             )}
-            <p className="text-3xl font-bold text-slate-900">{fmt.money(completed.total)}</p>
+            <p className="text-4xl font-extrabold tracking-tight text-slate-900 tabular-nums">{fmt.money(completed.total)}</p>
             {completed.change > 0 && (
-              <p className="text-lg font-semibold text-brand-600">
-                {tr("Cambio:")} {fmt.money(completed.change)}
+              <p className="rounded-2xl bg-mango-50 text-mango-800 px-4 py-3 text-lg font-semibold">
+                {tr("Cambio:")}{" "}
+                <span className="block text-4xl font-extrabold tracking-tight text-slate-900 tabular-nums">
+                  {fmt.money(completed.change)}
+                </span>
               </p>
             )}
             {completed.offline && <p className="text-sm text-slate-500">{t("pos.offlineNote")}</p>}
@@ -1481,7 +1547,7 @@ export default function PosPage() {
                     <Printer className="w-4 h-4" /> {t("pos.print")}
                   </Button>
                   <a
-                    className="inline-flex items-center justify-center gap-2 font-medium px-4 py-2.5 text-sm rounded-xl bg-surface text-slate-700 border border-slate-200 hover:bg-slate-50"
+                    className="press inline-flex items-center justify-center gap-2 font-semibold px-4 min-h-12 text-[15px] rounded-xl bg-surface text-slate-900 border-[1.5px] border-slate-300 hover:border-slate-900"
                     href={whatsappLink(
                       buildReceiptText(completed.sale, business),
                       completed.sale.customer?.phone,
@@ -1495,7 +1561,7 @@ export default function PosPage() {
                 </>
               )}
             </div>
-            <Button className="w-full" onClick={() => setCompleted(null)}>
+            <Button className="w-full" size="lg" onClick={() => setCompleted(null)}>
               {t("pos.newSale")}
             </Button>
           </div>
