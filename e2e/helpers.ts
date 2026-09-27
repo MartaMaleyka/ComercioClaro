@@ -62,6 +62,8 @@ export async function expectAccessible(page: Page, url?: string) {
   if (url) await page.goto(url);
   // Algunas pantallas consultan al servidor cada pocos segundos; no esperar indefinidamente a la red inactiva.
   await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
+  // Un diálogo que aún está apareciendo (opacidad en transición) da falsos problemas de contraste.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished))).catch(() => undefined);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
   const summary = violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
   expect(summary, `${url ?? page.url()} tiene problemas de accesibilidad`).toEqual([]);
