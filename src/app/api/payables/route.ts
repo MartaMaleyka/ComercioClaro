@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { created, handler, parseBody, parseQuery } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { supplierBillSchema } from "@/lib/validation";
 import { closedBills, createSupplierBill, payablesSummary } from "@/server/payables";
 
@@ -9,6 +9,7 @@ const querySchema = z.object({ history: z.enum(["true", "false"]).optional() });
 /** Cuentas por pagar abiertas con su antigüedad; con history=true, las pagadas y canceladas. */
 export const GET = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "payables");
   const { history } = parseQuery(request, querySchema);
   if (history === "true") return { bills: await closedBills(auth.businessId) };
   return payablesSummary(auth.businessId, auth.business.timezone);
@@ -17,6 +18,7 @@ export const GET = handler(async (request) => {
 /** Registra a mano una factura de proveedor por pagar. */
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
+  requireFeature(auth, "payables");
   const input = await parseBody(request, supplierBillSchema);
   return created(await createSupplierBill(auth, input));
 });

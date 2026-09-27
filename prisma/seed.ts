@@ -907,8 +907,9 @@ const PLANS = [
  * a los planes existentes (sin quitar lo que el super admin haya cambiado).
  */
 const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
-  pro: ["cashflow", "campaigns"],
-  empresarial: ["recipes", "cashflow", "accounting", "payroll", "campaigns"],
+  basico: ["payables", "splitPayments", "scale"],
+  pro: ["payables", "splitPayments", "scale", "cashflow", "campaigns"],
+  empresarial: ["payables", "splitPayments", "scale", "recipes", "cashflow", "accounting", "payroll", "campaigns"],
 };
 
 /** Planes, super admin y la suscripción de cada negocio de demostración. */

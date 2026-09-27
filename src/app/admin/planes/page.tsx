@@ -6,7 +6,7 @@ import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { useText } from "@/lib/client/i18n";
 import { adminFmt } from "@/lib/client/admin-format";
-import { FEATURES, type FeatureKey } from "@/lib/features";
+import { FEATURE_GROUPS, FEATURES, NEW_FEATURE_KEYS, type FeatureKey } from "@/lib/features";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Badge } from "@/components/ui/Badge";
@@ -224,6 +224,14 @@ function PlanModal({ plan, onClose, onSaved }: { plan: Plan | null; onClose: () 
     }
   }
 
+  const setGroup = (keys: FeatureKey[], on: boolean) => {
+    const next = new Set(form.features);
+    for (const k of keys) {
+      if (on) next.add(k);
+      else next.delete(k);
+    }
+    setForm({ ...form, features: next });
+  };
   const toggle = (key: FeatureKey, on: boolean) => {
     const next = new Set(form.features);
     if (on) next.add(key);
@@ -310,18 +318,53 @@ function PlanModal({ plan, onClose, onSaved }: { plan: Plan | null; onClose: () 
             onChange={(e) => setForm({ ...form, maxProducts: e.target.value })}
           />
         </div>
-        <fieldset className="rounded-xl border border-slate-200 p-3">
-          <legend className="px-1 text-sm font-medium text-slate-700">{tr("Funciones incluidas")}</legend>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {FEATURES.map((f) => (
-              <Checkbox
-                key={f.key}
-                label={tr(f.label)}
-                checked={form.features.has(f.key)}
-                onChange={(e) => toggle(f.key, e.target.checked)}
-              />
-            ))}
-          </div>
+        <fieldset className="rounded-xl border border-slate-200 p-3 space-y-3">
+          <legend className="px-1 text-sm font-medium text-slate-700">
+            {tr("Funciones incluidas")} · {form.features.size}/{FEATURES.length}
+          </legend>
+          {FEATURE_GROUPS.map((group) => {
+            const keys = FEATURES.filter((f) => f.group === group.key).map((f) => f.key);
+            const all = keys.every((k) => form.features.has(k));
+            return (
+              <div key={group.key} role="group" aria-labelledby={`plan-grupo-${group.key}`}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p
+                    id={`plan-grupo-${group.key}`}
+                    className="text-xs font-semibold uppercase tracking-wide text-slate-500"
+                  >
+                    {tr(group.label)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setGroup(keys, !all)}
+                    className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+                    aria-label={
+                      all
+                        ? tr("Quitar todas las de {group}", { group: tr(group.label) })
+                        : tr("Incluir todas las de {group}", { group: tr(group.label) })
+                    }
+                  >
+                    {all ? tr("Ninguna") : tr("Todas")}
+                  </button>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {FEATURES.filter((f) => f.group === group.key).map((f) => (
+                    <Checkbox
+                      key={f.key}
+                      label={
+                        <span className="inline-flex items-center gap-1.5">
+                          {tr(f.label)}
+                          {NEW_FEATURE_KEYS.includes(f.key) && <Badge tone="purple">{tr("Nueva")}</Badge>}
+                        </span>
+                      }
+                      checked={form.features.has(f.key)}
+                      onChange={(e) => toggle(f.key, e.target.checked)}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </fieldset>
         <div className="grid sm:grid-cols-2 gap-2">
           <Checkbox

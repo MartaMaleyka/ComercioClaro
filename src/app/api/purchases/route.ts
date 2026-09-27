@@ -1,5 +1,5 @@
 import { handler, parseBody, parseQuery, created } from "@/lib/api";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireFeature } from "@/lib/auth";
 import { listQuerySchema, purchaseSchema } from "@/lib/validation";
 import { createPurchase, listPurchases } from "@/server/purchases";
 
@@ -12,5 +12,6 @@ export const GET = handler(async (request) => {
 export const POST = handler(async (request) => {
   const auth = await requireAuth("OWNER");
   const input = await parseBody(request, purchaseSchema);
+  if (input.onCredit) requireFeature(auth, "payables");
   return created(await createPurchase(auth, input));
 });

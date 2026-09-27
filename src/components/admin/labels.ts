@@ -10,6 +10,8 @@ export const ACTION_LABELS: Record<string, string> = {
   "user.update": "Cambió el acceso de un usuario",
   "user.revokeSessions": "Cerró las sesiones de un usuario",
   "user.resetPassword": "Generó una contraseña temporal",
+  "plan.feature": "Cambió una función de un plan",
+  "business.feature": "Ajustó una función de un negocio",
   "billing.settings": "Cambió las reglas del cobro automático",
   "billing.failed": "Cobro automático rechazado",
   "billing.suspend": "Suspendió por falta de pago",
