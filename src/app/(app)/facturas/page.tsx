@@ -174,7 +174,7 @@ export default function InvoicesPage() {
               </p>
             </CardHeader>
             <CardContent>
-              <form onSubmit={global} className="grid sm:grid-cols-4 gap-2 items-end">
+              <form onSubmit={global} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
                 <Input label={tr("Desde")} type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
                 <Input label={tr("Hasta")} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
                 <Select label={tr("Periodicidad")} value={periodicity} onChange={(e) => setPeriodicity(e.target.value)}>

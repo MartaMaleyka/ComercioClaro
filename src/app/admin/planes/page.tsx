@@ -110,7 +110,7 @@ function PlansAndFeatures() {
           {tr("Aún no hay planes. Mientras tanto, todos los negocios tienen todas las funciones.")}
         </p>
       ) : (
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {data.map((plan) => (
             <Card key={plan.id}>
               <CardHeader>
@@ -379,7 +379,7 @@ function PlanModal({ plan, onClose, onSaved }: { plan: Plan | null; onClose: () 
                     {all ? tr("Ninguna") : tr("Todas")}
                   </button>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {FEATURES.filter((f) => f.group === group.key).map((f) => (
                     <Checkbox
                       key={f.key}
@@ -398,7 +398,7 @@ function PlanModal({ plan, onClose, onSaved }: { plan: Plan | null; onClose: () 
             );
           })}
         </fieldset>
-        <div className="grid sm:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <Checkbox
             label={tr("Activo (se puede asignar)")}
             checked={form.active}

@@ -100,7 +100,7 @@ export default function OrdersPage() {
           description={tr("Comparte el enlace de tu catálogo por WhatsApp o redes para recibir pedidos aquí.")}
         />
       ) : (
-        <ul className="grid md:grid-cols-2 gap-3">
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {data.map((o) => (
             <li key={o.id}>
               <Card className={o.status === "NEW" ? "border-red-200" : undefined}>

@@ -75,7 +75,7 @@ function BillingSettingsForm({ initial, onSaved }: { initial: Settings; onSaved:
               "El cron diario avisa antes de cobrar, cobra al vencer, reintenta y suspende al pasar los días de gracia."
             )}
           </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Input
               label={tr("Días de gracia")}
               min={0}

@@ -49,7 +49,7 @@ export function TeamView({ query }: { query: Record<string, string> }) {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Desempeño por persona")}>
           <table className="w-full text-sm min-w-[720px]">
             <caption className="sr-only">{tr("Desempeño por persona")}</caption>
             <thead>

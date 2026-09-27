@@ -50,7 +50,7 @@ export default function SalesHistoryPage() {
         }
       />
 
-      <div className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-end">
         <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar por producto, cliente o folio")} />
         <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />

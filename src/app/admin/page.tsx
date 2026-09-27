@@ -101,7 +101,7 @@ export default function AdminOverviewPage() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <h2 className="font-semibold text-slate-900">{tr("Requieren atención")}</h2>
@@ -173,7 +173,7 @@ export default function AdminOverviewPage() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <h2 className="font-semibold text-slate-900">{tr("Registros por semana")}</h2>
@@ -276,7 +276,7 @@ export default function AdminOverviewPage() {
         </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <h2 className="font-semibold text-slate-900">{tr("Cobrado por mes")}</h2>

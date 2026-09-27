@@ -33,6 +33,22 @@ Reglas:
 - Mango solo como fondo con texto Tinta encima. Como texto, usa `mango-700` o `mango-800`.
 - La escala `slate` es cálida (Tinta y Arena); en oscuro se invierte sola.
 
+## Modo oscuro ("Claro de noche")
+
+- **Capas de luz en lugar de sombras:**
+  - Fondo `#0e1512`, tarjeta `#16201b` y lo que flota `#1c2822` (`bg-surface-raised`: hojas, modales, menús).
+  - La barra lateral queda en Tinta.
+  - Los bordes (`#2c3a33`) separan lo que en claro separa la sombra.
+- **Nunca blanco puro sobre negro puro:** el texto es `#f1f4f1` (16:1); el secundario, `#a3afa7` (7.4:1).
+- **El verde de acción no cambia:** blanco sobre `#0e7a4e` da 5.4:1. Los textos verde, coral y mango se aclaran, y sus fondos suaves se oscurecen.
+- **Cambio a la mano:**
+  - Botón *Modo oscuro / Modo claro* en la barra lateral, ícono en el encabezado del celular y del super admin.
+  - Selector *Claro / Oscuro / Sistema* en el menú *Más* y en *Configuración → Mi cuenta*.
+  - Por defecto sigue al sistema.
+- **Transición:** fundido de 320 ms con View Transitions; con "reducir movimiento" el cambio es inmediato.
+- **Barra del navegador:** el color de `theme-color` sigue al tema elegido.
+- **Implementación:** `useTheme()`, `setTheme()`, `ThemeToggle` y `ThemeSwitch` en `providers/ThemeToggle.tsx`. El script `themeScript` aplica el tema antes de pintar, así no hay parpadeo.
+
 ## Tipografía
 
 - **Bricolage Grotesque** (`font-display`, y automático en `h1` y `h2`): títulos de pantalla y de sección.

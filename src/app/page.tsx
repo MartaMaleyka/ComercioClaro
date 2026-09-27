@@ -145,7 +145,7 @@ export default async function LandingPage() {
             <p className="text-center text-slate-600 mb-6">
               Todos incluyen punto de venta, caja, inventario, fiado y venta sin conexión.
             </p>
-            <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {plans.map((plan) => (
                 <li
                   key={plan.id}

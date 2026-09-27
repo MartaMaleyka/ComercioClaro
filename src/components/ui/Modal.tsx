@@ -102,11 +102,11 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          "relative w-full bg-surface rounded-t-3xl sm:rounded-3xl shadow-xl max-h-[92vh] overflow-y-auto animate-in focus:outline-none",
+          "relative w-full bg-surface-raised rounded-t-3xl sm:rounded-3xl shadow-xl max-h-[92vh] overflow-y-auto animate-in focus:outline-none",
           size === "lg" ? "sm:max-w-3xl" : "sm:max-w-lg"
         )}
       >
-        <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6 pt-3 sm:pt-5 pb-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">
+        <div className="sticky top-0 z-10 bg-surface-raised px-5 sm:px-6 pt-3 sm:pt-5 pb-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">
           <span className="sm:hidden absolute left-1/2 top-2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-300" aria-hidden="true" />
           <h2 id={titleId} className="text-xl font-bold text-slate-900 pt-2 sm:pt-0">
             {title}

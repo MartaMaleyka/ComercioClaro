@@ -68,7 +68,7 @@ export function ReconciliationView() {
           </p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={run} className="grid sm:grid-cols-[1fr_200px_auto] gap-3 items-end">
+          <form onSubmit={run} className="grid grid-cols-1 sm:grid-cols-[1fr_200px_auto] gap-3 items-end">
             <div className="space-y-1.5">
               <label htmlFor={fileId} className="block text-sm font-medium text-slate-700">
                 {tr("Estado de cuenta (CSV)")}

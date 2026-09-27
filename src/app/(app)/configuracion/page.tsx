@@ -283,7 +283,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             value={form.description ?? ""}
             onChange={(e) => set("description", e.target.value)}
           />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label={tr("Teléfono")}
               type="tel"
@@ -310,7 +310,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               </option>
             ))}
           </Select>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label={tr("Formato")} value={form.locale} onChange={(e) => set("locale", e.target.value)}>
               {LOCALES.map((l) => (
                 <option key={l.value} value={l.value}>
@@ -441,7 +441,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
               onChange={(e) => set("loyaltyEnabled", e.target.checked)}
             />
             {form.loyaltyEnabled && (
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   label={tr("Puntos por cada 1.00 de compra")}
                   inputMode="decimal"
@@ -479,7 +479,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             />
             {form.catalogEnabled && (
               <>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label={tr("Dirección del catálogo")}
                     value={form.catalogSlug ?? ""}
@@ -520,7 +520,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             {tr("Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.")}
           </p>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-3 gap-3">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input
             label={tr("Tarjeta (%)")}
             inputMode="decimal"
@@ -716,7 +716,7 @@ function BusinessForm({ initial, onSaved }: { initial: BusinessData; onSaved: ()
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label={tr("RFC")}
                 value={form.rfc ?? ""}

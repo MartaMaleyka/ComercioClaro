@@ -36,7 +36,7 @@ function Movements({ product, onClose }: { product: Product; onClose: () => void
         <p className="text-sm text-slate-500">{tr("Sin movimientos registrados.")}</p>
       ) : (
         <div className="space-y-1">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={tr("Movimientos")}>
             <table className="w-full text-sm min-w-[420px]">
               <thead>
                 <tr className="text-left text-xs text-slate-500">

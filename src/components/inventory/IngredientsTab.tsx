@@ -59,7 +59,7 @@ export function IngredientsTab() {
   }
 
   return (
-    <div className="grid lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <section aria-labelledby="insumos-title" className="space-y-2">
         <h2 id="insumos-title" className="text-sm font-semibold text-slate-500">
           {tr("Insumos")}

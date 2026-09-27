@@ -76,7 +76,7 @@ function Editor({ initial, defaults }: { initial: Settings; defaults: Settings }
       </CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {PERCENT.map(([key, label]) => (
               <Input
                 key={key}

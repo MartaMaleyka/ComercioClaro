@@ -304,7 +304,7 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   return (
     <Modal open onClose={onClose} title={tr("Nueva orden de compra")} size="lg">
       <form onSubmit={save} className="space-y-4">
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Select label={tr("Proveedor")} value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
             <option value="">{tr("Otro / sin registrar")}</option>
             {suppliers?.map((s) => (

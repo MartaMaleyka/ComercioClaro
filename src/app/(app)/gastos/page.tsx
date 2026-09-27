@@ -145,7 +145,7 @@ function Expenses() {
         <RecurringTab categories={categories} />
       ) : (
         <>
-          <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar gasto")} />
             <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
             <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
