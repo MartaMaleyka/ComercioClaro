@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 import { useSession } from "@/components/providers/SessionProvider";
+import { OnboardingCard } from "@/components/onboarding/OnboardingCard";
 import { DgiLimitCard } from "@/components/panama/DgiLimitCard";
 
 interface Summary {
@@ -88,6 +89,8 @@ export default function DashboardPage() {
           </Link>
         }
       />
+
+      <OnboardingCard />
 
       {business.country === "PA" && business.usesFreeInvoicer && <DgiLimitCard compact />}
 

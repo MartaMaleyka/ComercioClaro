@@ -10,47 +10,188 @@ import { countryConfig } from "@/lib/country";
 import { D } from "@/lib/decimal";
 import type { Actor } from "./inventory";
 import { assertWithinLimit } from "./limits";
+import { TERMS_VERSION, businessTypeLabel, type BusinessType } from "@/lib/business-types";
 
 const RESET_TTL_MS = 60 * 60 * 1000;
 
-export async function registerAccount(input: {
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface RegisterInput {
   email: string;
   password: string;
   name: string;
   businessName: string;
   country?: "MX" | "PA" | "OTHER";
+  phone?: string | null;
+  businessType?: BusinessType;
   plan?: string | null;
-}) {
+}
+
+/**
+ * Registro desde la página pública: crea el dueño y su negocio, guarda la aceptación de los
+ * términos, envía la bienvenida con el enlace para confirmar el correo y avisa al super admin.
+ */
+export async function registerAccount(input: RegisterInput, mail: typeof sendEmail = sendEmail) {
   const country = countryConfig(input.country ?? "MX");
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError(409, "Ya existe una cuenta con este correo");
-  const subscription = await initialSubscription(input.plan ?? null);
+  const { plan, data: subscription } = await initialSubscription(input.plan ?? null);
+  const type = input.businessType ?? "OTRO";
+  const verifyToken = crypto.randomBytes(32).toString("hex");
+  const now = new Date();
 
-  const user = await prisma.user.create({
-    data: {
-      email: input.email,
-      passwordHash: await hashPassword(input.password),
-      name: input.name,
-      memberships: {
-        create: {
-          role: "OWNER",
-          business: {
-            create: {
-              name: input.businessName,
-              country: country.code,
-              currency: country.currency,
-              locale: country.locale,
-              timezone: country.timezone,
-              showBalboa: country.showBalboa,
-              ...subscription,
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email: input.email,
+        passwordHash: await hashPassword(input.password),
+        name: input.name,
+        termsAcceptedAt: now,
+        termsVersion: TERMS_VERSION,
+        emailVerifyHash: hashToken(verifyToken),
+        emailVerifyExpires: new Date(now.getTime() + VERIFY_TTL_MS),
+        memberships: {
+          create: {
+            role: "OWNER",
+            business: {
+              create: {
+                name: input.businessName,
+                phone: input.phone ?? null,
+                businessType: type,
+                signupSource: "SELF",
+                country: country.code,
+                currency: country.currency,
+                locale: country.locale,
+                timezone: country.timezone,
+                showBalboa: country.showBalboa,
+                // Configuración sugerida por el tipo (solo se ve si el plan incluye la función).
+                ...(type === "FONDA" ? { restaurantMode: true } : {}),
+                ...subscription,
+              },
             },
           },
         },
       },
-    },
-    include: { memberships: true },
+      include: { memberships: true },
+    });
+    await tx.adminAuditLog.create({
+      data: {
+        action: "business.register",
+        entity: "Business",
+        entityId: created.memberships[0].businessId,
+        userId: created.id,
+        details: {
+          name: input.businessName,
+          email: input.email,
+          type,
+          country: country.code,
+          plan: plan?.code ?? null,
+        },
+      },
+    });
+    return created;
   });
-  return { user, businessId: user.memberships[0].businessId };
+  const businessId = user.memberships[0].businessId;
+
+  // Los correos no deben impedir el registro: si fallan, el dueño puede pedir otro enlace.
+  await sendWelcome(mail, user, input.businessName, verifyToken, subscription).catch(() => undefined);
+  await notifyAdminsOfSignup(mail, { business: input.businessName, owner: user, type, country: country.code, plan: plan?.name ?? null }).catch(
+    () => undefined
+  );
+
+  // Un plan de pago sin prueba empieza pendiente de pago: lo primero es pagar en línea (si está disponible).
+  const pendingPayment = Boolean(plan && subscription.status === "ACTIVE" && subscription.paidUntil);
+  const next = pendingPayment && process.env.BILLING_PROVIDER ? "/configuracion/plan" : "/dashboard";
+  return { user, businessId, next };
+}
+
+async function sendWelcome(
+  mail: typeof sendEmail,
+  user: { email: string; name: string },
+  businessName: string,
+  verifyToken: string,
+  subscription: { trialEndsAt?: Date }
+) {
+  const link = `${getAppUrl()}/verificar-correo?token=${verifyToken}`;
+  const trial = subscription.trialEndsAt
+    ? `Tu periodo de prueba termina el ${new Intl.DateTimeFormat("es", { dateStyle: "long" }).format(subscription.trialEndsAt)}.`
+    : "";
+  const steps = [
+    "Agrega tus productos (o impórtalos desde Excel).",
+    "Abre la caja y haz tu primera venta.",
+    "Invita a tus cajeros desde Configuración → Usuarios.",
+  ];
+  await mail({
+    to: user.email,
+    subject: `Bienvenido a ComercioClaro · ${businessName}`,
+    text: [
+      `Hola ${user.name}:`,
+      "",
+      `Ya puedes usar ComercioClaro en ${businessName}. ${trial}`,
+      "",
+      `Confirma tu correo (el enlace vale 24 horas): ${link}`,
+      "",
+      "Primeros pasos:",
+      ...steps.map((s) => `• ${s}`),
+      "",
+      `Entrar: ${getAppUrl()}/login`,
+    ].join("\n"),
+    html: `<p>Hola ${escapeHtml(user.name)}:</p><p>Ya puedes usar ComercioClaro en <strong>${escapeHtml(businessName)}</strong>. ${escapeHtml(trial)}</p><p><a href="${link}">Confirmar mi correo</a> (el enlace vale 24 horas)</p><p>Primeros pasos:</p><ul>${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ul>`,
+  });
+}
+
+/** Aviso a los administradores de la plataforma de cada negocio que se registra. */
+async function notifyAdminsOfSignup(
+  mail: typeof sendEmail,
+  info: { business: string; owner: { email: string; name: string }; type: string; country: string; plan: string | null }
+) {
+  const admins = await prisma.user.findMany({ where: { isSuperAdmin: true, disabledAt: null }, select: { email: true } });
+  const lines = [
+    `Negocio: ${info.business}`,
+    `Dueño: ${info.owner.name} <${info.owner.email}>`,
+    `Tipo: ${businessTypeLabel(info.type) ?? info.type}`,
+    `País: ${info.country}`,
+    `Plan: ${info.plan ?? "sin plan"}`,
+  ];
+  for (const admin of admins) {
+    await mail({
+      to: admin.email,
+      subject: `Nuevo registro: ${info.business}`,
+      text: [...lines, "", `Ver en el panel: ${getAppUrl()}/admin/negocios`].join("\n"),
+      html: `<ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul><p><a href="${getAppUrl()}/admin/negocios">Ver en el panel</a></p>`,
+    });
+  }
+}
+
+/** Nuevo enlace para confirmar el correo (el anterior deja de servir). */
+export async function sendVerificationEmail(userId: string, mail: typeof sendEmail = sendEmail) {
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  if (user.emailVerifiedAt) return { alreadyVerified: true };
+  const token = crypto.randomBytes(32).toString("hex");
+  await prisma.user.update({
+    where: { id: userId },
+    data: { emailVerifyHash: hashToken(token), emailVerifyExpires: new Date(Date.now() + VERIFY_TTL_MS) },
+  });
+  const link = `${getAppUrl()}/verificar-correo?token=${token}`;
+  await mail({
+    to: user.email,
+    subject: "Confirma tu correo de ComercioClaro",
+    text: `Hola ${user.name}:\n\nConfirma tu correo con este enlace (vale 24 horas):\n${link}\n\nSi no creaste una cuenta, ignora este correo.`,
+    html: `<p>Hola ${escapeHtml(user.name)}:</p><p><a href="${link}">Confirmar mi correo</a> (el enlace vale 24 horas)</p><p>Si no creaste una cuenta, ignora este correo.</p>`,
+  });
+  return { alreadyVerified: false };
+}
+
+export async function verifyEmail(token: string) {
+  const user = await prisma.user.findUnique({ where: { emailVerifyHash: hashToken(token) } });
+  if (!user || !user.emailVerifyExpires || user.emailVerifyExpires < new Date()) {
+    throw new AppError(400, "El enlace de confirmación no es válido o ya venció. Pide otro desde la app.");
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerifiedAt: new Date(), emailVerifyHash: null, emailVerifyExpires: null },
+  });
+  return { email: user.email };
 }
 
 /**
@@ -62,15 +203,24 @@ async function initialSubscription(code: string | null) {
     ? await prisma.plan.findFirst({ where: { code, active: true, isPublic: true } })
     : null;
   const plan = chosen ?? (await prisma.plan.findFirst({ where: { isDefault: true, active: true } }));
-  if (!plan) return {};
-  return plan.trialDays > 0
-    ? {
-        planId: plan.id,
-        status: "TRIAL" as const,
-        trialEndsAt: new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000),
-      }
-    : // Sin prueba: un plan de pago queda pendiente de su primer pago (aviso de pago vencido).
-      { planId: plan.id, status: "ACTIVE" as const, paidUntil: D(plan.priceMonthly).gt(0) ? new Date() : null };
+  if (!plan) return { plan: null, data: {} as SubscriptionData };
+  const data: SubscriptionData =
+    plan.trialDays > 0
+      ? {
+          planId: plan.id,
+          status: "TRIAL",
+          trialEndsAt: new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000),
+        }
+      : // Sin prueba: un plan de pago queda pendiente de su primer pago (aviso de pago vencido).
+        { planId: plan.id, status: "ACTIVE", paidUntil: D(plan.priceMonthly).gt(0) ? new Date() : null };
+  return { plan, data };
+}
+
+interface SubscriptionData {
+  planId?: string;
+  status?: "TRIAL" | "ACTIVE";
+  trialEndsAt?: Date;
+  paidUntil?: Date | null;
 }
 
 /** Valida credenciales y devuelve el negocio con el que inicia la sesión. */

@@ -21,6 +21,7 @@ export const en: Record<string, string> = {
   "2x1 Cerveza Panamá": "2-for-1 Cerveza Panamá",
   "2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.":
     "2-for-1, 3 for B/.1, % off. Applied automatically at checkout.",
+  "2x1, precio por cantidad o descuento por porcentaje.": "2-for-1, quantity pricing or percentage discount.",
   "2x1, precio por cantidad y porcentaje.": "2-for-1, quantity pricing and percentage.",
   "3 = milésimas": "3 = thousandths",
   "30 días": "30 days",
@@ -58,6 +59,7 @@ export const en: Record<string, string> = {
   "Abono registrado": "Payment recorded",
   "Abonos a proveedores": "Supplier payments",
   "Abonos de clientes": "Customer payments",
+  "Abre la caja": "Open the till",
   Abrir: "Open",
   "Abrir WhatsApp para {name}": "Open WhatsApp for {name}",
   "Abrir caja": "Open register",
@@ -98,6 +100,7 @@ export const en: Record<string, string> = {
   "Agrega la receta de un plato desde Editar producto.": "Add a dish's recipe from Edit product.",
   "Agrega tu primer producto o importa tu catálogo desde Excel.":
     "Add your first product or import your catalog from Excel.",
+  "Agrega tus productos": "Add your products",
   Agregar: "Add",
   "Agregar extra": "Add extra",
   "Agregar forma de pago": "Add payment method",
@@ -153,7 +156,10 @@ export const en: Record<string, string> = {
   Archivar: "Archive",
   "Archivo CSV": "CSV file",
   "Archivó producto": "Archived product",
+  "Arma tus recetas": "Build your recipes",
   "Asignar código interno a {n} sin código": "Assign internal code to {n} without code",
+  "Así podrás recuperar tu contraseña y recibir los avisos de tu negocio.":
+    "So you can recover your password and get your business notices.",
   "Así va tu negocio": "How your business is doing",
   "Automática desde ComercioClaro con un PAC": "Automatic from ComercioClaro with a PAC",
   "Avance hacia el punto de equilibrio": "Progress toward break-even",
@@ -211,9 +217,13 @@ export const en: Record<string, string> = {
   CSV: "CSV",
   CUFE: "CUFE",
   "CUFE:": "CUFE:",
+  "Cada cajero con su usuario: sabrás quién vendió qué.":
+    "Each cashier with their own user: you'll know who sold what.",
   "Cada mes el día {n}": "Every month on day {n}",
   "Cada plato descuenta sus insumos al venderse; costo por plato y merma.":
     "Each dish deducts its ingredients when sold; cost per dish and waste.",
+  "Cada plato descuenta sus insumos y ves el costo por plato.":
+    "Each dish deducts its ingredients and you see the cost per dish.",
   "Cada sucursal tiene su propio inventario, caja y ventas. En Reportes puedes ver el consolidado de todas.":
     "Each branch has its own inventory, register and sales. Reports show the combined totals.",
   Caducado: "Expired",
@@ -306,6 +316,7 @@ export const en: Record<string, string> = {
   "Clientes y marketing": "Customers and marketing",
   "Cobra aquí lo que procesas en la terminal del proveedor para que la caja cuadre y tu comisión cuente como ganancia.":
     "Charge here what you process on the provider's terminal so the register balances and your commission counts as profit.",
+  "Cobra en efectivo, tarjeta, Yappy o fiado.": "Charge in cash, card, Yappy or on credit.",
   Cobrado: "Collected",
   "Cobrado en la venta #{folio}": "Charged in sale #{folio}",
   "Cobrado este mes": "Collected this month",
@@ -333,6 +344,7 @@ export const en: Record<string, string> = {
     "Share these details with the person. They must change the password when they sign in.",
   Compra: "Purchase",
   "Compra #{folio}": "Purchase #{folio}",
+  "Compra a crédito y lleva lo que debes y cuándo vence.": "Buy on credit and track what you owe and when it's due.",
   "Compra cancelada": "Purchase cancelled",
   "Compra mínima": "Minimum purchase",
   "Compra registrada; inventario y costos actualizados": "Purchase recorded; stock and costs updated",
@@ -358,7 +370,12 @@ export const en: Record<string, string> = {
   "Conciliar con el banco": "Reconcile with the bank",
   "Conectar balanza": "Connect scale",
   "Configura las comisiones en Configuración": "Set up fees in Settings",
+  "Configura tu balanza": "Set up your scale",
   Configuración: "Settings",
+  Configurar: "Set up",
+  "Confirma tu correo": "Confirm your email",
+  "Confirma tu correo {email} con el enlace que te enviamos: así podrás recuperar tu contraseña.":
+    "Confirm your email {email} with the link we sent: that way you can recover your password.",
   Confirmar: "Confirm",
   Contabilidad: "Accounting",
   "Contabilidad automática": "Automatic accounting",
@@ -377,6 +394,7 @@ export const en: Record<string, string> = {
   "Contraseña temporal": "Temporary password",
   "Control de facturas electrónicas y de los límites del facturador gratuito":
     "E-invoices and free invoicer limit tracking",
+  "Controla la caducidad": "Track expiry",
   "Controlar lotes y fecha de caducidad": "Track lots and expiry date",
   "Conéctala por USB o con un adaptador serie. En el punto de venta aparece el botón Pesar en los productos por libra o kilo.":
     "Connect it by USB or a serial adapter. At the point of sale, products sold by the pound or kilo show a Weigh button.",
@@ -400,6 +418,7 @@ export const en: Record<string, string> = {
     "Create a coupon to send in a campaign and apply at checkout.",
   "Crea una orden desde aquí o desde Inventario → Qué comprar y envíala al proveedor por WhatsApp.":
     "Create an order here or from Inventory → What to buy and send it to the supplier on WhatsApp.",
+  "Crea una promoción": "Create a promotion",
   "Creado el {date}": "Created on {date}",
   Crear: "Create",
   "Crear campaña": "Create campaign",
@@ -602,6 +621,7 @@ export const en: Record<string, string> = {
   "El saldo quedaría en {amount} la semana del {date}. Adelanta cobros de fiado o negocia fechas con tus proveedores.":
     "The balance would be {amount} in the week of {date}. Collect credit sooner or negotiate dates with your suppliers.",
   "El vale está anulado": "The gift card is void",
+  "Elige cómo pagar tu plan": "Choose how to pay your plan",
   "Elige un insumo": "Choose an ingredient",
   Eliminar: "Delete",
   "Eliminar gasto": "Delete expense",
@@ -648,6 +668,7 @@ export const en: Record<string, string> = {
   "Entró como soporte": "Entered as support",
   Enviada: "Sent",
   Enviado: "Sent",
+  "Enviando…": "Sending…",
   Enviar: "Send",
   "Enviar a": "Send to",
   "Enviar mercancía": "Send goods",
@@ -801,6 +822,7 @@ export const en: Record<string, string> = {
   Hasta: "To",
   "Hasta (opcional)": "To (optional)",
   "Hay {stock} · vendes {avg}/día": "{stock} in stock · you sell {avg}/day",
+  "Haz tu primera venta": "Make your first sale",
   "Historial de administración": "Administration history",
   "Historial de precios": "Price history",
   "Historial, devoluciones y tickets": "History, returns and receipts",
@@ -835,6 +857,8 @@ export const en: Record<string, string> = {
   Inactivo: "Inactive",
   "Incluir todas las de {group}": "Include all {group}",
   "Incluye descuento de jubilado": "Includes retiree discount",
+  "Indica con cuánto efectivo empiezas para cuadrar al cerrar.":
+    "Enter your starting cash so the till balances at closing.",
   "Indica qué cantidad se devuelve": "Enter the quantity returned",
   "Ingreso mensual recurrente": "Monthly recurring revenue",
   "Iniciar conteo": "Start count",
@@ -845,8 +869,14 @@ export const en: Record<string, string> = {
   Inventario: "Inventory",
   "Inventario inicial": "Initial stock",
   "Inventario y compras": "Inventory and purchasing",
+  "Invita a tu equipo": "Invite your team",
+  Invitar: "Invite",
+  "Ir a insumos": "Go to ingredients",
   "Ir a mi negocio": "Go to my business",
+  "Ir a promociones": "Go to promotions",
+  "Ir a proveedores": "Go to suppliers",
   "Ir al contenido": "Skip to content",
+  "Ir al inventario": "Go to inventory",
   Jubilado: "Retiree",
   "Jubilado o pensionado": "Retiree or pensioner",
   "Jubilado o pensionado ({rate}%)": "Retiree or pensioner ({rate}%)",
@@ -933,6 +963,8 @@ export const en: Record<string, string> = {
   "Límite de crédito (fiado)": "Credit limit",
   "Límites de la Resolución DGI 201-6299 (desde el 1 de enero de 2026): hasta B/.36,000 de ingresos al año y 100 documentos al mes.":
     "Limits of DGI Resolution 201-6299 (since January 1, 2026): up to B/.36,000 of income per year and 100 documents per month.",
+  "Marca los productos con fecha de vencimiento para recibir alertas.":
+    "Mark products with an expiry date to get alerts.",
   "Marca tus insumos (pollo, arroz, aceite) al crearlos y agrega la receta de cada plato desde Editar producto.":
     "Mark your ingredients (chicken, rice, oil) when you create them and add each dish's recipe from Edit product.",
   "Marcar enviado a {name}": "Mark as sent to {name}",
@@ -1076,6 +1108,7 @@ export const en: Record<string, string> = {
   "Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).":
     "Required with a PAC if you exceed B/.36,000 a year or 100 documents a month (Resolution 201-6299).",
   Ocultar: "Hide",
+  "Ocultar la guía de primeros pasos": "Hide the first-steps guide",
   Oculto: "Hidden",
   "Ocurrió un error": "An error occurred",
   Onza: "Ounce",
@@ -1097,6 +1130,7 @@ export const en: Record<string, string> = {
   Paga: "Pay",
   "Paga con Yappy": "Pay with Yappy",
   "Paga el fiado": "Pays credit",
+  "Paga en línea con tarjeta y olvídate de los vencimientos.": "Pay online by card and forget about due dates.",
   Pagada: "Paid",
   "Pagado con": "Paid with",
   "Pagado hasta": "Paid until",
@@ -1167,6 +1201,7 @@ export const en: Record<string, string> = {
   Periodo: "Period",
   "Periodo de la proyección": "Projection period",
   Persona: "Person",
+  "Pesa desde el punto de venta y lee las etiquetas de peso.": "Weigh from the point of sale and read weight labels.",
   "Pesando…": "Weighing…",
   Pesar: "Weigh",
   "Pesar {name}": "Weigh {name}",
@@ -1220,6 +1255,7 @@ export const en: Record<string, string> = {
   Preparando: "Preparing",
   Preparar: "Start",
   "Prima de antigüedad: {amount}": "Seniority premium: {amount}",
+  "Primeros pasos": "First steps",
   Principal: "Main",
   "Probar lectura": "Test reading",
   "Procesadas {processed}: {stamped} emitidas, {pending} pendientes, {errors} con error":
@@ -1308,10 +1344,12 @@ export const en: Record<string, string> = {
   Recurrente: "Recurring",
   Recurrentes: "Recurring",
   Reembolso: "Refund",
+  "Reenviar enlace": "Resend link",
   Referencia: "Reference",
   "Referencia de {method}": "{method} reference",
   "Registra a quién le compras para comparar precios y saber a quién pedir.":
     "Record who you buy from to compare prices and know whom to order from.",
+  "Registra a tus proveedores": "Add your suppliers",
   "Registra clientes para venderles fiado y llevar su cuenta.":
     "Register customers to sell on credit and keep their account.",
   "Registra la mercancía que compras para actualizar existencias y costos.":
@@ -1414,6 +1452,7 @@ export const en: Record<string, string> = {
   "Se prepara en cocina (aparece en la pantalla de cocina)": "Prepared in the kitchen (shown on the kitchen display)",
   "Se quitan los {n} ajuste(s) a mano de este negocio.": "This removes the {n} manual override(s) for this business.",
   "Se recalcula con cada compra (promedio)": "Recalculated with every purchase (average)",
+  "Se registró un negocio": "A business signed up",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
     "The goods will be removed from inventory. If already sold, it cannot be cancelled.",
   "Se usan en el flujo de caja y el punto de equilibrio": "Used in the cash flow and break-even",
@@ -1547,6 +1586,7 @@ export const en: Record<string, string> = {
   "Tarjetas de regalo que tus clientes pagan hoy y usan después":
     "Gift cards your customers pay for today and use later",
   Tasa: "Rate",
+  "Te enviamos un nuevo enlace. Revisa tu correo.": "We sent you a new link. Check your email.",
   Teléfono: "Phone",
   "Teléfono (WhatsApp)": "Phone (WhatsApp)",
   Tema: "Theme",
@@ -1599,6 +1639,7 @@ export const en: Record<string, string> = {
   "Traspasos entre sucursales": "Transfers between branches",
   "Tu comisión: {amount}": "Your commission: {amount}",
   "Tu compra": "Your purchase",
+  "Tu correo ya está confirmado": "Your email is already confirmed",
   "Tu periodo de prueba termina en {days} día(s). Contacta al administrador para activar tu plan.":
     "Your trial ends in {days} day(s). Contact the administrator to activate your plan.",
   "Tu plan": "Your plan",
@@ -1614,6 +1655,8 @@ export const en: Record<string, string> = {
     "A public page with your products and prices. Customers build their order and send it to you on WhatsApp.",
   "Unidad del peso": "Weight unit",
   "Unidades por caja (opcional)": "Units per box (optional)",
+  "Uno por uno, con el lector de códigos o importándolos desde Excel.":
+    "One by one, with the barcode scanner or by importing from Excel.",
   "Usar cuentas abiertas y pantalla de cocina": "Use open tabs and kitchen display",
   "Uso de la plataforma": "Platform usage",
   "Uso del CFDI": "CFDI use",
@@ -1707,6 +1750,7 @@ export const en: Record<string, string> = {
   "Ver detalle": "View details",
   "Ver el negocio": "View the business",
   "Ver gráfica": "View chart",
+  "Ver mi plan": "See my plan",
   "Ver negocio": "View business",
   "Ver pagadas y canceladas": "Show paid and cancelled",
   "Ver qué incluye cada plan": "See what each plan includes",
@@ -1750,6 +1794,7 @@ export const en: Record<string, string> = {
   "impuestos y datos adicionales": "taxes and additional details",
   inactivo: "inactive",
   "incluye décimo": "includes 13th month",
+  listo: "done",
   mensual: "monthly",
   mes: "month",
   "mín.": "min.",
@@ -1771,6 +1816,7 @@ export const en: Record<string, string> = {
   "{amount} vencido ({n})": "{amount} overdue ({n})",
   "{amount} vencido · {days} d": "{amount} overdue · {days} d",
   "{created} creados · {updated} actualizados": "{created} created · {updated} updated",
+  "{done} de {total} listos": "{done} of {total} done",
   "{feature} activa": "{feature} on",
   "{feature} activa en {name}": "{feature} on for {name}",
   "{feature} apagada": "{feature} off",

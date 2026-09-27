@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/providers/ToastProvider";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -35,7 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSession, type SessionBusiness } from "@/components/providers/SessionProvider";
 import useSWR from "swr";
-import { fetcher } from "@/lib/client/api";
+import { api, fetcher } from "@/lib/client/api";
 import { useOnline } from "@/lib/client/hooks";
 import { TranslationFeedbackButton } from "./TranslationFeedbackButton";
 import { OfflineSync } from "@/components/pwa/OfflineSync";
@@ -299,6 +300,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           access={business.access}
           isSuperAdmin={user.isSuperAdmin}
           canPayOnline={role === "OWNER" && business.onlineBilling}
+          unverifiedEmail={user.emailVerified || support ? null : user.email}
         />
 
         <main id="contenido" className="px-4 py-5 max-w-6xl mx-auto w-full">
@@ -387,12 +389,15 @@ function AccountNotices({
   access,
   isSuperAdmin,
   canPayOnline,
+  unverifiedEmail,
 }: {
   support: boolean;
   businessName: string;
   access: SessionBusiness["access"];
   isSuperAdmin: boolean;
   canPayOnline: boolean;
+  /** Correo aún sin confirmar (null si ya está confirmado) */
+  unverifiedEmail: string | null;
 }) {
   const tr = useText();
   const router = useRouter();
@@ -441,6 +446,7 @@ function AccountNotices({
           )}
         </div>
       )}
+      {unverifiedEmail && <VerifyEmailNotice email={unverifiedEmail} />}
       {warning?.kind === "overdue" && (
         <div role="status" className="bg-amber-50 text-amber-800 text-sm px-4 py-2">
           {tr("El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.")}
@@ -455,5 +461,31 @@ function AccountNotices({
         </div>
       )}
     </>
+  );
+}
+
+/** Aviso para confirmar el correo, con reenvío del enlace. */
+function VerifyEmailNotice({ email }: { email: string }) {
+  const tr = useText();
+  const toast = useToast();
+  const [sending, setSending] = useState(false);
+  async function resend() {
+    setSending(true);
+    try {
+      await api("/api/auth/verify-email/resend", { method: "POST" });
+      toast.success(tr("Te enviamos un nuevo enlace. Revisa tu correo."));
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSending(false);
+    }
+  }
+  return (
+    <div role="status" className="bg-blue-50 text-blue-800 text-sm px-4 py-2">
+      {tr("Confirma tu correo {email} con el enlace que te enviamos: así podrás recuperar tu contraseña.", { email })}{" "}
+      <button type="button" onClick={resend} disabled={sending} className="font-medium underline disabled:opacity-60">
+        {sending ? tr("Enviando…") : tr("Reenviar enlace")}
+      </button>
+    </div>
   );
 }

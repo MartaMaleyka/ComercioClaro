@@ -1,7 +1,8 @@
 "use client";
 
 import { useText } from "@/lib/client/i18n";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 import { Building2, CreditCard, KeyRound, LogOut, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
@@ -32,10 +33,28 @@ import { ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 type Tab = "perfil" | "negocio" | "usuarios" | "sucursales" | "bitacora";
 
 export default function SettingsPage() {
+  return (
+    <Suspense>
+      <Settings />
+    </Suspense>
+  );
+}
+
+const TABS: Tab[] = ["perfil", "negocio", "usuarios", "sucursales", "bitacora"];
+
+function Settings() {
   const tr = useText();
   const { role, business } = useSession();
   const isOwner = role === "OWNER";
-  const [tab, setTab] = useState<Tab>(isOwner ? "negocio" : "perfil");
+  // ?tab=usuarios abre esa pestaña (enlaces de la guía de primeros pasos).
+  const requested = useSearchParams().get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    requested && TABS.includes(requested) && (isOwner || requested === "perfil")
+      ? requested
+      : isOwner
+        ? "negocio"
+        : "perfil"
+  );
   const tabs: { value: Tab; label: string }[] = isOwner
     ? [
         { value: "negocio", label: tr("Negocio") },
