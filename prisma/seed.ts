@@ -11,6 +11,7 @@ import { FEATURE_KEYS, type FeatureKey } from "../src/lib/features";
 import { saveRecipe } from "../src/server/recipes";
 import { adjustStock } from "../src/server/inventory";
 import { createSupplierBill, paySupplierBill } from "../src/server/payables";
+import { createRecurringExpense } from "../src/server/cashflow";
 import { addDays, dayKey } from "../src/lib/dates";
 import type { Prisma } from "../src/generated/prisma/client";
 
@@ -878,6 +879,7 @@ const PLANS = [
       "variants",
       "inventoryCounts",
       "export",
+      "cashflow",
     ],
     isDefault: true,
     sortOrder: 2,
@@ -901,7 +903,8 @@ const PLANS = [
  * a los planes existentes (sin quitar lo que el super admin haya cambiado).
  */
 const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
-  empresarial: ["recipes"],
+  pro: ["cashflow"],
+  empresarial: ["recipes", "cashflow"],
 };
 
 /** Planes, super admin y la suscripción de cada negocio de demostración. */
@@ -1115,6 +1118,22 @@ async function seedSplitPayments() {
   console.log("✅ Venta con pago dividido");
 }
 
+/** Gastos fijos del minisúper para el flujo de caja y el punto de equilibrio. */
+async function seedRecurringExpenses() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  if (await prisma.recurringExpense.findFirst({ where: { businessId: demo.business.id } })) return;
+  const fixed = [
+    { category: "Renta", amount: 650, dayOfMonth: 1, description: "Local en El Dorado" },
+    { category: "Luz", amount: 180, dayOfMonth: 12, description: "Naturgy" },
+    { category: "Internet / teléfono", amount: 45, dayOfMonth: 20, description: null },
+  ];
+  for (const f of fixed) {
+    await createRecurringExpense(demo.actor, { ...f, paymentMethod: "TRANSFER", active: true });
+  }
+  console.log("✅ Gastos recurrentes del minisúper");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1125,6 +1144,7 @@ async function main() {
   await seedRecipes();
   await seedPayables();
   await seedSplitPayments();
+  await seedRecurringExpenses();
 }
 
 main()

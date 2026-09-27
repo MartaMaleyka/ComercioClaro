@@ -16,6 +16,7 @@ export const en: Record<string, string> = {
   "20% · farmacia (medicamentos)": "20% · pharmacy (medicines)",
   "25% · restaurante o fonda (consumo individual)": "25% · restaurant or fonda (individual meal)",
   "26.5% (cerveza)": "26.5% (beer)",
+  "29, 30 y 31 caen el último día en meses más cortos": "29, 30 and 31 fall on the last day in shorter months",
   "2x1 Cerveza Panamá": "2-for-1 Cerveza Panamá",
   "2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.":
     "2-for-1, 3 for B/.1, % off. Applied automatically at checkout.",
@@ -38,6 +39,9 @@ export const en: Record<string, string> = {
   "A crédito · saldo {amount}": "On credit · balance {amount}",
   "A domicilio": "Delivery",
   "A este ritmo cerrarías el año en {amount}.": "At this pace you would close the year at {amount}.",
+  "A tu ritmo actual lo alcanzas el día {n} del mes.": "At your current pace you reach it on day {n} of the month.",
+  "A tu ritmo actual necesitarías {n} días: más de los que tiene el mes.":
+    "At your current pace you would need {n} days: more than the month has.",
   "A un plazo en días": "Within a number of days",
   Abierta: "Open",
   Abiertas: "Open",
@@ -63,6 +67,7 @@ export const en: Record<string, string> = {
   Activas: "Active",
   Activo: "Active",
   "Activo (se puede asignar)": "Active (can be assigned)",
+  "Activo: se registra cada mes": "Active: recorded every month",
   Activos: "Active",
   Actual: "Current",
   "Actualizar contraseña": "Update password",
@@ -120,11 +125,14 @@ export const en: Record<string, string> = {
   "Asignar código interno a {n} sin código": "Assign internal code to {n} without code",
   "Así va tu negocio": "How your business is doing",
   "Automática desde ComercioClaro con un PAC": "Automatic from ComercioClaro with a PAC",
+  "Avance hacia el punto de equilibrio": "Progress toward break-even",
   "Avísale al cliente por WhatsApp si ya no podrás atender su pedido.":
     "Let the customer know on WhatsApp if you can no longer fill their order.",
   "Aún no hay planes. Mientras tanto, todos los negocios tienen todas las funciones.":
     "No plans yet. Meanwhile, every business has all features.",
   "Aún no hay productos contados.": "No products counted yet.",
+  "Aún no hay ventas con margen en los últimos 90 días para calcular el punto de equilibrio.":
+    "There are no sales with margin in the last 90 days to calculate the break-even point yet.",
   "Aún no hay ventas.": "No sales yet.",
   Bajo: "Low",
   "Bajo el mínimo": "Below minimum",
@@ -152,6 +160,7 @@ export const en: Record<string, string> = {
   CSV: "CSV",
   CUFE: "CUFE",
   "CUFE:": "CUFE:",
+  "Cada mes el día {n}": "Every month on day {n}",
   "Cada plato descuenta sus insumos al venderse; costo por plato y merma.":
     "Each dish deducts its ingredients when sold; cost per dish and waste.",
   "Cada sucursal tiene su propio inventario, caja y ventas. En Reportes puedes ver el consolidado de todas.":
@@ -235,6 +244,7 @@ export const en: Record<string, string> = {
   "Cobro al celular del cliente con confirmación.": "Charge the customer's phone with confirmation.",
   "Cobro automático con Yappy": "Automatic Yappy charges",
   "Cobro automático por celular (API de Yappy Comercial)": "Automatic charge by phone (Yappy Comercial API)",
+  "Cobros de fiado": "Credit collections",
   "Cobros por": "Payments by",
   Cocina: "Kitchen",
   "Comisiones estimadas": "Estimated fees",
@@ -337,6 +347,8 @@ export const en: Record<string, string> = {
     "Sets taxes, invoicing and formats. Changing it adjusts currency, format and time zone.",
   "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.":
     "It will no longer appear in the catalog, but its sales and purchase history is kept.",
+  "Dejará de registrarse cada mes. Los gastos ya registrados se conservan.":
+    "It will stop being recorded each month. Expenses already recorded are kept.",
   "Depósitos en el archivo": "Deposits in the file",
   "Depósitos sin venta": "Deposits without a sale",
   Desactivada: "Off",
@@ -389,16 +401,19 @@ export const en: Record<string, string> = {
   Dueño: "Owner",
   "Dueño (acceso total)": "Owner (full access)",
   Día: "Day",
+  "Día del mes": "Day of the month",
   "Días de crédito": "Credit days",
   "Días de prueba": "Trial days",
   "Días de visita, condiciones de pago...": "Visit days, payment terms...",
   "Días que se aceptan ventas hechas sin conexión": "Days offline sales are accepted",
   Editar: "Edit",
   "Editar cliente": "Edit customer",
+  "Editar gasto recurrente": "Edit recurring expense",
   "Editar plan": "Edit plan",
   "Editar producto": "Edit product",
   "Editar promoción": "Edit promotion",
   "Editar proveedor": "Edit supplier",
+  "Editar {name}": "Edit {name}",
   "Editó cliente": "Edited customer",
   "Editó configuración": "Edited settings",
   "Editó producto": "Edited product",
@@ -438,10 +453,14 @@ export const en: Record<string, string> = {
     "Your plan payment is pending. Contact the administrator to avoid suspension.",
   "El saldo de {amount} dejará de poder usarse. No se devuelve dinero.":
     "The {amount} balance can no longer be used. No money is refunded.",
+  "El saldo quedaría en {amount} la semana del {date}. Adelanta cobros de fiado o negocia fechas con tus proveedores.":
+    "The balance would be {amount} in the week of {date}. Collect credit sooner or negotiate dates with your suppliers.",
   "El vale está anulado": "The gift card is void",
   "Elige un insumo": "Choose an ingredient",
   Eliminar: "Delete",
   "Eliminar gasto": "Delete expense",
+  "Eliminar gasto recurrente": "Delete recurring expense",
+  "Eliminar {name}": "Delete {name}",
   "Eliminó gasto": "Deleted expense",
   "Eliminó un plan": "Deleted a plan",
   "Emisión automática con CUFE y QR.": "Automatic issuing with CUFE and QR.",
@@ -546,6 +565,9 @@ export const en: Record<string, string> = {
   Fiado: "Credit",
   "Fiado por cobrar": "Credit receivable",
   Fila: "Row",
+  "Flujo de caja proyectado": "Projected cash flow",
+  "Flujo de caja y punto de equilibrio": "Cash flow and break-even",
+  "Flujo y equilibrio": "Cash flow & break-even",
   "Fondo inicial": "Opening float",
   "Forma de pago": "Payment method",
   "Forma de pago {n}": "Payment method {n}",
@@ -557,10 +579,16 @@ export const en: Record<string, string> = {
   Galón: "Gallon",
   "Ganancia neta": "Net profit",
   Gasto: "Expense",
+  "Gasto recurrente": "Recurring expense",
+  "Gasto recurrente guardado": "Recurring expense saved",
   "Gasto registrado": "Expense recorded",
   Gastos: "Expenses",
   "Gastos de caja": "Expenses from the register",
+  "Gastos fijos": "Fixed expenses",
+  "Gastos fijos al mes": "Fixed expenses per month",
+  "Gastos fijos del mes": "Fixed expenses this month",
   "Gastos por categoría": "Expenses by category",
+  "Gastos recurrentes y planilla": "Recurring expenses and payroll",
   "Gastos {expenses}": "Expenses {expenses}",
   "Gastos {expenses} · comisiones de recargas {commissions}": "Expenses {expenses} · top-up commissions {commissions}",
   "Generó una contraseña temporal": "Generated a temporary password",
@@ -692,6 +720,7 @@ export const en: Record<string, string> = {
   "Marca tus insumos (pollo, arroz, aceite) al crearlos y agrega la receta de cada plato desde Editar producto.":
     "Mark your ingredients (chicken, rice, oil) when you create them and add each dish's recipe from Edit product.",
   "Marcar listo": "Mark ready",
+  "Margen de contribución": "Contribution margin",
   "Margen {n}%": "Margin {n}%",
   Mayoreo: "Wholesale",
   "Mayoreo desde (cantidad)": "Wholesale from (quantity)",
@@ -780,6 +809,7 @@ export const en: Record<string, string> = {
   Nuevo: "New",
   "Nuevo cliente": "New customer",
   "Nuevo gasto": "New expense",
+  "Nuevo gasto recurrente": "New recurring expense",
   "Nuevo negocio": "New business",
   "Nuevo plan": "New plan",
   "Nuevo producto": "New product",
@@ -829,6 +859,8 @@ export const en: Record<string, string> = {
   'Para cambiar la existencia usa "Ajustar existencia" y queda registrado el motivo.':
     'To change the stock use "Adjust stock" and the reason is recorded.',
   "Para cobrar con vale necesitas conexión.": "You need a connection to charge with a gift card.",
+  "Para cubrir tus gastos fijos necesitas vender {amount} al mes.":
+    "To cover your fixed expenses you need to sell {amount} a month.",
   'Para dar de baja producto caducado usa "Ajustar existencia" con motivo Caducidad.':
     'To write off expired products use "Adjust stock" with reason Expiry.',
   "Para el enlace de registro, p. ej. pro": "For the sign-up link, e.g. pro",
@@ -840,6 +872,7 @@ export const en: Record<string, string> = {
     "For diners and cafés: open tabs per table and a kitchen display.",
   "Para seguir usando {name}, contacta al administrador y activa un plan. Tus datos se conservan.":
     "To keep using {name}, contact the administrator and activate a plan. Your data is kept.",
+  Pausado: "Paused",
   País: "Country",
   "Pedido #{n}": "Order #{n}",
   "Pedido en línea #{n} · {name}": "Online order #{n} · {name}",
@@ -853,6 +886,7 @@ export const en: Record<string, string> = {
   "Perderá el acceso a este negocio de inmediato.": "They will lose access to this business immediately.",
   Periodicidad: "Frequency",
   Periodo: "Period",
+  "Periodo de la proyección": "Projection period",
   Persona: "Person",
   Pieza: "Piece",
   Plan: "Plan",
@@ -861,6 +895,7 @@ export const en: Record<string, string> = {
   "Plan por defecto al registrarse": "Default plan on sign-up",
   "Plan, estado, funciones y pagos de cada negocio": "Plan, status, features and payments of each business",
   "Planes y precios": "Plans and pricing",
+  Planilla: "Payroll",
   "Platos con receta": "Dishes with a recipe",
   "Plazo para pagar cada venta fiada": "Time to pay each credit sale",
   "Podrá ver y cambiar todos los negocios, planes, pagos y usuarios.":
@@ -899,6 +934,7 @@ export const en: Record<string, string> = {
   "Productos activos": "Active products",
   "Productos, existencias y alertas": "Products, stock and alerts",
   "Programa de puntos": "Points program",
+  "Promedio de tus gastos; registra los recurrentes": "Average of your expenses; record the recurring ones",
   Promociones: "Promotions",
   Promoción: "Promotion",
   "Promoción guardada": "Promotion saved",
@@ -907,6 +943,8 @@ export const en: Record<string, string> = {
   Proveedores: "Suppliers",
   "Proveedores que cobras en la tienda y la comisión que te paga cada uno por cobro.":
     "Providers you collect for in the store and the commission each one pays you per payment.",
+  "Proyección a 30, 60 y 90 días, gastos recurrentes y ventas necesarias para no perder.":
+    "30, 60 and 90-day projection, recurring expenses and the sales needed to break even.",
   Prueba: "Trial",
   "Prueba termina el {date}": "Trial ends on {date}",
   "Prueba vencida": "Trial expired",
@@ -916,6 +954,7 @@ export const en: Record<string, string> = {
   "Próximos a caducar": "Expiring soon",
   "Publicar catálogo": "Publish catalog",
   "Puede devolver hasta": "Can return up to",
+  "Punto de equilibrio del mes": "This month's break-even",
   "Puntos de lealtad": "Loyalty points",
   "Puntos por cada 1.00 de compra": "Points per 1.00 spent",
   "QR de Yappy": "Yappy QR",
@@ -950,6 +989,8 @@ export const en: Record<string, string> = {
   "Recibir mercancía": "Receive goods",
   "Recibir orden #{folio}": "Receive order #{folio}",
   "Recoge en tienda": "Pickup in store",
+  Recurrente: "Recurring",
+  Recurrentes: "Recurring",
   Reembolso: "Refund",
   Referencia: "Reference",
   "Referencia de {method}": "{method} reference",
@@ -959,6 +1000,8 @@ export const en: Record<string, string> = {
     "Register customers to sell on credit and keep their account.",
   "Registra la mercancía que compras para actualizar existencias y costos.":
     "Record the goods you buy to update stock and costs.",
+  "Registra la renta, la luz o el internet una vez y se anotarán solos cada mes en su día.":
+    "Record rent, electricity or internet once and they'll be recorded automatically each month on their day.",
   "Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta.":
     "Record rent, power, wages and other expenses to see your net profit.",
   "Registrado. Recuerda procesarlo en la terminal del proveedor.":
@@ -1005,7 +1048,11 @@ export const en: Record<string, string> = {
   "Régimen fiscal (clave SAT)": "Tax regime (SAT code)",
   "SKU interno": "Internal SKU",
   Saldo: "Balance",
+  "Saldo al final": "Closing balance",
   "Saldo del vale: {amount}": "Gift card balance: {amount}",
+  "Saldo inicial": "Opening balance",
+  "Saldo inicial: el efectivo esperado en la caja abierta. Escribe el total de caja y banco para afinarlo.":
+    "Opening balance: the expected cash in the open register. Enter your total cash and bank to refine it.",
   "Saldo pendiente": "Outstanding balance",
   "Saldo pendiente: {amount}": "Balance due: {amount}",
   "Sale del efectivo de la caja (entra al corte)": "Comes out of the register cash (included in the cash count)",
@@ -1021,6 +1068,7 @@ export const en: Record<string, string> = {
   "Se recalcula con cada compra (promedio)": "Recalculated with every purchase (average)",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
     "The goods will be removed from inventory. If already sold, it cannot be cancelled.",
+  "Se usan en el flujo de caja y el punto de equilibrio": "Used in the cash flow and break-even",
   "Se usan para mostrar cuánto te cuesta cobrar y tu ganancia después de comisiones.":
     "Used to show what charging costs you and your profit after fees.",
   "Se vende por": "Sold by",
@@ -1030,6 +1078,7 @@ export const en: Record<string, string> = {
   Selecciona: "Select",
   "Selecciona un cliente con datos fiscales": "Select a customer with tax details",
   "Seleccionar todos": "Select all",
+  Semana: "Week",
   Semanal: "Weekly",
   Servicio: "Service",
   Servido: "Served",
@@ -1042,6 +1091,8 @@ export const en: Record<string, string> = {
     "If the date passes, credit days apply until you change it",
   "Si ves un texto mal traducido, usa “Reportar traducción”.":
     "If you see a badly translated text, use “Report translation”.",
+  "Sin caja abierta el saldo inicial es 0. Escribe el total de caja y banco para afinarlo.":
+    "With no open register the opening balance is 0. Enter your total cash and bank to refine it.",
   "Sin cambios registrados.": "No changes recorded.",
   "Sin categoría": "Uncategorized",
   "Sin clientes": "No customers",
@@ -1054,6 +1105,7 @@ export const en: Record<string, string> = {
   "Sin facturas": "No invoices",
   "Sin facturas pagadas todavía.": "No paid invoices yet.",
   "Sin gastos": "No expenses",
+  "Sin gastos recurrentes": "No recurring expenses",
   "Sin gastos registrados en el periodo.": "No expenses recorded in the period.",
   "Sin límite": "No limit",
   "Sin merma en el periodo. Se registra con Ajustar existencia y el motivo Merma, Caducidad o Dañado.":
@@ -1212,24 +1264,30 @@ export const en: Record<string, string> = {
   "Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos, venta sin conexión y el descuento de jubilado están en todos los planes.":
     "Selling, cash, inventory, customers and credit, purchases, expenses, basic reports, offline sales and the retiree discount are in every plan.",
   Vendido: "Sold",
+  "Vendido este mes": "Sold this month",
   Venta: "Sale",
   "Venta #{folio}": "Sale #{folio}",
   "Venta cancelada": "Sale cancelled",
   "Venta de vales y cobro con ellos.": "Sell gift cards and accept them as payment.",
+  "Venta diaria promedio": "Average daily sales",
   "Venta sin conexión": "Offline sales",
   Ventas: "Sales",
   "Ventas a jubilados": "Sales to retirees",
   "Ventas de los negocios en los últimos 30 días, por moneda.": "Business sales in the last 30 days, by currency.",
   "Ventas en 30 días": "Sales in 30 days",
   "Ventas en efectivo": "Cash sales",
+  "Ventas menos costo real y comisiones": "Sales minus real cost and fees",
   "Ventas netas": "Net sales",
   "Ventas netas del mes": "Net sales this month",
+  "Ventas para no perder": "Sales to break even",
   "Ventas por pagar": "Unpaid sales",
   "Ventas recientes": "Recent sales",
   "Ventas sin conexión": "Offline sales",
   "Ventas sin depósito": "Sales without a deposit",
   "Ventas y ganancia neta por día": "Sales and net profit per day",
   "Ventas, utilidad real y lo que más se vende": "Sales, real profit and best sellers",
+  "Ventas: promedio cobrado por día de la semana en las últimas 8 semanas (sin fiado ni vales). Compras: promedio de las compras de contado. Lo vencido se cuenta en la primera semana.":
+    "Sales: average collected per weekday over the last 8 weeks (excluding credit and gift cards). Purchases: average of paid-now purchases. Overdue amounts count in the first week.",
   Ver: "View",
   "Ver archivados": "View archived",
   "Ver catálogo publicado": "View published catalog",
@@ -1249,6 +1307,8 @@ export const en: Record<string, string> = {
   WhatsApp: "WhatsApp",
   "WhatsApp que recibe los pedidos": "WhatsApp that receives orders",
   XML: "XML",
+  "Ya cubriste tus gastos fijos del mes: lo que sigue es ganancia.":
+    "You've covered this month's fixed expenses: what follows is profit.",
   Yappy: "Yappy",
   "Yappy (%)": "Yappy (%)",
   Zona: "Zone",
@@ -1305,6 +1365,7 @@ export const en: Record<string, string> = {
   "{n} venta(s) sin conexión sincronizada(s)": "{n} offline sale(s) synced",
   "{n} ventas": "{n} sales",
   "{n} ventas · ticket {amount}": "{n} sales · ticket {amount}",
+  "{n}% del punto de equilibrio": "{n}% of break-even",
   "{price} al año": "{price} per year",
   "{price} al mes": "{price} per month",
   "{tax} a declarar": "{tax} to report",

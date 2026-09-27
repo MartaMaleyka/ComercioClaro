@@ -232,6 +232,7 @@ model Business {
   recipeItems          RecipeItem[]
   supplierBills        SupplierBill[]
   supplierPayments     SupplierPayment[]
+  recurringExpenses    RecurringExpense[]
 }
 
 model Category {
@@ -707,18 +708,21 @@ model CashMovement {
 }
 
 model Expense {
-  id            String        @id @default(cuid())
+  id            String            @id @default(cuid())
+  // Gasto generado por un gasto recurrente (renta, luz, internet)
+  recurringId   String?
+  recurring     RecurringExpense? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
   category      String
   description   String?
-  amount        Decimal       @db.Decimal(12, 2)
-  paymentMethod PaymentMethod @default(CASH)
-  date          DateTime      @default(now())
+  amount        Decimal           @db.Decimal(12, 2)
+  paymentMethod PaymentMethod     @default(CASH)
+  date          DateTime          @default(now())
   cashSessionId String?
-  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  cashSession   CashSession?      @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
   userId        String?
   businessId    String
-  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  createdAt     DateTime      @default(now())
+  business      Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
 
   @@index([businessId, date])
 }
@@ -1315,4 +1319,30 @@ model SupplierPayment {
   @@index([billId])
   @@index([businessId, createdAt])
   @@index([cashSessionId])
+}
+
+/**
+ * Gasto fijo que se repite cada mes (renta, luz, internet). El cron diario registra el gasto
+ * del mes al llegar su día; también alimenta el flujo de caja y el punto de equilibrio.
+ */
+model RecurringExpense {
+  id            String        @id @default(cuid())
+  category      String
+  description   String?
+  amount        Decimal       @db.Decimal(12, 2)
+  // Día del mes en que se paga (29-31 caen el último día en meses más cortos)
+  dayOfMonth    Int
+  paymentMethod PaymentMethod @default(TRANSFER)
+  active        Boolean       @default(true)
+  // Último mes "YYYY-MM" en que se registró el gasto
+  lastGenerated String?
+  userId        String?
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  expenses Expense[]
+
+  @@index([businessId, active])
 }

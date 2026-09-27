@@ -1,7 +1,8 @@
 "use client";
 
 import { useText } from "@/lib/client/i18n";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Plus, Receipt, Trash2 } from "lucide-react";
 import { api, withQuery } from "@/lib/client/api";
 import { useDebounce, usePaginated } from "@/lib/client/hooks";
@@ -18,6 +19,9 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader, Stat } from "@/components/ui/Misc";
+import { Badge } from "@/components/ui/Badge";
+import { Tabs } from "@/components/ui/Tabs";
+import { RecurringTab } from "@/components/expenses/RecurringTab";
 
 const DEFAULT_CATEGORIES = [
   "Renta",
@@ -33,7 +37,18 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function ExpensesPage() {
+  return (
+    <Suspense fallback={<ListSkeleton />}>
+      <Expenses />
+    </Suspense>
+  );
+}
+
+function Expenses() {
   const tr = useText();
+  const router = useRouter();
+  const params = useSearchParams();
+  const tab = params.get("tab") === "recurrentes" ? "recurring" : "expenses";
   const { business } = useSession();
   const fmt = useFormat();
   const toast = useToast();
@@ -115,55 +130,74 @@ export default function ExpensesPage() {
         }
       />
 
-      <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
-        <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar gasto")} />
-        <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
-      </div>
-
-      <Stat
-        label={tr("Total mostrado")}
-        value={fmt.money(total)}
-        hint={list.hasMore ? tr("Carga más para ver el total completo") : undefined}
-      />
-
-      {list.error ? (
-        <ErrorState error={list.error} onRetry={() => list.mutate()} />
-      ) : list.isLoading ? (
-        <ListSkeleton />
-      ) : list.items.length === 0 ? (
-        <EmptyState
-          icon={Receipt}
-          title={tr("Sin gastos")}
-          description={tr("Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta.")}
+      {business.features.includes("cashflow") && (
+        <Tabs
+          label={tr("Gastos")}
+          tabs={[
+            { value: "expenses", label: tr("Gastos") },
+            { value: "recurring", label: tr("Recurrentes") },
+          ]}
+          value={tab}
+          onChange={(v) => router.replace(v === "recurring" ? "/gastos?tab=recurrentes" : "/gastos")}
         />
+      )}
+      {tab === "recurring" && business.features.includes("cashflow") ? (
+        <RecurringTab categories={categories} />
       ) : (
-        <div className="space-y-2">
-          {list.items.map((e) => (
-            <Card key={e.id}>
-              <CardContent className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium text-slate-900">{e.category}</p>
-                  <p className="text-xs text-slate-500">
-                    {fmt.date(e.date)} · {PAYMENT_METHOD_LABELS[e.paymentMethod]}
-                    {e.description && ` · ${e.description}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-red-600 tabular-nums">{fmt.money(e.amount)}</p>
-                  <button
-                    aria-label={tr("Eliminar gasto")}
-                    onClick={() => remove(e)}
-                    className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
-        </div>
+        <>
+          <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
+            <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar gasto")} />
+            <Input type="date" aria-label={tr("Desde")} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <Input type="date" aria-label={tr("Hasta")} value={to} onChange={(e) => setTo(e.target.value)} />
+          </div>
+
+          <Stat
+            label={tr("Total mostrado")}
+            value={fmt.money(total)}
+            hint={list.hasMore ? tr("Carga más para ver el total completo") : undefined}
+          />
+
+          {list.error ? (
+            <ErrorState error={list.error} onRetry={() => list.mutate()} />
+          ) : list.isLoading ? (
+            <ListSkeleton />
+          ) : list.items.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title={tr("Sin gastos")}
+              description={tr("Registra renta, luz, sueldos y otros gastos para ver tu ganancia neta.")}
+            />
+          ) : (
+            <div className="space-y-2">
+              {list.items.map((e) => (
+                <Card key={e.id}>
+                  <CardContent className="flex items-center justify-between gap-3 py-3">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {e.category} {e.recurringId && <Badge tone="blue">{tr("Recurrente")}</Badge>}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {fmt.date(e.date)} · {PAYMENT_METHOD_LABELS[e.paymentMethod]}
+                        {e.description && ` · ${e.description}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-red-600 tabular-nums">{fmt.money(e.amount)}</p>
+                      <button
+                        aria-label={tr("Eliminar gasto")}
+                        onClick={() => remove(e)}
+                        className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
+            </div>
+          )}
+        </>
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={tr("Nuevo gasto")}>

@@ -528,6 +528,20 @@ export const cashCloseSchema = z.object({
     .nullish(),
 });
 
+export const recurringExpenseSchema = z.object({
+  category: text(60, "La categoría es obligatoria"),
+  description: optText(),
+  amount: positiveMoney,
+  dayOfMonth: z.coerce.number().int().min(1, "Día entre 1 y 31").max(31, "Día entre 1 y 31"),
+  paymentMethod: immediatePaymentMethod.default("TRANSFER"),
+  active: z.boolean().default(true),
+});
+
+export const cashflowQuerySchema = z.object({
+  days: z.coerce.number().int().refine((d) => [30, 60, 90].includes(d), "Periodo inválido").default(30),
+  opening: z.coerce.number().min(-MAX_MONEY).max(MAX_MONEY).optional(),
+});
+
 export const expenseSchema = z.object({
   category: text(60, "La categoría es obligatoria"),
   description: optText(),
