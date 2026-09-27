@@ -108,6 +108,11 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Antigüedad de saldos y estado de cuenta por proveedor.
   - Lo que vence esta semana aparece en el tablero y en las alertas diarias.
   - Cada compra guarda su ITBMS para el crédito fiscal.
+- **Pagos divididos** ([`docs/plan-pagos-divididos.md`](docs/plan-pagos-divididos.md)):
+  - Una venta se cobra con varias formas de pago (por ejemplo, tarjeta y efectivo, vale y efectivo, o una parte fiada).
+  - El cambio sale solo del efectivo.
+  - Caja, reportes, conciliación, fiado y facturas leen cada parte.
+  - Las ventas anteriores se migran con un pago cada una.
 
 ## Requisitos
 

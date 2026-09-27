@@ -48,6 +48,7 @@ import { Badge } from "@/components/ui/Badge";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
 import { ServicesModal } from "@/components/pos/ServicesModal";
+import { SplitPayment, newSplitRow, splitPayload, splitStatus, type SplitRow } from "@/components/pos/SplitPayment";
 
 interface OpenOrderData {
   id: string;
@@ -220,6 +221,8 @@ export default function PosPage() {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [saleDiscount, setSaleDiscount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  // Pago dividido: renglones de forma de pago y monto (null = una sola forma de pago).
+  const [split, setSplit] = useState<SplitRow[] | null>(null);
   const [amountReceived, setAmountReceived] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [notes, setNotes] = useState("");
@@ -473,7 +476,14 @@ export default function PosPage() {
   const pointsDiscount = round2(pointsToRedeem * pointValue);
   const total = round2(subtotal - discount - pointsDiscount);
   const received = num(amountReceived);
-  const change = paymentMethod === "CASH" && amountReceived ? round2(received - total) : 0;
+  const splitInfo = split ? splitStatus(split, total) : null;
+  const change = splitInfo
+    ? splitInfo.change
+    : paymentMethod === "CASH" && amountReceived
+      ? round2(received - total)
+      : 0;
+  const usesCredit = split ? split.some((r) => r.method === "CREDIT") : paymentMethod === "CREDIT";
+  const creditAmount = splitInfo ? splitInfo.credit : paymentMethod === "CREDIT" ? total : 0;
   const customer = customers.list?.find((c) => c.id === customerId);
   const itemsCount = cart.reduce((acc, l) => acc + (isFractionalUnit(l.unit) ? 1 : num(l.quantity)), 0);
 
@@ -507,7 +517,7 @@ export default function PosPage() {
           subtotal,
           discount: Math.max(0, round2(grossTotal - total)),
           total,
-          paymentMethod,
+          paymentMethod: split ? "MIXED" : paymentMethod,
           customerName: customer?.name ?? null,
           points: business.loyaltyEnabled && customer ? (customer.points ?? 0) : null,
           change: 0,
@@ -522,18 +532,18 @@ export default function PosPage() {
     return q <= 0 || q > l.stock || (!isFractionalUnit(l.unit) && !Number.isInteger(q));
   });
   const creditExceeded =
-    paymentMethod === "CREDIT" &&
-    customer &&
-    customer.creditLimit > 0 &&
-    customer.balance + total > customer.creditLimit;
+    usesCredit && customer && customer.creditLimit > 0 && customer.balance + creditAmount > customer.creditLimit;
   const canCharge =
     cart.length > 0 &&
     !invalidLine &&
-    !(paymentMethod === "CREDIT" && !customerId) &&
+    !(usesCredit && !customerId) &&
     !creditExceeded &&
-    !(paymentMethod === "CASH" && amountReceived !== "" && received < total) &&
-    // El vale se valida en el servidor: no se puede cobrar sin conexión.
-    !(paymentMethod === "GIFT_CARD" && (!giftCode.trim() || !online));
+    (split
+      ? Boolean(splitInfo?.valid) &&
+        // El vale se valida en el servidor: no se puede cobrar sin conexión.
+        !split.some((r) => r.method === "GIFT_CARD" && (!r.giftCardCode.trim() || !online))
+      : !(paymentMethod === "CASH" && amountReceived !== "" && received < total) &&
+        !(paymentMethod === "GIFT_CARD" && (!giftCode.trim() || !online)));
 
   function resetSale() {
     setCart([]);
@@ -551,6 +561,7 @@ export default function PosPage() {
     setOnlineOrder(null);
     setActiveOrder(null);
     setPaymentMethod("CASH");
+    setSplit(null);
     setCheckoutOpen(false);
     searchRef.current?.focus();
   }
@@ -568,12 +579,14 @@ export default function PosPage() {
         ...(isOwner && l.priceOverride !== "" ? { unitPrice: num(l.priceOverride) } : {}),
       })),
       discount,
-      paymentMethod,
-      amountReceived: paymentMethod === "CASH" && amountReceived ? received : null,
-      paymentReference: paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
+      paymentMethod: split ? split[0].method : paymentMethod,
+      payments: split ? splitPayload(split) : null,
+      amountReceived: !split && paymentMethod === "CASH" && amountReceived ? received : null,
+      paymentReference:
+        !split && paymentMethod !== "CASH" && paymentMethod !== "CREDIT" ? paymentReference || null : null,
       yappyChargeId: yappyChargeId ?? null,
       onlineOrderId: onlineOrder?.id ?? null,
-      giftCardCode: paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
+      giftCardCode: !split && paymentMethod === "GIFT_CARD" ? giftCode.trim() : null,
       openOrderId: activeOrder?.id ?? null,
       redeemPoints: pointsToRedeem > 0 ? pointsToRedeem : null,
       customerId: customerId || null,
@@ -586,7 +599,7 @@ export default function PosPage() {
       const sale = await api<Sale>("/api/sales", { body: payload });
       setCompleted({ sale, offline: false, total: sale.total, change: sale.change ?? 0 });
       catalog.mutate();
-      if (paymentMethod === "CREDIT") customers.mutate();
+      if (usesCredit) customers.mutate();
       resetSale();
     } catch (err) {
       if (isNetworkError(err)) {
@@ -745,8 +758,31 @@ export default function PosPage() {
       )}
 
       <div className="space-y-3 border-t border-slate-100 pt-3">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            aria-pressed={split !== null}
+            onClick={() =>
+              setSplit((current) =>
+                current ? null : [newSplitRow(paymentMethod === "CASH" ? "CARD" : paymentMethod), newSplitRow("CASH")]
+              )
+            }
+            className="text-xs font-medium text-brand-700 dark:text-brand-300 hover:underline"
+          >
+            {split ? tr("Un solo pago") : tr("Dividir pago")}
+          </button>
+        </div>
+        {split && (
+          <SplitPayment
+            rows={split}
+            onChange={setSplit}
+            total={total}
+            methods={paymentOptions.map((o) => o.value)}
+            online={online}
+          />
+        )}
         <div
-          className={cn("grid gap-1.5", paymentOptions.length > 4 ? "grid-cols-5" : "grid-cols-4")}
+          className={cn("grid gap-1.5", paymentOptions.length > 4 ? "grid-cols-5" : "grid-cols-4", split && "hidden")}
           role="radiogroup"
           aria-label={t("pos.paymentMethod")}
         >
@@ -770,7 +806,7 @@ export default function PosPage() {
           ))}
         </div>
 
-        {paymentMethod === "YAPPY" && yappyApi && (
+        {!split && paymentMethod === "YAPPY" && yappyApi && (
           <YappyApiCharge
             amount={total}
             disabled={!canCharge || saving}
@@ -778,7 +814,7 @@ export default function PosPage() {
             onManual={() => setYappyManual(true)}
           />
         )}
-        {paymentMethod === "YAPPY" && !yappyApi && (
+        {!split && paymentMethod === "YAPPY" && !yappyApi && (
           <div className="rounded-xl bg-slate-50 p-3 flex gap-3 items-center">
             {yappy?.qr && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -801,15 +837,16 @@ export default function PosPage() {
             </div>
           </div>
         )}
-        {((paymentMethod === "YAPPY" && !yappyApi) || paymentMethod === "CARD" || paymentMethod === "TRANSFER") && (
-          <Input
-            label={paymentMethod === "YAPPY" ? t("pos.yappyRef") : t("pos.reference")}
-            value={paymentReference}
-            onChange={(e) => setPaymentReference(e.target.value)}
-          />
-        )}
+        {!split &&
+          ((paymentMethod === "YAPPY" && !yappyApi) || paymentMethod === "CARD" || paymentMethod === "TRANSFER") && (
+            <Input
+              label={paymentMethod === "YAPPY" ? t("pos.yappyRef") : t("pos.reference")}
+              value={paymentReference}
+              onChange={(e) => setPaymentReference(e.target.value)}
+            />
+          )}
 
-        {paymentMethod === "GIFT_CARD" && (
+        {!split && paymentMethod === "GIFT_CARD" && (
           <div className="space-y-2">
             <div className="flex gap-2 items-end">
               <div className="flex-1">
@@ -859,9 +896,9 @@ export default function PosPage() {
           </div>
         )}
 
-        {(paymentMethod === "CREDIT" || customerId) && (
+        {(usesCredit || customerId) && (
           <Select
-            label={paymentMethod === "CREDIT" ? t("pos.customerRequired") : t("pos.customer")}
+            label={usesCredit ? t("pos.customerRequired") : t("pos.customer")}
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
           >
@@ -874,7 +911,7 @@ export default function PosPage() {
             ))}
           </Select>
         )}
-        {paymentMethod !== "CREDIT" && !customerId && (
+        {!usesCredit && !customerId && (
           <button
             onClick={() => setCustomerId(customers.list?.[0]?.id ?? "")}
             className="text-xs text-brand-700 dark:text-brand-300 hover:underline"
@@ -930,7 +967,7 @@ export default function PosPage() {
             value={saleDiscount}
             onChange={(e) => setSaleDiscount(e.target.value)}
           />
-          {paymentMethod === "CASH" && (
+          {!split && paymentMethod === "CASH" && (
             <Input
               label={t("pos.paysWith")}
               inputMode="decimal"
@@ -940,7 +977,7 @@ export default function PosPage() {
             />
           )}
         </div>
-        {paymentMethod === "CASH" && total > 0 && (
+        {!split && paymentMethod === "CASH" && total > 0 && (
           <div className="flex gap-1.5 flex-wrap">
             {[...new Set([total, ...[50, 100, 200, 500, 1000].filter((b) => b > total)].slice(0, 4))].map((b) => (
               <button
@@ -987,7 +1024,7 @@ export default function PosPage() {
             <dt>{t("pos.total")}</dt>
             <dd className="tabular-nums">{fmt.money(total)}</dd>
           </div>
-          {paymentMethod === "CASH" && amountReceived !== "" && (
+          {!split && paymentMethod === "CASH" && amountReceived !== "" && (
             <div className={cn("flex justify-between font-semibold", change < 0 ? "text-red-600" : "text-brand-600")}>
               <dt>{change < 0 ? t("pos.missing") : t("pos.change")}</dt>
               <dd className="tabular-nums">{fmt.money(Math.abs(change))}</dd>
@@ -996,7 +1033,7 @@ export default function PosPage() {
         </dl>
 
         <Button
-          className={cn("w-full", paymentMethod === "YAPPY" && yappyApi && "hidden")}
+          className={cn("w-full", !split && paymentMethod === "YAPPY" && yappyApi && "hidden")}
           size="lg"
           onClick={() => charge()}
           loading={saving}

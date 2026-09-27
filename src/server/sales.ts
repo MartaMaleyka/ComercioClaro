@@ -14,6 +14,7 @@ import { getOpenSession } from "./cash";
 import { assertChargeForSale } from "./yappy";
 import { productModifiers } from "./catalog";
 import { recipesFor, type RecipeLine } from "./recipes";
+import { paidWith, resolvePayments, type PaymentInput } from "./payments";
 import { closeOrderWithSale } from "./online-orders";
 import { closeOpenOrderWithSale } from "./open-orders";
 import { maskCode, redeemGiftCard, refundGiftCard } from "./gift-cards";
@@ -32,8 +33,16 @@ export function toPromotionRule(p: Promotion): PromotionRule {
 
 export type SaleInput = Omit<
   z.infer<typeof saleSchema>,
-  "paymentReference" | "yappyChargeId" | "onlineOrderId" | "openOrderId" | "giftCardCode" | "senior" | "seniorId"
+  | "paymentReference"
+  | "yappyChargeId"
+  | "onlineOrderId"
+  | "openOrderId"
+  | "giftCardCode"
+  | "senior"
+  | "seniorId"
+  | "payments"
 > & {
+  payments?: PaymentInput[] | null;
   senior?: boolean;
   seniorId?: string | null;
   paymentReference?: string | null;
@@ -55,6 +64,7 @@ export const saleInclude = {
   items: { include: { product: { select: { id: true, name: true, unit: true, barcode: true } } } },
   customer: { select: { id: true, name: true, phone: true } },
   returns: { include: { items: true } },
+  payments: { orderBy: { amount: "desc" } },
   invoice: { select: { id: true, status: true, uuid: true, kind: true, error: true, provider: true, qrUrl: true } },
 } satisfies Prisma.SaleInclude;
 
@@ -81,7 +91,9 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
   }
 
   const canUse = (feature: FeatureKey) => !actor.features || actor.features.includes(feature);
-  if (input.paymentMethod === "GIFT_CARD" && !canUse("giftCards")) {
+  const usesGiftCard =
+    input.paymentMethod === "GIFT_CARD" || Boolean(input.payments?.some((p) => p.method === "GIFT_CARD"));
+  if (usesGiftCard && !canUse("giftCards")) {
     throw new AppError(403, `Tu plan no incluye ${featureLabel("giftCards")}.`);
   }
 
@@ -200,25 +212,21 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         total = total.minus(pointsDiscount);
       }
 
+      // Formas de pago: una sola o dividido. El cambio sale solo de la parte en efectivo.
+      const { payments, method: paymentMethod, amountReceived, change } = resolvePayments(total, input);
+      const creditAmount = paidWith(payments, "CREDIT");
+
       let dueDate: Date | null = null;
-      if (input.paymentMethod === "CREDIT") {
+      if (creditAmount.gt(0)) {
         if (!customer) throw new AppError(400, "Selecciona el cliente para vender fiado");
         dueDate = creditDueDate(customer, new Date(), business.timezone);
         const limit = D(customer.creditLimit);
-        if (limit.gt(0) && D(customer.balance).plus(total).gt(limit)) {
+        if (limit.gt(0) && D(customer.balance).plus(creditAmount).gt(limit)) {
           throw new AppError(
             409,
             `La venta excede el límite de crédito de ${customer.name} (saldo ${customer.balance.toFixed(2)} de ${limit.toFixed(2)})`
           );
         }
-      }
-
-      let amountReceived: Decimal | null = null;
-      let change: Decimal | null = null;
-      if (input.paymentMethod === "CASH" && input.amountReceived != null) {
-        amountReceived = money(input.amountReceived);
-        if (amountReceived.lt(total)) throw new AppError(400, "El monto recibido es menor al total");
-        change = amountReceived.minus(total);
       }
 
       // La fecha del dispositivo solo se respeta en ventas hechas sin conexión (con clientRequestId).
@@ -232,8 +240,10 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
 
       // Cobro de Yappy confirmado por la pasarela: su número de operación queda como referencia.
       let yappyCharge = null;
-      if (input.paymentMethod === "YAPPY" && input.yappyChargeId) {
-        yappyCharge = await assertChargeForSale(tx, actor, input.yappyChargeId, total);
+      const yappyPart = payments.find((p) => p.method === "YAPPY" && p.yappyChargeId);
+      if (yappyPart) {
+        yappyCharge = await assertChargeForSale(tx, actor, yappyPart.yappyChargeId!, yappyPart.amount);
+        yappyPart.reference = yappyCharge.providerTxId ?? yappyCharge.orderId;
       }
 
       const cashSession = await getOpenSession(tx, actor.businessId);
@@ -244,11 +254,13 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
       });
 
       const saleId = crypto.randomUUID();
-      // Pago con vale: se descuenta el saldo (debe cubrir toda la venta).
+      // Pago con vale: se descuenta del saldo la parte que cubre.
       let giftCard = null;
-      if (input.paymentMethod === "GIFT_CARD") {
-        if (!input.giftCardCode) throw new AppError(400, "Escribe o escanea el código del vale");
-        giftCard = await redeemGiftCard(tx, actor, input.giftCardCode, total, saleId);
+      const giftPart = payments.find((p) => p.method === "GIFT_CARD");
+      if (giftPart) {
+        if (!giftPart.giftCardCode) throw new AppError(400, "Escribe o escanea el código del vale");
+        giftCard = await redeemGiftCard(tx, actor, giftPart.giftCardCode, giftPart.amount, saleId);
+        giftPart.reference = maskCode(giftCard.code);
       }
       // Platos con receta: se descuentan sus insumos en lugar del plato.
       const recipes = canUse("recipes")
@@ -307,7 +319,7 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           id: saleId,
           folio: saleCounter,
           clientRequestId: input.clientRequestId ?? null,
-          paymentMethod: input.paymentMethod,
+          paymentMethod,
           subtotal,
           discount,
           total,
@@ -319,13 +331,17 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
           seniorDiscount,
           seniorId: senior ? (input.seniorId ?? customer?.seniorId ?? null) : null,
           giftCardId: giftCard?.id ?? null,
-          paymentReference: yappyCharge
-            ? (yappyCharge.providerTxId ?? yappyCharge.orderId)
-            : giftCard
-              ? maskCode(giftCard.code)
-              : input.paymentMethod === "CASH" || input.paymentMethod === "CREDIT"
-                ? null
-                : (input.paymentReference ?? null),
+          // Referencia principal (búsqueda y conciliación): la primera que haya.
+          paymentReference: payments.find((p) => p.reference)?.reference ?? null,
+          payments: {
+            create: payments.map((p) => ({
+              method: p.method,
+              amount: p.amount,
+              reference: p.reference,
+              giftCardId: p.method === "GIFT_CARD" ? (giftCard?.id ?? null) : null,
+              yappyChargeId: p.method === "YAPPY" ? (yappyCharge?.id ?? null) : null,
+            })),
+          },
           dueDate,
           notes: input.notes,
           customerId: customer?.id ?? null,
@@ -362,8 +378,8 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
 
       // Puntos: se ganan sobre lo pagado (no en ventas fiadas) y se descuentan los canjeados.
       if (customer && loyaltyEnabled) {
-        const earned =
-          input.paymentMethod === "CREDIT" ? 0 : total.times(business.loyaltyPointsPerUnit).floor().toNumber();
+        // Lo fiado no gana puntos hasta pagarse.
+        const earned = total.minus(creditAmount).times(business.loyaltyPointsPerUnit).floor().toNumber();
         if (pointsRedeemed > 0) {
           const { count } = await tx.customer.updateMany({
             where: { id: customer.id, points: { gte: pointsRedeemed } },
@@ -378,14 +394,17 @@ export async function createSale(actor: SalesActor, input: SaleInput) {
         }
       }
 
-      if (input.paymentMethod === "CREDIT" && customer) {
-        await tx.customer.update({ where: { id: customer.id }, data: { balance: { increment: total } } });
+      if (creditAmount.gt(0) && customer) {
+        await tx.customer.update({ where: { id: customer.id }, data: { balance: { increment: creditAmount } } });
       }
 
       await audit(tx, actor, "sale.create", "Sale", sale.id, {
         folio: sale.folio,
         total: total.toNumber(),
-        paymentMethod: input.paymentMethod,
+        paymentMethod,
+        ...(paymentMethod === "MIXED"
+          ? { payments: payments.map((p) => ({ method: p.method, amount: p.amount.toNumber() })) }
+          : {}),
         discount: discount.toNumber(),
         ...(senior ? { seniorDiscount: seniorDiscount.toNumber() } : {}),
       });
@@ -413,7 +432,9 @@ export async function getSale(businessId: string, id: string) {
 export async function listSales(businessId: string, timeZone: string, query: ListQuery) {
   const where: Prisma.SaleWhereInput = { businessId };
   if (query.status) where.status = query.status;
-  if (query.paymentMethod) where.paymentMethod = query.paymentMethod;
+  // Una forma de pago incluye los pagos divididos que la usaron; "MIXED" muestra solo los divididos.
+  if (query.paymentMethod === "MIXED") where.paymentMethod = "MIXED";
+  else if (query.paymentMethod) where.payments = { some: { method: query.paymentMethod } };
   if (query.from || query.to) {
     const range = dayRange(query.from ?? "2000-01-01", query.to ?? "2999-12-31", timeZone);
     where.createdAt = { gte: range.start, lt: range.end };
@@ -446,7 +467,12 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id, businessId: actor.businessId },
-      include: { items: { include: { product: true, ingredients: true } }, returns: true, invoice: true },
+      include: {
+        items: { include: { product: true, ingredients: true } },
+        returns: true,
+        invoice: true,
+        payments: true,
+      },
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta ya está cancelada");
@@ -491,20 +517,27 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
       if (product.trackExpiry) await restoreBatches(tx, r.productId, r.quantity);
     }
 
-    if (sale.paymentMethod === "CREDIT" && sale.customerId) {
-      const returnedToCredit = sum(sale.returns.filter((r) => r.refundMethod === "CREDIT").map((r) => r.total));
-      const owed = D(sale.total).minus(returnedToCredit);
+    // Lo que queda de cada forma de pago (lo cobrado menos lo ya devuelto por esa forma).
+    const refundedWith = (method: string) =>
+      sum(sale.returns.filter((r) => r.refundMethod === method).map((r) => r.total));
+    const remaining = (method: string) => paidWith(sale.payments, method).minus(refundedWith(method));
+
+    if (sale.customerId && paidWith(sale.payments, "CREDIT").gt(0)) {
+      const owed = remaining("CREDIT");
       if (owed.gt(0)) {
         await tx.customer.update({ where: { id: sale.customerId }, data: { balance: { decrement: owed } } });
       }
     }
 
-    // Si la venta en efectivo pertenece a otro turno, el reembolso sale de la caja actual.
-    if (sale.paymentMethod === "CASH") {
+    // Si la venta cobrada en efectivo pertenece a otro turno, el reembolso sale de la caja actual.
+    if (paidWith(sale.payments, "CASH").gt(0)) {
       const open = await getOpenSession(tx, actor.businessId);
       if (open && open.id !== sale.cashSessionId) {
-        const refunded = sum(sale.returns.filter((r) => r.refundMethod === "CASH").map((r) => r.total));
-        const amount = D(sale.total).minus(refunded);
+        // Lo que ya se devolvió en dinero por otra forma (p. ej. tarjeta) también descuenta del efectivo.
+        const moneyMethods = ["CASH", "CARD", "TRANSFER", "YAPPY"];
+        const moneyLeft = sum(moneyMethods.map(remaining));
+        const cashLeft = remaining("CASH");
+        const amount = cashLeft.lt(moneyLeft) ? cashLeft : moneyLeft;
         if (amount.gt(0)) {
           await tx.cashMovement.create({
             data: {
@@ -528,9 +561,8 @@ export async function cancelSale(actor: Actor, id: string, reason: string) {
     }
 
     // Pagada con vale: lo no devuelto regresa al saldo del vale.
-    if (sale.paymentMethod === "GIFT_CARD" && sale.giftCardId) {
-      const refunded = sum(sale.returns.filter((r) => r.refundMethod === "GIFT_CARD").map((r) => r.total));
-      await refundGiftCard(tx, actor, sale.giftCardId, D(sale.total).minus(refunded), sale.id);
+    if (sale.giftCardId && paidWith(sale.payments, "GIFT_CARD").gt(0)) {
+      await refundGiftCard(tx, actor, sale.giftCardId, remaining("GIFT_CARD"), sale.id);
     }
 
     // Si cerraba una cuenta abierta, la cuenta se reabre para corregirla y cobrarla de nuevo.
@@ -552,19 +584,26 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
   return prisma.$transaction(async (tx) => {
     const sale = await tx.sale.findFirst({
       where: { id, businessId: actor.businessId },
-      include: { items: { include: { product: true, ingredients: true } } },
+      include: { items: { include: { product: true, ingredients: true } }, payments: true, returns: true },
     });
     if (!sale) throw notFound("Venta");
     if (sale.status === "CANCELLED") throw new AppError(409, "La venta está cancelada");
 
-    if (input.refundMethod === "CREDIT" && sale.paymentMethod !== "CREDIT") {
-      throw new AppError(400, "Solo las ventas fiadas pueden abonarse a la cuenta del cliente");
-    }
-    if (sale.paymentMethod === "CREDIT" && input.refundMethod !== "CREDIT") {
-      throw new AppError(400, "Las ventas fiadas se devuelven descontando del saldo del cliente");
-    }
-    if ((input.refundMethod === "GIFT_CARD") !== (sale.paymentMethod === "GIFT_CARD")) {
-      throw new AppError(400, "Las ventas pagadas con vale se devuelven al mismo vale");
+    // Límite de cada forma de reembolso: el fiado se descuenta del saldo, el vale vuelve al vale y el
+    // dinero (efectivo, tarjeta, transferencia, Yappy) se devuelve hasta lo cobrado en dinero.
+    const group = (method: string) => (method === "CREDIT" || method === "GIFT_CARD" ? method : "MONEY");
+    const refundGroup = group(input.refundMethod);
+    const paidInGroup = sum(sale.payments.filter((p) => group(p.method) === refundGroup).map((p) => p.amount));
+    const refundedInGroup = sum(sale.returns.filter((r) => group(r.refundMethod) === refundGroup).map((r) => r.total));
+    if (paidInGroup.lte(0)) {
+      throw new AppError(
+        400,
+        refundGroup === "CREDIT"
+          ? "Solo las ventas fiadas pueden abonarse a la cuenta del cliente"
+          : refundGroup === "GIFT_CARD" || paidWith(sale.payments, "CREDIT").lte(0)
+            ? "Las ventas pagadas con vale se devuelven al mismo vale"
+            : "Las ventas fiadas se devuelven descontando del saldo del cliente"
+      );
     }
 
     const factor = D(sale.subtotal).gt(0) ? D(sale.total).div(sale.subtotal) : D(0);
@@ -589,6 +628,14 @@ export async function returnSale(actor: Actor, id: string, input: SaleReturnInpu
 
     const total = sum(lines.map((l) => l.amount));
     const costTotal = sum(lines.map((l) => l.cost));
+    // Tolerancia de centavos por el prorrateo del descuento entre renglones.
+    const available = paidInGroup.minus(refundedInGroup);
+    if (total.minus(available).gt(0.05)) {
+      throw new AppError(
+        400,
+        `Solo se pueden devolver ${available.toFixed(2)} por ${PAYMENT_METHOD_LABELS[refundGroup === "MONEY" ? input.refundMethod : refundGroup]}`
+      );
+    }
 
     for (const line of lines) {
       const { count } = await tx.saleItem.updateMany({
@@ -708,7 +755,17 @@ export function receiptText(
     D(sale.pointsDiscount).gt(0) ? `Puntos canjeados (${sale.pointsRedeemed}): -${fmt(sale.pointsDiscount)}` : null,
     sale.pointsEarned > 0 ? `Ganaste ${sale.pointsEarned} puntos` : null,
     `*Total: ${fmt(sale.total)}*`,
-    `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
+    ...(sale.payments.length > 1
+      ? [
+          "Pagos:",
+          ...sale.payments.map(
+            (p) => `  ${PAYMENT_METHOD_LABELS[p.method]} ${fmt(p.amount)}${p.reference ? ` (ref. ${p.reference})` : ""}`
+          ),
+        ]
+      : [
+          `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
+        ]),
+    sale.change && D(sale.change).gt(0) ? `Cambio: ${fmt(sale.change)}` : null,
     sale.status === "CANCELLED" ? "VENTA CANCELADA" : null,
     "",
     "¡Gracias por su compra!",

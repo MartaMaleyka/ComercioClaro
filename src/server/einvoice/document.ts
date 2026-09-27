@@ -26,6 +26,26 @@ export const PAYMENT_CODES: Record<string, { code: string; description?: string 
   YAPPY: { code: "99", description: "Yappy" },
 };
 
+/**
+ * Formas de pago del documento. En un pago dividido cada forma lleva su parte, prorrateada
+ * al total facturado (que ya descuenta las devoluciones); el último absorbe el redondeo.
+ */
+function documentPayments(sale: SaleForDocument, total: number) {
+  const code = (method: string) => PAYMENT_CODES[method] ?? { code: "99" };
+  const parts = sale.payments && sale.payments.length > 1 ? sale.payments : null;
+  if (!parts) return [{ ...code(sale.paymentMethod === "MIXED" ? "CASH" : sale.paymentMethod), amount: total }];
+  const saleTotal = D(sale.total);
+  let assigned = D(0);
+  return parts.map((p, i) => {
+    const amount =
+      i === parts.length - 1
+        ? money(D(total).minus(assigned))
+        : money(saleTotal.gt(0) ? D(p.amount).times(total).div(saleTotal) : D(0));
+    assigned = assigned.plus(amount);
+    return { ...code(p.method), amount: amount.toNumber() };
+  });
+}
+
 /** Tipo de receptor (iTipoRec): 01 contribuyente, 02 consumidor final. */
 export type ReceiverType = "01" | "02";
 
@@ -60,6 +80,8 @@ interface SaleForDocument {
   folio: number;
   createdAt: Date;
   paymentMethod: string;
+  /** Formas de pago (pago dividido); sin ellas se usa paymentMethod */
+  payments?: { method: string; amount: DecimalLike }[];
   subtotal: DecimalLike;
   total: DecimalLike;
   items: {
@@ -111,7 +133,7 @@ export function buildPanamaDocument(sale: SaleForDocument, issuer: Party, custom
 
   const sum = (key: "subtotal" | "itbms" | "total") => money(items.reduce((acc, i) => acc.plus(i[key]), D(0))).toNumber();
   const totals = { subtotal: sum("subtotal"), itbms: sum("itbms"), total: sum("total") };
-  const payment = PAYMENT_CODES[sale.paymentMethod] ?? { code: "99" };
+  const payments = documentPayments(sale, totals.total);
 
   const hasRuc = Boolean(customer?.ruc && customer?.dv);
   return {
@@ -136,6 +158,6 @@ export function buildPanamaDocument(sale: SaleForDocument, issuer: Party, custom
       : { type: "02", name: customer?.name ?? "Consumidor final", email: customer?.email ?? null },
     items,
     totals,
-    payments: [{ ...payment, amount: totals.total }],
+    payments,
   };
 }

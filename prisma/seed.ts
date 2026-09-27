@@ -1088,6 +1088,33 @@ async function seedPayables() {
   console.log("✅ Cuentas por pagar del minisúper");
 }
 
+/** Una venta del minisúper cobrada con tarjeta y efectivo (pago dividido). */
+async function seedSplitPayments() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.sale.findFirst({ where: { businessId: business.id, paymentMethod: "MIXED" } })) return;
+  const product = await prisma.product.findFirst({
+    where: { businessId: business.id, archivedAt: null, trackStock: true, isIngredient: false, stock: { gte: 3 } },
+    orderBy: { name: "asc" },
+  });
+  if (!product) return;
+  const total = Number(product.price) * 3;
+  const card = Math.round(total * 50) / 100;
+  await createSale(actor, {
+    items: [{ productId: product.id, quantity: 3, discount: 0 }],
+    discount: 0,
+    paymentMethod: "CARD",
+    payments: [
+      { method: "CARD", amount: card, reference: "VISA-4411" },
+      { method: "CASH", amount: Math.ceil(total - card) },
+    ],
+    notes: "Pagó una parte con tarjeta y el resto en efectivo",
+    senior: false,
+  });
+  console.log("✅ Venta con pago dividido");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1097,6 +1124,7 @@ async function main() {
   await seedPlatform();
   await seedRecipes();
   await seedPayables();
+  await seedSplitPayments();
 }
 
 main()

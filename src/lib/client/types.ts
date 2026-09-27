@@ -2,6 +2,15 @@
 
 export type Unit = "PIECE" | "KG" | "G" | "L" | "ML" | "M" | "LB" | "OZ" | "GAL";
 export type PaymentMethod = "CASH" | "CARD" | "TRANSFER" | "CREDIT" | "YAPPY" | "GIFT_CARD";
+/** Forma de pago de una venta: MIXED cuando se dividió entre varias */
+export type SalePaymentMethod = PaymentMethod | "MIXED";
+
+export interface SalePayment {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+  reference: string | null;
+}
 
 export interface Category {
   id: string;
@@ -85,7 +94,8 @@ export interface Sale {
   id: string;
   folio: number;
   status: "ACTIVE" | "CANCELLED";
-  paymentMethod: PaymentMethod;
+  paymentMethod: SalePaymentMethod;
+  payments?: SalePayment[];
   subtotal: number;
   discount: number;
   total: number;

@@ -56,10 +56,11 @@ export async function financialSummary(businessId: string, range: Range, rates: 
       _sum: { total: true },
       _count: true,
     }),
-    prisma.sale.groupBy({
-      by: ["paymentMethod"],
-      where: saleWhere,
-      _sum: { total: true },
+    // Por forma de pago: un pago dividido suma a cada forma su parte.
+    prisma.salePayment.groupBy({
+      by: ["method"],
+      where: { sale: saleWhere },
+      _sum: { amount: true },
       _count: true,
     }),
     serviceCommissions(businessId, range),
@@ -71,7 +72,7 @@ export async function financialSummary(businessId: string, range: Range, rates: 
   const totalExpenses = D(expenses._sum.amount);
   // Las comisiones por recargas y servicios son ingreso aunque no sean venta de mercancía.
   const netProfit = grossProfit.minus(totalExpenses).plus(services.commissions);
-  const paymentMethods = byMethod.map((m) => ({ method: m.paymentMethod, total: D(m._sum.total), count: m._count }));
+  const paymentMethods = byMethod.map((m) => ({ method: m.method, total: D(m._sum.amount), count: m._count }));
   const fees = estimateFees(paymentMethods, rates);
 
   return {

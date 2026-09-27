@@ -37,7 +37,17 @@ export function buildReceiptText(sale: Sale, business: ReceiptBusiness) {
     sale.discount > 0 ? `Descuento: -${money(sale.discount)}` : null,
     sale.pointsDiscount ? `Puntos canjeados (${sale.pointsRedeemed}): -${money(sale.pointsDiscount)}` : null,
     `*Total: ${money(sale.total)}*`,
-    `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
+    ...((sale.payments?.length ?? 0) > 1
+      ? [
+          "Pagos:",
+          ...sale.payments!.map(
+            (p) =>
+              `  ${PAYMENT_METHOD_LABELS[p.method]} ${money(p.amount)}${p.reference ? ` (ref. ${p.reference})` : ""}`
+          ),
+        ]
+      : [
+          `Pago: ${PAYMENT_METHOD_LABELS[sale.paymentMethod]}${sale.paymentReference ? ` (ref. ${sale.paymentReference})` : ""}`,
+        ]),
     sale.change ? `Cambio: ${money(sale.change)}` : null,
     sale.status === "CANCELLED" ? "VENTA CANCELADA" : null,
     "",

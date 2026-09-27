@@ -44,10 +44,11 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
   if (!session) throw notFound("Turno de caja");
 
   // Consultas secuenciales: dentro de una transacción comparten una sola conexión.
-  const salesByMethod = await db.sale.groupBy({
-    by: ["paymentMethod"],
-    where: { cashSessionId: sessionId, status: "ACTIVE" },
-    _sum: { total: true },
+  // Por forma de pago (un pago dividido suma a cada forma su parte).
+  const salesByMethod = await db.salePayment.groupBy({
+    by: ["method"],
+    where: { sale: { cashSessionId: sessionId, status: "ACTIVE" } },
+    _sum: { amount: true },
     _count: true,
   });
   const cashReturns = await db.saleReturn.aggregate({
@@ -77,7 +78,7 @@ export async function cashSessionSummary(db: Tx | typeof prisma, sessionId: stri
   });
 
   const byMethod = Object.fromEntries(
-    salesByMethod.map((s) => [s.paymentMethod, { total: D(s._sum.total), count: s._count }])
+    salesByMethod.map((s) => [s.method, { total: D(s._sum.amount), count: s._count }])
   ) as Record<string, { total: ReturnType<typeof D>; count: number }>;
 
   const cashSales = byMethod.CASH?.total ?? D(0);

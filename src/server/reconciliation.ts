@@ -36,15 +36,14 @@ export async function reconcileStatement(
   const dates = parsed.lines.map((l) => l.date).sort();
   // Las ventas pueden haberse hecho hasta dos días antes de que el banco las acredite.
   const range = dayRange(addDays(dates[0], -2), dates[dates.length - 1], business.timezone);
-  const sales = await prisma.sale.findMany({
+  // Cada pago por banco se concilia por su monto: en un pago dividido, solo la parte con tarjeta, etc.
+  const payments = await prisma.salePayment.findMany({
     where: {
-      businessId: business.id,
-      status: "ACTIVE",
-      paymentMethod: { in: METHODS[input.method] },
-      createdAt: { gte: range.start, lt: range.end },
+      method: { in: METHODS[input.method] },
+      sale: { businessId: business.id, status: "ACTIVE", createdAt: { gte: range.start, lt: range.end } },
     },
-    select: { id: true, folio: true, createdAt: true, total: true, paymentReference: true, paymentMethod: true },
-    orderBy: { createdAt: "asc" },
+    include: { sale: { select: { id: true, folio: true, createdAt: true } } },
+    orderBy: { sale: { createdAt: "asc" } },
     take: 5000,
   });
 
@@ -59,13 +58,13 @@ export async function reconcileStatement(
 
   const result = reconcile(
     parsed.lines,
-    sales.map((s) => ({
-      id: s.id,
-      folio: s.folio,
-      date: dayKey(s.createdAt, business.timezone),
-      total: D(s.total).toNumber(),
-      reference: s.paymentReference,
-      method: s.paymentMethod,
+    payments.map((p) => ({
+      id: p.sale.id,
+      folio: p.sale.folio,
+      date: dayKey(p.sale.createdAt, business.timezone),
+      total: D(p.amount).toNumber(),
+      reference: p.reference,
+      method: p.method,
     })),
     feeRate
   );

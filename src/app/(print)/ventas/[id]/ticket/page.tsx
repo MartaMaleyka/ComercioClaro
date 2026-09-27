@@ -107,11 +107,25 @@ export default async function TicketPage({
           <span>TOTAL</span>
           <span>{money(sale.total)}</span>
         </div>
-        <div className="flex justify-between">
-          <span>{PAYMENT_METHOD_LABELS[sale.paymentMethod]}</span>
-          <span>{sale.amountReceived ? money(sale.amountReceived) : ""}</span>
-        </div>
-        {sale.paymentReference && <p>Ref. {sale.paymentReference}</p>}
+        {sale.payments.length > 1 ? (
+          sale.payments.map((p) => (
+            <div key={p.id} className="flex justify-between">
+              <span>
+                {PAYMENT_METHOD_LABELS[p.method]}
+                {p.reference ? ` · ${p.reference}` : ""}
+              </span>
+              <span>{money(p.method === "CASH" && sale.amountReceived ? sale.amountReceived : p.amount)}</span>
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="flex justify-between">
+              <span>{PAYMENT_METHOD_LABELS[sale.paymentMethod]}</span>
+              <span>{sale.amountReceived ? money(sale.amountReceived) : ""}</span>
+            </div>
+            {sale.paymentReference && <p>Ref. {sale.paymentReference}</p>}
+          </>
+        )}
         {sale.items.some((i) => i.promotionDiscount.gt(0)) && (
           <p>Ahorro en promociones: {money(sale.items.reduce((acc, i) => acc + i.promotionDiscount.toNumber(), 0))}</p>
         )}

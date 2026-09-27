@@ -67,6 +67,7 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   CREDIT: "Fiado",
   YAPPY: "Yappy",
   GIFT_CARD: "Vale",
+  MIXED: "Mixto",
 };
 
 export const ADJUSTMENT_REASON_LABELS: Record<string, string> = {

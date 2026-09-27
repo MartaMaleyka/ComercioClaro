@@ -38,6 +38,7 @@ const es = {
   // Formas de pago
   "pay.CASH": "Efectivo",
   "pay.GIFT_CARD": "Vale",
+  "pay.MIXED": "Mixto",
   "pay.CARD": "Tarjeta",
   "pay.TRANSFER": "Transferencia",
   "pay.YAPPY": "Yappy",
@@ -176,6 +177,7 @@ const zh: Partial<Record<MessageKey, string>> = {
   "offline.banner": "无网络。销售记录会保存在本设备上，网络恢复后自动上传。",
   "pay.CASH": "现金",
   "pay.GIFT_CARD": "礼品卡",
+  "pay.MIXED": "混合支付",
   "pay.CARD": "刷卡",
   "pay.TRANSFER": "转账",
   "pay.YAPPY": "Yappy",
@@ -310,6 +312,7 @@ const en: Partial<Record<MessageKey, string>> = {
   "offline.banner": "Offline. Sales are saved on this device and will be sent when the connection is back.",
   "pay.CASH": "Cash",
   "pay.GIFT_CARD": "Gift card",
+  "pay.MIXED": "Split",
   "pay.CARD": "Card",
   "pay.TRANSFER": "Transfer",
   "pay.CREDIT": "On credit",
