@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
@@ -16,6 +17,8 @@ import { Checkbox, Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 import { BillingSettingsCard } from "@/components/admin/BillingSettingsCard";
+import { PlanFeaturesMatrix } from "@/components/admin/PlanFeaturesMatrix";
+import { Tabs } from "@/components/ui/Tabs";
 
 interface Plan {
   id: string;
@@ -37,8 +40,22 @@ interface Plan {
   _count: { businesses: number };
 }
 
+type View = "planes" | "funciones";
+
 export default function AdminPlansPage() {
+  return (
+    <Suspense>
+      <PlansAndFeatures />
+    </Suspense>
+  );
+}
+
+function PlansAndFeatures() {
   const tr = useText();
+  const router = useRouter();
+  const params = useSearchParams();
+  const view: View = params.get("vista") === "funciones" ? "funciones" : "planes";
+  const setView = (v: View) => router.replace(v === "funciones" ? "/admin/planes?vista=funciones" : "/admin/planes");
   const toast = useToast();
   const confirm = useConfirm();
   const { data, error, mutate } = useSWR<Plan[]>("/api/admin/plans", fetcher);
@@ -73,7 +90,18 @@ export default function AdminPlansPage() {
           </Button>
         }
       />
-      {error ? (
+      <Tabs<View>
+        label={tr("Planes y precios")}
+        value={view}
+        onChange={setView}
+        tabs={[
+          { value: "planes", label: tr("Planes") },
+          { value: "funciones", label: tr("Funciones por plan") },
+        ]}
+      />
+      {view === "funciones" ? (
+        <PlanFeaturesMatrix onChanged={() => mutate()} />
+      ) : error ? (
         <ErrorState error={error} onRetry={() => mutate()} />
       ) : !data ? (
         <ListSkeleton rows={3} />
@@ -146,12 +174,16 @@ export default function AdminPlansPage() {
           ))}
         </div>
       )}
-      <p className="text-xs text-slate-500">
-        {tr(
-          "Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos, venta sin conexión y el descuento de jubilado están en todos los planes."
-        )}
-      </p>
-      <BillingSettingsCard />
+      {view === "planes" && (
+        <>
+          <p className="text-xs text-slate-500">
+            {tr(
+              "Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos, venta sin conexión y el descuento de jubilado están en todos los planes."
+            )}
+          </p>
+          <BillingSettingsCard />
+        </>
+      )}
       {editing !== undefined && (
         <PlanModal
           plan={editing}

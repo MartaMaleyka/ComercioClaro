@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { ErrorState, ListSkeleton, PageHeader, ScrollArea } from "@/components/ui/Misc";
+import { ErrorState, ListSkeleton, ScrollArea } from "@/components/ui/Misc";
 import { SegmentedControl, Switch } from "@/components/ui/Switch";
 
 type Mode = "plan" | "on" | "off";
@@ -35,8 +35,11 @@ interface Matrix {
 
 type Filter = "all" | "new" | "partial";
 
-/** Funciones por plan: interruptores que se guardan al momento, agrupados y con buscador. */
-export default function AdminFeaturesPage() {
+/**
+ * Funciones por plan (pestaña de Planes y precios): interruptores que se guardan al momento,
+ * agrupados y con buscador, y el ajuste por negocio desde "En uso".
+ */
+export function PlanFeaturesMatrix({ onChanged }: { onChanged?: () => void }) {
   const tr = useText();
   const toast = useToast();
   const confirm = useConfirm();
@@ -99,6 +102,7 @@ export default function AdminFeaturesPage() {
     } finally {
       setSaving(null);
       mutate();
+      onChanged?.();
     }
   }
 
@@ -107,12 +111,11 @@ export default function AdminFeaturesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title={tr("Funciones")}
-        description={tr(
+      <p className="text-sm text-slate-600">
+        {tr(
           "Enciende o apaga cada función por plan. El cambio se aplica al momento a todos los negocios del plan; para un negocio en particular, usa En uso o su ficha."
         )}
-      />
+      </p>
 
       {error ? (
         <ErrorState error={error} onRetry={() => mutate()} />
@@ -128,7 +131,9 @@ export default function AdminFeaturesPage() {
 
           {data.plans.length === 0 && (
             <p className="rounded-xl bg-amber-50 text-amber-800 text-sm px-4 py-3">
-              {tr("Aún no hay planes: todos los negocios tienen todas las funciones. Crea planes en Planes y precios.")}
+              {tr(
+                "Aún no hay planes: todos los negocios tienen todas las funciones. Crea un plan en la pestaña Planes."
+              )}
             </p>
           )}
 
@@ -194,7 +199,11 @@ export default function AdminFeaturesPage() {
                                 {tr("Función")}
                               </th>
                               {data.plans.map((p) => (
-                                <th key={p.id} scope="col" className="py-2.5 px-3 font-medium text-center whitespace-nowrap">
+                                <th
+                                  key={p.id}
+                                  scope="col"
+                                  className="py-2.5 px-3 font-medium text-center whitespace-nowrap"
+                                >
                                   <span className="block text-slate-700">{p.name}</span>
                                   <span className="block text-xs font-normal">
                                     {!p.active ? tr("inactivo") : tr("{n} negocio(s)", { n: p.businesses })}
@@ -225,7 +234,10 @@ export default function AdminFeaturesPage() {
                                         checked={p.features.includes(f.key)}
                                         onChange={(on) => toggle(p.id, f.key, on)}
                                         busy={saving === `${p.id}:${f.key}`}
-                                        label={tr("{feature} en el plan {plan}", { feature: tr(f.label), plan: p.name })}
+                                        label={tr("{feature} en el plan {plan}", {
+                                          feature: tr(f.label),
+                                          plan: p.name,
+                                        })}
                                       />
                                     </td>
                                   ))}
@@ -260,11 +272,6 @@ export default function AdminFeaturesPage() {
               );
             })
           )}
-          <p className="text-xs text-slate-500">
-            {tr(
-              "Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos, venta sin conexión y el descuento de jubilado están en todos los planes."
-            )}
-          </p>
         </>
       )}
 
@@ -307,7 +314,9 @@ function FeatureBusinessesModal({
   const { data, mutate } = useSWR<BusinessRow[]>(feature ? `/api/admin/features/${feature}` : null, fetcher);
   const [query, setQuery] = useState("");
   const info = FEATURES.find((f) => f.key === feature);
-  const rows = (data ?? []).filter((b) => b.name.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es")));
+  const rows = (data ?? []).filter((b) =>
+    b.name.toLocaleLowerCase("es").includes(query.trim().toLocaleLowerCase("es"))
+  );
 
   async function change(row: BusinessRow, mode: Mode) {
     if (!feature || !data) return;
@@ -340,12 +349,7 @@ function FeatureBusinessesModal({
               "Según plan: la tiene si su plan la incluye. Sí o No: ajuste solo para ese negocio, sin importar el plan."
             )}
           </p>
-          <Input
-            label={tr("Buscar negocio")}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+          <Input label={tr("Buscar negocio")} type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
           {!data ? (
             <ListSkeleton rows={3} />
           ) : rows.length === 0 ? (

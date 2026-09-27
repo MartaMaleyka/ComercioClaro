@@ -603,7 +603,7 @@ function FeaturesCard({ detail, onSaved }: { detail: Detail; onSaved: () => void
           <p className="text-sm text-slate-500 text-center py-4">{tr("Ninguna función coincide con la búsqueda.")}</p>
         )}
         <p className="text-xs text-slate-500">
-          <Link href="/admin/funciones" className="text-brand-700 dark:text-brand-300 underline">
+          <Link href="/admin/planes?vista=funciones" className="text-brand-700 dark:text-brand-300 underline">
             {tr("Ver qué incluye cada plan")}
           </Link>
         </p>

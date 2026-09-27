@@ -10,8 +10,10 @@ test.beforeEach(({ isMobile }) => {
 
 test("el super admin apaga Pagos divididos a un negocio y el punto de venta lo refleja", async ({ page, browser }) => {
   await loginAdmin(page);
-  await page.getByRole("link", { name: "Funciones" }).click();
-  await expect(page.getByRole("heading", { name: "Funciones", exact: true })).toBeVisible();
+  // Las funciones se manejan dentro de Planes y precios, en su propia pestaña.
+  await page.getByRole("link", { name: "Planes y precios" }).click();
+  await page.getByRole("tab", { name: "Funciones por plan" }).click();
+  await expect(page).toHaveURL(/\/admin\/planes\?vista=funciones/);
 
   // Buscar y filtrar.
   await page.getByLabel("Buscar función").fill("planilla");
@@ -48,7 +50,7 @@ test("el super admin apaga Pagos divididos a un negocio y el punto de venta lo r
 
 test("quitar una función de un plan pide confirmación y se puede volver a encender", async ({ page }) => {
   await loginAdmin(page);
-  await page.goto("/admin/funciones");
+  await page.goto("/admin/planes?vista=funciones");
   const toggle = page.getByRole("switch", { name: "Balanza conectada en el plan Básico" });
   await expect(toggle).toHaveAttribute("aria-checked", "true");
 
@@ -71,7 +73,7 @@ for (const scheme of ["light", "dark"] as const) {
   test(`funciones del super admin accesibles (${scheme === "light" ? "claro" : "oscuro"})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme });
     await loginAdmin(page);
-    await expectAccessible(page, "/admin/funciones");
+    await expectAccessible(page, "/admin/planes?vista=funciones");
     await page.getByRole("button", { name: /^Negocios con Recetas e insumos/ }).click();
     await expect(page.getByRole("dialog", { name: "Recetas e insumos" }).getByRole("listitem").first()).toBeVisible();
     await expectAccessible(page);

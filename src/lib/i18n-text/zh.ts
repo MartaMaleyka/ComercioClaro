@@ -158,8 +158,8 @@ export const zh: Record<string, string> = {
   "Aún no hay aportes ni retiros.": "还没有投入或提取。",
   "Aún no hay planes. Mientras tanto, todos los negocios tienen todas las funciones.":
     "还没有套餐。在此之前，所有店铺都拥有全部功能。",
-  "Aún no hay planes: todos los negocios tienen todas las funciones. Crea planes en Planes y precios.":
-    "还没有套餐：所有店铺拥有全部功能。请在“套餐与价格”中创建套餐。",
+  "Aún no hay planes: todos los negocios tienen todas las funciones. Crea un plan en la pestaña Planes.":
+    "还没有套餐：所有店铺拥有全部功能。请在“套餐”标签中创建套餐。",
   "Aún no hay planillas.": "还没有工资单。",
   "Aún no hay productos contados.": "还没有盘点任何商品。",
   "Aún no hay ventas con margen en los últimos 90 días para calcular el punto de equilibrio.":
@@ -736,6 +736,7 @@ export const zh: Record<string, string> = {
   "Funciones actualizadas": "功能已更新",
   "Funciones de {group} por plan": "各套餐的{group}功能",
   "Funciones incluidas": "包含的功能",
+  "Funciones por plan": "各套餐的功能",
   "Funciones según el plan": "功能已按套餐设置",
   Función: "功能",
   "Función {name}": "功能 {name}",
@@ -1152,6 +1153,7 @@ export const zh: Record<string, string> = {
   "Plan por defecto al registrarse": "注册时的默认套餐",
   "Plan {plan} ({cycle})": "{plan} 套餐（{cycle}）",
   "Plan, estado, funciones y pagos de cada negocio": "每家店铺的套餐、状态、功能和付款",
+  Planes: "套餐",
   "Planes y precios": "套餐和价格",
   Planilla: "工资单",
   "Planilla creada": "工资单已创建",

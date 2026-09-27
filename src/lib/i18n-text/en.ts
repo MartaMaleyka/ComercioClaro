@@ -162,8 +162,8 @@ export const en: Record<string, string> = {
   "Aún no hay aportes ni retiros.": "No contributions or withdrawals yet.",
   "Aún no hay planes. Mientras tanto, todos los negocios tienen todas las funciones.":
     "No plans yet. Meanwhile, every business has all features.",
-  "Aún no hay planes: todos los negocios tienen todas las funciones. Crea planes en Planes y precios.":
-    "No plans yet: every business has every feature. Create plans in Plans and pricing.",
+  "Aún no hay planes: todos los negocios tienen todas las funciones. Crea un plan en la pestaña Planes.":
+    "No plans yet: every business has every feature. Create a plan in the Plans tab.",
   "Aún no hay planillas.": "No payrolls yet.",
   "Aún no hay productos contados.": "No products counted yet.",
   "Aún no hay ventas con margen en los últimos 90 días para calcular el punto de equilibrio.":
@@ -753,6 +753,7 @@ export const en: Record<string, string> = {
   "Funciones actualizadas": "Features updated",
   "Funciones de {group} por plan": "{group} features by plan",
   "Funciones incluidas": "Included features",
+  "Funciones por plan": "Features by plan",
   "Funciones según el plan": "Features follow the plan",
   Función: "Feature",
   "Función {name}": "Feature {name}",
@@ -1179,6 +1180,7 @@ export const en: Record<string, string> = {
   "Plan por defecto al registrarse": "Default plan on sign-up",
   "Plan {plan} ({cycle})": "{plan} plan ({cycle})",
   "Plan, estado, funciones y pagos de cada negocio": "Plan, status, features and payments of each business",
+  Planes: "Plans",
   "Planes y precios": "Plans and pricing",
   Planilla: "Payroll",
   "Planilla creada": "Payroll created",

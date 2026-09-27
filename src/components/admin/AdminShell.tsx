@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, CreditCard, History, LayoutDashboard, LogOut, ShieldCheck, Store, ToggleRight, Users } from "lucide-react";
+import { Building2, CreditCard, History, LayoutDashboard, LogOut, ShieldCheck, Store, Users } from "lucide-react";
 import { LanguageContext, useText } from "@/lib/client/i18n";
 import { clearOfflineData } from "@/lib/client/offline-db";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,6 @@ const NAV = [
   { href: "/admin", label: "Resumen", icon: LayoutDashboard },
   { href: "/admin/negocios", label: "Negocios", icon: Building2 },
   { href: "/admin/planes", label: "Planes y precios", icon: CreditCard },
-  { href: "/admin/funciones", label: "Funciones", icon: ToggleRight },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/bitacora", label: "Bitácora", icon: History },
 ];
