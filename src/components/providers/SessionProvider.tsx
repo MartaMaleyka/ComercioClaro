@@ -42,7 +42,7 @@ export interface SessionBusiness {
 }
 
 export interface SessionData {
-  user: { id: string; name: string; email: string; language: string; isSuperAdmin: boolean };
+  user: { id: string; name: string; email: string; language: string; isSuperAdmin: boolean; emailVerified: boolean };
   /** El super admin está dentro del negocio como soporte */
   support: boolean;
   role: "OWNER" | "CASHIER";

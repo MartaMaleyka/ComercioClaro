@@ -2,6 +2,7 @@ import "dotenv/config";
 import { prisma } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/auth";
 import { createProduct } from "../src/server/catalog";
+import { TERMS_VERSION } from "../src/lib/business-types";
 import { createPurchase } from "../src/server/purchases";
 import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
@@ -1302,6 +1303,31 @@ async function seedBilling() {
   });
 }
 
+/** Registro: cuentas de demostración confirmadas, términos aceptados y tipo de cada negocio. */
+async function seedSignup() {
+  const now = new Date();
+  await prisma.user.updateMany({
+    where: { email: { in: [DEMO_EMAIL, CASHIER_EMAIL, ADMIN_EMAIL] }, emailVerifiedAt: null },
+    data: { emailVerifiedAt: now },
+  });
+  await prisma.user.updateMany({
+    where: { email: { in: [DEMO_EMAIL, CASHIER_EMAIL] }, termsAcceptedAt: null },
+    data: { termsAcceptedAt: now, termsVersion: TERMS_VERSION },
+  });
+  const types: Record<string, string> = {
+    "Miscelánea La Esperanza": "MINISUPER",
+    "Minisúper El Dorado": "MINISUPER",
+    "Fonda La Chiricana": "FONDA",
+    "Abarrotería Los Santos": "MINISUPER",
+  };
+  for (const [name, businessType] of Object.entries(types)) {
+    await prisma.business.updateMany({
+      where: { name, businessType: null },
+      data: { businessType, signupSource: "SELF" },
+    });
+  }
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1318,6 +1344,7 @@ async function main() {
   await seedCampaigns();
   await seedScale();
   await seedBilling();
+  await seedSignup();
 }
 
 main()

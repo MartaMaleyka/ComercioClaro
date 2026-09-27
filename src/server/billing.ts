@@ -410,11 +410,36 @@ export async function runBillingCron(
   const mail = deps.mail ?? sendEmail;
   const provider = deps.provider === undefined ? billingProvider() : deps.provider;
   const settings = await platformSettings();
-  const result = { renewalNotices: 0, charged: 0, failed: 0, suspensionNotices: 0, suspended: 0 };
+  const result = { trialNotices: 0, renewalNotices: 0, charged: 0, failed: 0, suspensionNotices: 0, suspended: 0 };
 
   const paid = { status: "ACTIVE" as const, paidUntil: { not: null }, plan: { priceMonthly: { gt: 0 } } };
   const fmtDate = (d: Date, locale: string, timeZone: string) =>
     new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone }).format(d);
+
+  // 0. La prueba termina pronto: aviso por correo con el enlace a Mi plan (una vez por prueba).
+  const trials = await prisma.business.findMany({
+    where: {
+      status: "TRIAL",
+      trialEndsAt: { gt: now, lte: new Date(now.getTime() + settings.noticeDays * DAY_MS) },
+      planId: { not: null },
+    },
+    include: { plan: true },
+  });
+  for (const b of trials) {
+    if (b.trialNoticeFor?.getTime() === b.trialEndsAt!.getTime()) continue;
+    const date = fmtDate(b.trialEndsAt!, b.locale, b.timezone);
+    const { amount } = planPrice(b.plan!, b.billingCycle);
+    const lines = [
+      `Hola, la prueba de ${b.name} termina el ${date}.`,
+      D(amount).gt(0)
+        ? `Para seguir sin interrupciones, activa el plan ${b.plan!.name} por ${formatCurrency(amount.toNumber(), b.plan!.currency, b.locale)}.`
+        : `Tu plan ${b.plan!.name} no tiene costo: no tienes que hacer nada.`,
+      "Tus datos se conservan pase lo que pase.",
+    ];
+    await notify(mail, b.id, `Tu prueba termina el ${date} · ${b.name}`, lines);
+    await prisma.business.update({ where: { id: b.id }, data: { trialNoticeFor: b.trialEndsAt } });
+    result.trialNotices++;
+  }
 
   // 1. Avisos antes del vencimiento.
   const upcoming = await prisma.business.findMany({
