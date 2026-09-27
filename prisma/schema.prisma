@@ -228,6 +228,8 @@ model Business {
   giftCardMoves        GiftCardTransaction[]
   openOrders           OpenOrder[]
   recipeItems          RecipeItem[]
+  supplierBills        SupplierBill[]
+  supplierPayments     SupplierPayment[]
 }
 
 model Category {
@@ -369,6 +371,8 @@ model Supplier {
   phone      String?
   email      String?
   notes      String?
+  // Días de crédito que da el proveedor (vencimiento por defecto de sus facturas)
+  creditDays Int       @default(30)
   businessId String
   business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   archivedAt DateTime?
@@ -377,6 +381,7 @@ model Supplier {
 
   purchases      Purchase[]
   purchaseOrders PurchaseOrder[]
+  bills          SupplierBill[]
 
   @@index([businessId, archivedAt, name])
 }
@@ -550,6 +555,11 @@ model Purchase {
   supplierName    String?
   notes           String?
   paidFromCash    Boolean        @default(false)
+  // Comprada a crédito: genera una cuenta por pagar
+  onCredit        Boolean        @default(false)
+  // ITBMS/IVA incluido en el total (crédito fiscal)
+  tax             Decimal        @default(0) @db.Decimal(12, 2)
+  bill            SupplierBill?
   // Orden de compra que se recibió con esta compra
   purchaseOrderId String?
   purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: SetNull)
@@ -652,6 +662,7 @@ model CashSession {
   expenses         Expense[]
   customerPayments CustomerPayment[]
   serviceSales     ServiceSale[]
+  supplierPayments SupplierPayment[]
 
   @@index([businessId, closedAt])
   @@index([businessId, openedAt])
@@ -1214,4 +1225,71 @@ model AdminAuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+enum SupplierBillStatus {
+  OPEN
+  PAID
+  CANCELLED
+}
+
+/**
+ * Cuenta por pagar: factura de un proveedor comprada a crédito (o registrada a mano).
+ * El saldo baja con cada abono.
+ */
+model SupplierBill {
+  id           String             @id @default(cuid())
+  // Número de factura del proveedor
+  number       String?
+  status       SupplierBillStatus @default(OPEN)
+  supplierId   String?
+  supplier     Supplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierName String?
+  purchaseId   String?            @unique
+  purchase     Purchase?          @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  // Fecha de la factura y vencimiento (día calendario)
+  date         DateTime
+  dueDate      DateTime
+  total        Decimal            @db.Decimal(12, 2)
+  // ITBMS/IVA incluido en el total (crédito fiscal)
+  tax          Decimal            @default(0) @db.Decimal(12, 2)
+  balance      Decimal            @db.Decimal(12, 2)
+  notes        String?
+  cancelledAt  DateTime?
+  userId       String?
+  businessId   String
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  payments SupplierPayment[]
+
+  @@index([businessId, status, dueDate])
+  @@index([supplierId])
+}
+
+/**
+ * Abono a una factura de proveedor. En efectivo sale de la caja abierta; si no, del banco.
+ */
+model SupplierPayment {
+  id            String        @id @default(cuid())
+  amount        Decimal       @db.Decimal(12, 2)
+  method        PaymentMethod
+  // true = salió del efectivo de la caja (entra al corte)
+  fromCash      Boolean       @default(false)
+  reference     String?
+  notes         String?
+  voidedAt      DateTime?
+  billId        String
+  bill          SupplierBill  @relation(fields: [billId], references: [id], onDelete: Cascade)
+  cashSessionId String?
+  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id], onDelete: SetNull)
+  userId        String?
+  businessId    String
+  business      Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+
+  @@index([billId])
+  @@index([businessId, createdAt])
+  @@index([cashSessionId])
 }

@@ -9,13 +9,18 @@ import { dayRange } from "@/lib/dates";
 import type { listQuerySchema, purchaseSchema } from "@/lib/validation";
 import { applyStockChange, receiveStock, type Actor } from "./inventory";
 import { getOpenSession } from "./cash";
+import { cancelBillForPurchase, createBillInTx } from "./payables";
 
-export type PurchaseInput = z.infer<typeof purchaseSchema>;
+type CreditFields = "onCredit" | "invoiceNumber" | "dueDate";
+/** Los datos de crédito son opcionales: sin ellos la compra es de contado. */
+export type PurchaseInput = Omit<z.infer<typeof purchaseSchema>, CreditFields> &
+  Partial<Pick<z.infer<typeof purchaseSchema>, CreditFields>>;
 type ListQuery = z.infer<typeof listQuerySchema>;
 
 export const purchaseInclude = {
   items: { include: { product: { select: { id: true, name: true, unit: true } } } },
   supplier: { select: { id: true, name: true } },
+  bill: { select: { id: true, status: true, balance: true, dueDate: true, number: true } },
 } satisfies Prisma.PurchaseInclude;
 
 export async function createPurchase(actor: Actor, input: PurchaseInput) {
@@ -48,6 +53,15 @@ export async function createPurchaseInTx(tx: Tx, actor: Actor, input: PurchaseIn
     return { item, product, quantity, cost, subtotal: money(quantity.times(cost)) };
   });
   const total = sum(lines.map((l) => l.subtotal));
+  // ITBMS/IVA incluido en el costo (crédito fiscal): el indicado en la factura o el de cada producto.
+  const tax =
+    input.tax != null
+      ? money(input.tax)
+      : money(sum(lines.map((l) => l.subtotal.times(l.product.taxRate).div(D(1).plus(l.product.taxRate)))));
+  if (tax.gt(total)) throw new AppError(400, "El impuesto no puede ser mayor al total de la compra");
+  if (input.onCredit && input.paidFromCash) {
+    throw new AppError(400, "Una compra a crédito no se paga con dinero de la caja");
+  }
 
   const cashSession = input.paidFromCash ? await getOpenSession(tx, actor.businessId) : null;
   if (input.paidFromCash && !cashSession) {
@@ -79,6 +93,8 @@ export async function createPurchaseInTx(tx: Tx, actor: Actor, input: PurchaseIn
       supplierName,
       notes: input.notes,
       paidFromCash: input.paidFromCash,
+      onCredit: input.onCredit,
+      tax,
       purchaseOrderId: purchaseOrderId ?? null,
       cashSessionId: cashSession?.id ?? null,
       userId: actor.userId,
@@ -115,9 +131,23 @@ export async function createPurchaseInTx(tx: Tx, actor: Actor, input: PurchaseIn
     }
   }
 
+  if (input.onCredit) {
+    await createBillInTx(tx, actor, {
+      supplierId: input.supplierId ?? null,
+      supplierName,
+      number: input.invoiceNumber ?? null,
+      dueDate: input.dueDate ?? null,
+      total: total.toNumber(),
+      tax: tax.toNumber(),
+      notes: input.notes,
+      purchaseId: purchase.id,
+    });
+  }
+
   await audit(tx, actor, "purchase.create", "Purchase", purchase.id, {
     folio: purchase.folio,
     total: total.toNumber(),
+    ...(input.onCredit ? { onCredit: true } : {}),
   });
   return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id }, include: purchaseInclude });
 }
@@ -165,6 +195,7 @@ export async function cancelPurchase(actor: Actor, id: string, reason: string) {
       data: { status: "CANCELLED", cancelledAt: new Date(), cancelReason: reason },
     });
     if (count === 0) throw new AppError(409, "La compra ya está cancelada");
+    await cancelBillForPurchase(tx, actor, purchase.id);
 
     for (const item of [...purchase.items].sort((a, b) => a.productId.localeCompare(b.productId))) {
       const rows = await tx.$queryRaw<{ stock: Decimal; cost: Decimal }[]>`

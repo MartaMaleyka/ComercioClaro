@@ -10,6 +10,8 @@ import { syncDeliveryZones } from "../src/server/delivery";
 import { FEATURE_KEYS, type FeatureKey } from "../src/lib/features";
 import { saveRecipe } from "../src/server/recipes";
 import { adjustStock } from "../src/server/inventory";
+import { createSupplierBill, paySupplierBill } from "../src/server/payables";
+import { addDays, dayKey } from "../src/lib/dates";
 import type { Prisma } from "../src/generated/prisma/client";
 
 const DEMO_EMAIL = "demo@comercioclaro.com";
@@ -1038,6 +1040,54 @@ async function seedRecipes() {
   console.log("✅ Recetas e insumos de la fonda");
 }
 
+/** Cuentas por pagar del minisúper: una compra a crédito, una factura vencida y una que vence esta semana. */
+async function seedPayables() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.supplierBill.findFirst({ where: { businessId: business.id } })) return;
+  const [beer, groceries] = await Promise.all([
+    prisma.supplier.findFirst({ where: { businessId: business.id, name: { startsWith: "Distribuidora Cervecería" } } }),
+    prisma.supplier.findFirst({ where: { businessId: business.id, name: { startsWith: "Abarrotes Mayoristas" } } }),
+  ]);
+  if (!beer || !groceries) return;
+  await prisma.supplier.update({ where: { id: groceries.id }, data: { creditDays: 15 } });
+  const products = await prisma.product.findMany({
+    where: { businessId: business.id, archivedAt: null, trackStock: true, isIngredient: false },
+    orderBy: { name: "asc" },
+    take: 2,
+  });
+  await createPurchase(actor, {
+    supplierId: groceries.id,
+    supplierName: null,
+    notes: "Pedido quincenal",
+    paidFromCash: false,
+    onCredit: true,
+    invoiceNumber: "AMI-2031",
+    items: products.map((p) => ({ productId: p.id, quantity: 12, unitCost: Number(p.cost), lotCode: null, expiresAt: null })),
+  });
+  const today = dayKey(new Date(), business.timezone);
+  const overdue = await createSupplierBill(actor, {
+    supplierId: beer.id,
+    number: "CN-88412",
+    date: addDays(today, -40),
+    dueDate: addDays(today, -10),
+    total: 186.4,
+    tax: 12.19,
+    notes: "Cerveza y maltas",
+  });
+  await paySupplierBill(actor, overdue.id, { amount: 80, method: "TRANSFER", fromCash: false, reference: "ACH-5521" });
+  await createSupplierBill(actor, {
+    supplierId: beer.id,
+    number: "CN-88977",
+    date: addDays(today, -25),
+    dueDate: addDays(today, 4),
+    total: 94.5,
+    tax: 6.18,
+  });
+  console.log("✅ Cuentas por pagar del minisúper");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1046,6 +1096,7 @@ async function main() {
   await seedInterior();
   await seedPlatform();
   await seedRecipes();
+  await seedPayables();
 }
 
 main()

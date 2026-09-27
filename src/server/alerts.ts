@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { escapeHtml, sendEmail } from "@/lib/email";
 import { getAppUrl } from "@/lib/env";
-import { UNIT_LABELS } from "@/lib/utils";
+import { UNIT_LABELS, formatCurrency } from "@/lib/utils";
+import { payablesDueSoon } from "./payables";
 
-/** Envía a los dueños un resumen de bajo inventario y lotes por caducar (7 días). */
+/**
+ * Envía a los dueños un resumen de bajo inventario, lotes por caducar (7 días) y facturas
+ * de proveedores vencidas o que vencen en los próximos 3 días.
+ */
 export async function sendLowStockAlerts() {
   const businesses = await prisma.business.findMany({
     where: { lowStockEmailAlerts: true },
@@ -13,7 +17,7 @@ export async function sendLowStockAlerts() {
   let sent = 0;
 
   for (const business of businesses) {
-    const [low, expiring] = await Promise.all([
+    const [low, expiring, payables] = await Promise.all([
       prisma.product.findMany({
         where: { businessId: business.id, archivedAt: null, trackStock: true, stock: { lte: prisma.product.fields.minStock } },
         orderBy: { stock: "asc" },
@@ -25,28 +29,40 @@ export async function sendLowStockAlerts() {
         orderBy: { expiresAt: "asc" },
         take: 50,
       }),
+      payablesDueSoon(business.id, business.timezone),
     ]);
-    if (low.length === 0 && expiring.length === 0) continue;
+    if (low.length === 0 && expiring.length === 0 && payables.length === 0) continue;
 
     const dateFmt = new Intl.DateTimeFormat(business.locale, { dateStyle: "medium", timeZone: business.timezone });
     const lowLines = low.map((p) => `• ${p.name}: ${p.stock} ${UNIT_LABELS[p.unit]} (mínimo ${p.minStock})`);
     const expLines = expiring.map(
       (b) => `• ${b.product.name}: ${b.remaining} ${UNIT_LABELS[b.product.unit]} caduca ${dateFmt.format(b.expiresAt!)}`
     );
+    const money = (n: unknown) => formatCurrency(Number(n), business.currency, business.locale, business.showBalboa);
+    const dueFmt = new Intl.DateTimeFormat(business.locale, { dateStyle: "medium", timeZone: "UTC" });
+    const payLines = payables.map(
+      (b) =>
+        `• ${b.supplier}${b.number ? ` (factura ${b.number})` : ""}: ${money(b.balance)} ${
+          b.daysOverdue > 0 ? `vencida hace ${b.daysOverdue} día(s)` : `vence ${dueFmt.format(b.dueDate)}`
+        }`
+    );
     const text = [
       `Resumen de inventario de ${business.name}`,
       low.length ? `\nBajo inventario (${low.length}):\n${lowLines.join("\n")}` : "",
       expiring.length ? `\nPor caducar (${expiring.length}):\n${expLines.join("\n")}` : "",
+      payables.length ? `\nPor pagar a proveedores (${payables.length}):\n${payLines.join("\n")}` : "",
       `\nVer sugerencias de compra: ${getAppUrl()}/inventario?tab=reabastecer`,
     ].join("\n");
     const html = `<h2>${escapeHtml(business.name)}</h2>${
       low.length ? `<h3>Bajo inventario (${low.length})</h3><ul>${lowLines.map((l) => `<li>${escapeHtml(l.slice(2))}</li>`).join("")}</ul>` : ""
     }${
       expiring.length ? `<h3>Por caducar (${expiring.length})</h3><ul>${expLines.map((l) => `<li>${escapeHtml(l.slice(2))}</li>`).join("")}</ul>` : ""
+    }${
+      payables.length ? `<h3>Por pagar a proveedores (${payables.length})</h3><ul>${payLines.map((l) => `<li>${escapeHtml(l.slice(2))}</li>`).join("")}</ul><p><a href="${getAppUrl()}/compras?tab=por-pagar">Ver cuentas por pagar</a></p>` : ""
     }<p><a href="${getAppUrl()}/inventario?tab=reabastecer">Ver sugerencias de compra</a></p>`;
 
     for (const m of business.memberships) {
-      const ok = await sendEmail({ to: m.user.email, subject: `Alertas de inventario · ${business.name}`, text, html });
+      const ok = await sendEmail({ to: m.user.email, subject: `Alertas del negocio · ${business.name}`, text, html });
       if (ok) sent++;
     }
   }

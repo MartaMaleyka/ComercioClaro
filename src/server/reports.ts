@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { currentPaydayEnd } from "@/lib/credit-terms";
 import { customersAging } from "./customers";
 import { serviceCommissions } from "./services";
+import { payablesSummary } from "./payables";
 import { addDays, dayKey, dayKeysBetween, dayRange, startOfDay, startOfMonth } from "@/lib/dates";
 
 interface Range {
@@ -290,6 +291,7 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
     openCash,
     recentSales,
     totalProducts,
+    payables,
   ] = await Promise.all([
     financialSummary(business.id, today, business),
     financialSummary(business.id, month, business),
@@ -334,6 +336,7 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
       take: 5,
     }),
     prisma.product.count({ where: { businessId: business.id, archivedAt: null } }),
+    payablesSummary(business.id, business.timezone),
   ]);
 
   return {
@@ -351,6 +354,8 @@ export async function dashboard(business: { id: string; timezone: string } & Fee
     },
     cashSession: openCash,
     recentSales,
+    // Cuentas por pagar a proveedores: lo vencido y lo que vence en los próximos 7 días.
+    payables: { total: payables.total, overdue: payables.overdue, dueThisWeek: payables.dueThisWeek },
   };
 }
 

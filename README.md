@@ -102,6 +102,12 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Cada plato descuenta sus insumos al venderse. La receta muestra el costo por plato y el margen.
   - Pestaña *Insumos* en Inventario y reporte de *Merma* valorado a costo.
   - *Qué comprar* incluye los insumos.
+- **Cuentas por pagar a proveedores** ([`docs/plan-cuentas-por-pagar.md`](docs/plan-cuentas-por-pagar.md)):
+  - Compras a crédito (también al recibir una orden de compra) y facturas registradas a mano.
+  - Abonos en efectivo desde la caja o por banco.
+  - Antigüedad de saldos y estado de cuenta por proveedor.
+  - Lo que vence esta semana aparece en el tablero y en las alertas diarias.
+  - Cada compra guarda su ITBMS para el crédito fiscal.
 
 ## Requisitos
 

@@ -364,6 +364,22 @@ export const saleReturnSchema = z.object({
 
 // ---------- Compras y proveedores ----------
 
+const dateKey = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida")
+  .nullish()
+  .or(z.literal(""))
+  .transform((v) => v || null);
+
+/** Compra a crédito: genera una cuenta por pagar con su vencimiento. */
+const creditPurchase = {
+  onCredit: z.boolean().default(false),
+  invoiceNumber: optText(40),
+  dueDate: dateKey,
+  // ITBMS/IVA de la factura; sin indicar se calcula con la tasa de cada producto
+  tax: moneyInput.nullish(),
+};
+
 export const purchaseSchema = z.object({
   items: z
     .array(
@@ -381,6 +397,7 @@ export const purchaseSchema = z.object({
   supplierName: optText(150),
   notes: optText(),
   paidFromCash: z.boolean().default(false),
+  ...creditPurchase,
 });
 
 export const supplierSchema = z.object({
@@ -395,7 +412,32 @@ export const supplierSchema = z.object({
     .nullish()
     .transform((v) => v || null),
   notes: optText(),
+  creditDays: z.coerce.number().int().min(0).max(365).default(30),
 });
+
+export const supplierBillSchema = z.object({
+  supplierId: id.nullish(),
+  supplierName: optText(150),
+  number: optText(40),
+  date: dateKey,
+  dueDate: dateKey,
+  total: positiveMoney,
+  tax: moneyInput.nullish(),
+  notes: optText(),
+});
+
+export const supplierPaymentSchema = z
+  .object({
+    amount: positiveMoney,
+    method: immediatePaymentMethod.default("TRANSFER"),
+    fromCash: z.boolean().default(false),
+    reference: optText(60),
+    notes: optText(),
+  })
+  .refine((p) => !p.fromCash || p.method === "CASH", {
+    message: "Solo el efectivo puede salir de la caja",
+    path: ["fromCash"],
+  });
 
 // ---------- Clientes (fiado) ----------
 
@@ -584,6 +626,7 @@ export const purchaseOrderSchema = z.object({
 
 export const purchaseOrderReceiveSchema = z.object({
   paidFromCash: z.boolean().default(false),
+  ...creditPurchase,
   notes: optText(),
   lines: z
     .array(

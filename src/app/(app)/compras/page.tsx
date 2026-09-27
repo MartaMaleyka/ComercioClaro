@@ -17,12 +17,14 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
-import { Checkbox, Input, Select } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 import { Tabs } from "@/components/ui/Tabs";
 import { PurchaseOrdersTab } from "@/components/purchases/PurchaseOrdersTab";
+import { PayablesTab } from "@/components/purchases/PayablesTab";
+import { countryConfig } from "@/lib/country";
 
 interface Line {
   productId: string;
@@ -59,8 +61,8 @@ function Purchases() {
   const debounced = useDebounce(search);
   const list = usePaginated<Purchase>("/api/purchases", { search: debounced, from, to });
   const [open, setOpen] = useState(() => params.get("nueva") === "1");
-  const [tab, setTab] = useState<"purchases" | "orders">(() =>
-    params.get("tab") === "ordenes" ? "orders" : "purchases"
+  const [tab, setTab] = useState<"purchases" | "orders" | "payables">(() =>
+    params.get("tab") === "ordenes" ? "orders" : params.get("tab") === "por-pagar" ? "payables" : "purchases"
   );
 
   async function cancel(p: Purchase) {
@@ -110,6 +112,7 @@ function Purchases() {
           ...(business.features.includes("purchaseOrders")
             ? [{ value: "orders" as const, label: tr("Órdenes de compra") }]
             : []),
+          { value: "payables" as const, label: tr("Por pagar") },
         ]}
         value={tab}
         onChange={setTab}
@@ -117,6 +120,8 @@ function Purchases() {
 
       {tab === "orders" ? (
         <PurchaseOrdersTab />
+      ) : tab === "payables" ? (
+        <PayablesTab />
       ) : (
         <>
           <div className="grid sm:grid-cols-[1fr_auto_auto] gap-2">
@@ -149,6 +154,13 @@ function Purchases() {
                           {fmt.dateTime(p.createdAt)}
                           {p.paidFromCash && ` · ${tr("pagada de caja")}`}
                         </p>
+                        {p.bill && p.bill.status !== "CANCELLED" && (
+                          <Badge tone={p.bill.status === "PAID" ? "green" : "amber"} className="mt-1">
+                            {p.bill.status === "PAID"
+                              ? tr("A crédito · pagada")
+                              : tr("A crédito · saldo {amount}", { amount: fmt.money(p.bill.balance) })}
+                          </Badge>
+                        )}
                         {p.status === "CANCELLED" && (
                           <Badge tone="red" className="mt-1">
                             {tr("Cancelada:")} {p.cancelReason}
@@ -224,7 +236,13 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
   const [supplierId, setSupplierId] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [notes, setNotes] = useState("");
-  const [paidFromCash, setPaidFromCash] = useState(false);
+  // Pago: de contado (banco u otro medio), con dinero de la caja o a crédito (cuenta por pagar).
+  const [payment, setPayment] = useState<"paid" | "cash" | "credit">("paid");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [tax, setTax] = useState("");
+  const { business } = useSession();
+  const taxLabel = countryConfig(business.country).taxLabel;
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -285,7 +303,11 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           supplierId: supplierId || null,
           supplierName: supplierId ? null : supplierName || null,
           notes: notes || null,
-          paidFromCash,
+          paidFromCash: payment === "cash",
+          onCredit: payment === "credit",
+          ...(payment === "credit"
+            ? { invoiceNumber: invoiceNumber || null, dueDate: dueDate || null, tax: tax === "" ? null : tax }
+            : {}),
           items: lines.map((l) => {
             // Compra por caja: se convierte a unidades y costo unitario.
             const factor = l.byPack && l.packSize ? l.packSize : 1;
@@ -425,11 +447,38 @@ function PurchaseForm({ open, onClose, onSaved }: { open: boolean; onClose: () =
           onChange={(e) => setNotes(e.target.value)}
           placeholder={tr("Número de factura, condiciones...")}
         />
-        <Checkbox
-          label={tr("Se pagó con dinero de la caja")}
-          checked={paidFromCash}
-          onChange={(e) => setPaidFromCash(e.target.checked)}
-        />
+        <Select
+          label={tr("Pago")}
+          value={payment}
+          onChange={(e) => setPayment(e.target.value as "paid" | "cash" | "credit")}
+        >
+          <option value="paid">{tr("De contado (banco u otro medio)")}</option>
+          <option value="cash">{tr("Se pagó con dinero de la caja")}</option>
+          <option value="credit">{tr("A crédito (queda por pagar)")}</option>
+        </Select>
+        {payment === "credit" && (
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Input
+              label={tr("Número de factura")}
+              value={invoiceNumber}
+              onChange={(e) => setInvoiceNumber(e.target.value)}
+            />
+            <Input
+              label={tr("Vencimiento")}
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              hint={tr("Vacío: según los días de crédito del proveedor")}
+            />
+            <Input
+              label={tr("Impuesto incluido ({tax})", { tax: taxLabel })}
+              inputMode="decimal"
+              value={tax}
+              onChange={(e) => setTax(e.target.value)}
+              hint={tr("Vacío: se calcula con la tasa de cada producto")}
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <p className="text-lg font-bold text-slate-900">

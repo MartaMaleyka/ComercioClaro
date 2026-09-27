@@ -9,7 +9,10 @@ import type { Actor } from "./inventory";
 import { createPurchaseInTx } from "./purchases";
 
 export type PurchaseOrderInput = z.infer<typeof purchaseOrderSchema>;
-export type PurchaseOrderReceiveInput = z.infer<typeof purchaseOrderReceiveSchema>;
+type ReceiveSchema = z.infer<typeof purchaseOrderReceiveSchema>;
+type CreditFields = "onCredit" | "invoiceNumber" | "dueDate";
+/** Los datos de crédito son opcionales: sin ellos la recepción es de contado. */
+export type PurchaseOrderReceiveInput = Omit<ReceiveSchema, CreditFields> & Partial<Pick<ReceiveSchema, CreditFields>>;
 
 export const purchaseOrderInclude = {
   lines: { include: { product: { select: { id: true, name: true, unit: true, barcode: true, packSize: true } } } },
@@ -130,6 +133,10 @@ export async function receivePurchaseOrder(actor: Actor, id: string, input: Purc
         supplierName: order.supplierId ? null : order.supplierName,
         notes: [`Orden de compra #${order.folio}`, input.notes].filter(Boolean).join(" · "),
         paidFromCash: input.paidFromCash,
+        onCredit: input.onCredit,
+        invoiceNumber: input.invoiceNumber,
+        dueDate: input.dueDate,
+        tax: input.tax,
         items: items.map(({ line, input: r }) => ({
           productId: line.productId,
           quantity: r.quantity,

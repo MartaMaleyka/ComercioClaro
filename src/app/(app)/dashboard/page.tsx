@@ -46,6 +46,11 @@ interface DashboardData {
     dueThisPeriod: number;
     dueThisPeriodCustomers: number;
   };
+  payables: {
+    total: number;
+    overdue: { amount: number; count: number };
+    dueThisWeek: { amount: number; count: number };
+  };
   cashSession: { id: string; openedAt: string } | null;
   recentSales: {
     id: string;
@@ -140,7 +145,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Stat
           label={tr("Valor del inventario")}
           value={fmt.money(data.totalInventoryValue)}
@@ -176,6 +181,35 @@ export default function DashboardPage() {
           }
           tone={data.receivables.total > 0 ? "warning" : "default"}
           icon={<HandCoins className="w-4 h-4 text-slate-400" />}
+        />
+        <Stat
+          label={tr("Por pagar a proveedores")}
+          value={fmt.money(data.payables.total)}
+          hint={
+            data.payables.overdue.count > 0 ? (
+              <Link href="/compras?tab=por-pagar" className="underline text-red-600">
+                {tr("{amount} vencido ({n})", {
+                  amount: fmt.money(data.payables.overdue.amount),
+                  n: data.payables.overdue.count,
+                })}
+              </Link>
+            ) : data.payables.dueThisWeek.count > 0 ? (
+              <Link href="/compras?tab=por-pagar" className="underline">
+                {tr("{amount} vence esta semana ({n})", {
+                  amount: fmt.money(data.payables.dueThisWeek.amount),
+                  n: data.payables.dueThisWeek.count,
+                })}
+              </Link>
+            ) : (
+              <Link href="/compras?tab=por-pagar" className="underline">
+                {tr("Ver cuentas por pagar")}
+              </Link>
+            )
+          }
+          tone={
+            data.payables.overdue.count > 0 ? "negative" : data.payables.dueThisWeek.count > 0 ? "warning" : "default"
+          }
+          icon={<Wallet className="w-4 h-4 text-slate-400" />}
         />
         <Stat
           label={tr("Bajo inventario")}
