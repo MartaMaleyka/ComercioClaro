@@ -2,8 +2,9 @@
 
 import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
+import Link from "next/link";
 import useSWR from "swr";
-import { Building2, KeyRound, LogOut, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Building2, CreditCard, KeyRound, LogOut, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { api, fetcher } from "@/lib/client/api";
 import { usePaginated } from "@/lib/client/hooks";
 import { useFormat } from "@/lib/client/format";
@@ -47,7 +48,19 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      <PageHeader title={tr("Configuración")} />
+      <PageHeader
+        title={tr("Configuración")}
+        actions={
+          isOwner && (
+            <Link
+              href="/configuracion/plan"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-surface px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <CreditCard className="w-4 h-4" aria-hidden="true" /> {tr("Mi plan")}
+            </Link>
+          )
+        }
+      />
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
       {tab === "negocio" && isOwner && <BusinessSettings />}
       {tab === "perfil" && <ProfileSettings />}

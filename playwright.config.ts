@@ -19,5 +19,12 @@ export default defineConfig({
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: "npm run start", url: baseURL, reuseExistingServer: true, timeout: 120_000 },
+    : {
+        command: "npm run start",
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 120_000,
+        // "Mi plan" se prueba con el proveedor de pago simulado.
+        env: { BILLING_PROVIDER: process.env.BILLING_PROVIDER ?? "simulado" },
+      },
 });

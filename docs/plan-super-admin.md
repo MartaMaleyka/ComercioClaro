@@ -9,7 +9,7 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 | **Resumen** (`/admin`) | Ingreso mensual recurrente, cobrado este mes y en los últimos 12 meses (por moneda), negocios por estado y por plan, pruebas por terminar y pagos vencidos. |
 | **Negocios** (`/admin/negocios`) | Buscar por negocio, dueño o correo; filtrar por estado y plan; dar de alta un negocio con su dueño (contraseña temporal). |
 | **Detalle del negocio** | Cambiar plan, ciclo (mensual o anual), estado (activo, en prueba, suspendido con motivo), fecha de fin de prueba y de pago, notas internas. Activar o desactivar cada función solo para ese negocio. Registrar pagos, ver uso contra los límites, usuarios, historial, y **entrar como soporte**. |
-| **Planes y precios** (`/admin/planes`) | Crear y editar planes: precio mensual y anual, moneda, días de prueba, límites de usuarios, sucursales y productos, funciones incluidas, plan por defecto y visibilidad en la página de precios. |
+| **Planes y precios** (`/admin/planes`) | Crear y editar planes: precio mensual y anual, moneda, días de prueba, límites de usuarios, sucursales y productos, funciones incluidas, plan por defecto y visibilidad en la página de precios. Reglas del **cobro automático**: días de gracia, reintentos, días entre reintentos y de aviso (ver [`plan-suscripcion.md`](plan-suscripcion.md)). |
 | **Usuarios** (`/admin/usuarios`) | Nombrar o quitar administradores, bloquear y desbloquear, cerrar sesiones y generar una contraseña temporal. |
 | **Bitácora** (`/admin/bitacora`) | Quién cambió qué y cuándo. |
 
@@ -33,7 +33,7 @@ El super admin administra la plataforma completa desde `/admin`. No depende de n
 - **Límites.** Aplican a usuarios del negocio, sucursales del dueño y productos activos. Si un campo está vacío, no hay límite.
 - **Estados:**
   - *En prueba*: se avisa en la última semana. Al vencer, el negocio se bloquea hasta que se active un plan.
-  - *Pago vencido*: solo muestra un aviso. Suspender es una decisión del super admin.
+  - *Pago vencido*: muestra un aviso. Con renovación automática (o si el super admin lo configura para todos), se suspende solo al pasar los días de gracia; ver [`plan-suscripcion.md`](plan-suscripcion.md).
   - *Suspendido*: los usuarios ven el motivo y no pueden usar el negocio. No se borra nada.
 - **Pagos.** Cada pago extiende la vigencia desde el vencimiento actual (o desde hoy, si ya venció) por los meses pagados. Además, activa una prueba y puede reactivar un negocio suspendido.
 - **Registro.** El negocio nuevo recibe el plan elegido en la página de precios (`/registro?plan=pro`) o el plan por defecto, con sus días de prueba.

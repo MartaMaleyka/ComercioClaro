@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuth, getSuperAdmin } from "@/lib/auth";
-import { BlockedBusiness } from "@/components/layout/BlockedBusiness";
+import { BlockedGate } from "@/components/layout/BlockedGate";
 import { sessionData } from "@/server/session-view";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SessionProvider } from "@/components/providers/SessionProvider";
@@ -21,7 +21,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     <SessionProvider value={await sessionData(auth)}>
       <ToastProvider>
         <ConfirmProvider>
-          {blocked ? <BlockedBusiness /> : <AppLayout>{children}</AppLayout>}
+          {blocked ? <BlockedGate>{children}</BlockedGate> : <AppLayout>{children}</AppLayout>}
         </ConfirmProvider>
       </ToastProvider>
     </SessionProvider>

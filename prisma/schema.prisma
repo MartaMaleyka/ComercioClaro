@@ -198,6 +198,21 @@ model Business {
   paidUntil            DateTime?
   billingCycle         BillingCycle   @default(MONTHLY)
   suspendedReason      String?
+  // Cobro automático de la suscripción (ver docs/plan-suscripcion.md)
+  autoRenew            Boolean        @default(false)
+  // Cliente y método de pago guardados en el proveedor (Stripe: cus_…, pm_…)
+  billingCustomerId    String?
+  billingMethodId      String?
+  // Tarjeta para mostrar: "Visa •••• 4242"
+  billingCardLabel     String?
+  // Cobros fallidos seguidos y cuándo se reintenta
+  billingFailures      Int            @default(0)
+  nextChargeAt         DateTime?
+  // Vencimiento para el que ya se envió el aviso de cobro y el de suspensión
+  renewalNoticeFor     DateTime?
+  suspensionNoticeFor  DateTime?
+  // Suspendido por falta de pago (se reactiva al pagar en línea)
+  suspendedByBilling   Boolean        @default(false)
   // Funciones activadas o desactivadas a mano sobre las del plan: { "promotions": false }
   featureOverrides     Json?
   adminNotes           String?
@@ -206,6 +221,7 @@ model Business {
 
   memberships          Membership[]
   subscriptionPayments SubscriptionPayment[]
+  subscriptionCharges  SubscriptionCharge[]
   categories           Category[]
   products             Product[]
   customers            Customer[]
@@ -1241,6 +1257,7 @@ model Plan {
 
   businesses Business[]
   payments   SubscriptionPayment[]
+  charges    SubscriptionCharge[]
 }
 
 /**
@@ -1619,4 +1636,62 @@ model CampaignRecipient {
   error      String?
 
   @@unique([campaignId, customerId])
+}
+
+enum SubscriptionChargeKind {
+  CHECKOUT
+  RENEWAL
+}
+
+enum SubscriptionChargeStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+/**
+ * Intento de cobro en línea de la suscripción: pago del dueño (checkout) o renovación automática
+ * con la tarjeta guardada. Al confirmarse registra un SubscriptionPayment.
+ */
+model SubscriptionCharge {
+  id           String                   @id @default(cuid())
+  businessId   String
+  business     Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId       String?
+  plan         Plan?                    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  kind         SubscriptionChargeKind
+  status       SubscriptionChargeStatus @default(PENDING)
+  // stripe o simulado
+  provider     String
+  amount       Decimal                  @db.Decimal(10, 2)
+  currency     String                   @default("USD")
+  months       Int
+  billingCycle BillingCycle
+  // Id en el proveedor (sesión de checkout o intento de pago)
+  externalId   String?                  @unique
+  error        String?
+  paymentId    String?                  @unique
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  @@index([businessId, createdAt])
+  @@index([status, createdAt])
+}
+
+/**
+ * Reglas del cobro automático (una sola fila, las edita el super admin).
+ */
+model PlatformSettings {
+  id                  String   @id @default("platform")
+  // Días después del vencimiento antes de suspender
+  graceDays           Int      @default(7)
+  // Días entre reintentos y cuántos intentos se hacen
+  retryIntervalDays   Int      @default(2)
+  maxRetries          Int      @default(3)
+  // Días de anticipación de los avisos por correo (antes de cobrar y antes de suspender)
+  noticeDays          Int      @default(3)
+  // También suspender a quien paga a mano (transferencia) al pasar la gracia
+  suspendManualPayers Boolean  @default(false)
+  updatedAt           DateTime @updatedAt
 }

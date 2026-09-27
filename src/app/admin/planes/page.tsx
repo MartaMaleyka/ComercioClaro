@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
+import { BillingSettingsCard } from "@/components/admin/BillingSettingsCard";
 
 interface Plan {
   id: string;
@@ -150,6 +151,7 @@ export default function AdminPlansPage() {
           "Vender, caja, inventario, clientes y fiado, compras, gastos, reportes básicos, venta sin conexión y el descuento de jubilado están en todos los planes."
         )}
       </p>
+      <BillingSettingsCard />
       {editing !== undefined && (
         <PlanModal
           plan={editing}

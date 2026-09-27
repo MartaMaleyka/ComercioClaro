@@ -38,6 +38,7 @@ export interface SessionBusiness {
   features: FeatureKey[];
   plan: { name: string; code: string } | null;
   access: AccessState;
+  onlineBilling: boolean;
 }
 
 export interface SessionData {
