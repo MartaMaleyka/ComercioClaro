@@ -15,6 +15,7 @@ import {
   Minus,
   Plus,
   Printer,
+  Scale,
   ScanBarcode,
   Share2,
   MonitorSmartphone,
@@ -49,6 +50,8 @@ import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { YappyApiCharge } from "@/components/pos/YappyApiCharge";
 import { ServicesModal } from "@/components/pos/ServicesModal";
 import { SplitPayment, newSplitRow, splitPayload, splitStatus, type SplitRow } from "@/components/pos/SplitPayment";
+import { convertWeight, isWeightUnit, labelQuantity, matchesPlu, parseWeightBarcode } from "@/lib/scale";
+import { useScale } from "@/lib/client/scale";
 
 interface OpenOrderData {
   id: string;
@@ -443,8 +446,38 @@ export default function PosPage() {
       setSearch("");
       return true;
     }
+    // Etiqueta de balanza (EAN-13 con prefijo 20-29): trae el código del producto y el peso o el precio.
+    const label = parseWeightBarcode(trimmed, business.weightBarcode);
+    const weighed = label ? products.find((p) => matchesPlu(p, label.plu)) : undefined;
+    if (label && weighed) {
+      const quantity = labelQuantity(label.value, business.weightBarcode, weighed);
+      if (quantity && quantity > 0) {
+        addProduct(weighed, quantity);
+        setSearch("");
+        return true;
+      }
+      toast.error(tr("{name} no se vende por peso; revisa la unidad del producto", { name: weighed.name }));
+      return true;
+    }
     return false;
   };
+
+  // Balanza conectada por Web Serial (Chrome y Edge): llena la cantidad de lo que se vende por peso.
+  const scale = useScale();
+  const [weighing, setWeighing] = useState<string | null>(null);
+  async function weigh(line: CartLine) {
+    if (!isWeightUnit(line.unit)) return;
+    setWeighing(line.key);
+    try {
+      const reading = await scale.read();
+      const from = reading.unit ?? line.unit;
+      updateLine(line.key, { quantity: String(convertWeight(reading.weight, from, line.unit)) });
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setWeighing(null);
+    }
+  }
 
   function handleEnter() {
     if (addByCode(search)) return;
@@ -750,6 +783,18 @@ export default function PosPage() {
                       <Plus className="w-4 h-4" />
                     </button>
                     <span className="text-xs text-slate-500 ml-1">{UNIT_LABELS[line.unit]}</span>
+                    {scale.supported && scale.connected && isWeightUnit(line.unit) && (
+                      <button
+                        type="button"
+                        onClick={() => weigh(line)}
+                        disabled={weighing === line.key}
+                        aria-label={tr("Pesar {name}", { name: line.name })}
+                        className="ml-1 inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-slate-100 text-xs font-medium disabled:opacity-50"
+                      >
+                        <Scale className="w-3.5 h-3.5" aria-hidden="true" />
+                        {weighing === line.key ? tr("Pesando…") : tr("Pesar")}
+                      </button>
+                    )}
                   </div>
                   <input
                     aria-label={`Descuento de ${line.name}`}

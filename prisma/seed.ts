@@ -1255,6 +1255,34 @@ async function seedCampaigns() {
   console.log("✅ Campañas y cupones del minisúper");
 }
 
+/** Balanza: un producto por libra con código PLU para las etiquetas de peso del minisúper. */
+async function seedScale() {
+  const demo = await demoBusiness("Minisúper El Dorado");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.product.findFirst({ where: { businessId: business.id, sku: "00406" } })) return;
+  await createProduct(actor, {
+    name: "Jamón de pierna (libra)",
+    description: "Se pesa en la balanza del mostrador; la etiqueta lleva el PLU 00406",
+    sku: "00406",
+    barcode: null,
+    unit: "LB",
+    price: 3.5,
+    cost: 2.6,
+    stock: 30,
+    minStock: 5,
+    taxRate: 0,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    satUnitKey: "LBR",
+    categoryId: null,
+  });
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -1269,6 +1297,7 @@ async function main() {
   await seedAccounting();
   await seedPayroll();
   await seedCampaigns();
+  await seedScale();
 }
 
 main()

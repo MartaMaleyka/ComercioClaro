@@ -948,3 +948,12 @@ export const adminListSchema = z.object({
   status: z.enum(["ACTIVE", "TRIAL", "SUSPENDED", "OVERDUE"]).optional(),
   planId: z.string().max(64).optional(),
 });
+
+/** Formato de las etiquetas de peso de la balanza etiquetadora. */
+export const weightBarcodeSchema = z.object({
+  enabled: z.boolean(),
+  valueType: z.enum(["WEIGHT", "PRICE"]),
+  pluDigits: z.union([z.literal(4), z.literal(5), z.literal(6)]),
+  decimals: z.coerce.number().int().min(0).max(3),
+  weightUnit: z.enum(["KG", "G", "LB", "OZ"]),
+});

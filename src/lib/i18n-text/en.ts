@@ -13,6 +13,7 @@ export const en: Record<string, string> = {
   "10% · otros comercios": "10% · other stores",
   "15% · comida rápida": "15% · fast food",
   "160% (cigarros)": "160% (cigarettes)",
+  "2 = centavos": "2 = cents",
   "20% · farmacia (medicamentos)": "20% · pharmacy (medicines)",
   "25% · restaurante o fonda (consumo individual)": "25% · restaurant or fonda (individual meal)",
   "26.5% (cerveza)": "26.5% (beer)",
@@ -21,6 +22,7 @@ export const en: Record<string, string> = {
   "2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.":
     "2-for-1, 3 for B/.1, % off. Applied automatically at checkout.",
   "2x1, precio por cantidad y porcentaje.": "2-for-1, quantity pricing and percentage.",
+  "3 = milésimas": "3 = thousandths",
   "30 días": "30 days",
   "30% (vinos y licores)": "30% (wine and spirits)",
   "31 a 60 días": "31 to 60 days",
@@ -164,6 +166,9 @@ export const en: Record<string, string> = {
   "Bajo el mínimo": "Below minimum",
   "Bajo inventario": "Low stock",
   "Balance general": "Balance sheet",
+  Balanza: "Scale",
+  "Balanza conectada": "Scale connected",
+  "Balanza conectada a esta computadora": "Scale connected to this computer",
   Bancos: "Bank",
   "Base gravable": "Taxable base",
   Billetes: "Bills",
@@ -207,6 +212,7 @@ export const en: Record<string, string> = {
   Cajas: "Boxes",
   Cajero: "Cashier",
   "Calculando destinatarios…": "Calculating recipients…",
+  "Cambiar balanza": "Change scale",
   "Cambiar contraseña": "Change password",
   "Cambio {amount}": "Change {amount}",
   "Cambio:": "Change:",
@@ -329,6 +335,7 @@ export const en: Record<string, string> = {
   Conciliados: "Matched",
   Conciliar: "Reconcile",
   "Conciliar con el banco": "Reconcile with the bank",
+  "Conectar balanza": "Connect scale",
   "Configura las comisiones en Configuración": "Set up fees in Settings",
   Configuración: "Settings",
   Confirmar: "Confirm",
@@ -350,6 +357,8 @@ export const en: Record<string, string> = {
   "Control de facturas electrónicas y de los límites del facturador gratuito":
     "E-invoices and free invoicer limit tracking",
   "Controlar lotes y fecha de caducidad": "Track lots and expiry date",
+  "Conéctala por USB o con un adaptador serie. En el punto de venta aparece el botón Pesar en los productos por libra o kilo.":
+    "Connect it by USB or a serial adapter. At the point of sale, products sold by the pound or kilo show a Weigh button.",
   "Copia el texto que no se entiende y escribe cómo lo dirías tú. Se guarda con esta pantalla.":
     "Copy the text that is unclear and write how you would say it. It is saved with this screen.",
   "Copiar el catálogo de productos (sin existencias)": "Copy the product catalog (without stock)",
@@ -425,6 +434,7 @@ export const en: Record<string, string> = {
   Dañado: "Damaged",
   "De contado (banco u otro medio)": "Paid now (bank or other)",
   Debe: "Debit",
+  Decimales: "Decimals",
   "Define impuestos, facturación y formatos. Al cambiarlo se ajustan moneda, formato y zona horaria.":
     "Sets taxes, invoicing and formats. Changing it adjusts currency, format and time zone.",
   "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.":
@@ -494,6 +504,7 @@ export const en: Record<string, string> = {
   "Días de prueba": "Trial days",
   "Días de visita, condiciones de pago...": "Visit days, payment terms...",
   "Días que se aceptan ventas hechas sin conexión": "Days offline sales are accepted",
+  "Dígitos del PLU": "PLU digits",
   Editar: "Edit",
   "Editar cliente": "Edit customer",
   "Editar cupón": "Edit coupon",
@@ -549,6 +560,8 @@ export const en: Record<string, string> = {
     "The amount goes back to the invoice balance. If it came from the register, it returns as cash in.",
   "El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.":
     "Your plan payment is pending. Contact the administrator to avoid suspension.",
+  "El peso": "The weight",
+  "El precio": "The price",
   "El saldo de {amount} dejará de poder usarse. No se devuelve dinero.":
     "The {amount} balance can no longer be used. No money is refunded.",
   "El saldo quedaría en {amount} la semana del {date}. Adelanta cobros de fiado o negocia fechas con tus proveedores.":
@@ -636,6 +649,7 @@ export const en: Record<string, string> = {
   "Este producto es": "This product is",
   Etiqueta: "Tag",
   Etiquetas: "Labels",
+  "Etiquetas de peso (balanza etiquetadora)": "Weight labels (label-printing scale)",
   Exento: "Exempt",
   "Existencia actual:": "Current stock:",
   "Existencia ajustada": "Stock adjusted",
@@ -693,6 +707,8 @@ export const en: Record<string, string> = {
   "Forma de pago": "Payment method",
   "Forma de pago {n}": "Payment method {n}",
   Formato: "Format",
+  "Formato de etiquetas guardado. Vuelve a abrir el punto de venta para usarlo.":
+    "Label format saved. Reopen the point of sale to use it.",
   Funciones: "Features",
   "Funciones actualizadas": "Features updated",
   "Funciones incluidas": "Included features",
@@ -716,6 +732,7 @@ export const en: Record<string, string> = {
   "Global · público en general": "Global · general public",
   "Gracias, revisaremos la traducción": "Thanks, we will review the translation",
   Gramo: "Gram",
+  Gramos: "Grams",
   "Grupo de variantes": "Variant group",
   "Gráfica de ventas y ganancia neta por día": "Chart of sales and net profit per day",
   "Guarda este reporte: Acodeco puede pedir la prueba de los descuentos otorgados.":
@@ -787,10 +804,13 @@ export const en: Record<string, string> = {
   "Jubilado o pensionado ({rate}%)": "Retiree or pensioner ({rate}%)",
   Jubilados: "Retirees",
   "Kilogramo (granel)": "Kilogram (bulk)",
+  Kilos: "Kilos",
   "La API de WhatsApp Business está configurada: puedes enviar todos a la vez.":
     "The WhatsApp Business API is configured: you can send them all at once.",
+  "La balanza envía el peso sola": "The scale sends the weight on its own",
   "La contraseña actual deja de funcionar y deberá cambiarla al entrar.":
     "The current password stops working and must be changed on sign-in.",
+  "La etiqueta trae": "The label carries",
   "La factura deja de estar por pagar.": "The invoice will no longer be payable.",
   "La facturación electrónica está disponible para México y Panamá.": "E-invoicing is available for Mexico and Panama.",
   "La facturación no está activa. Contrata un PAC (por ejemplo Facturama) y configura":
@@ -811,6 +831,8 @@ export const en: Record<string, string> = {
     "The period is extended from the current expiry date (or from today if it already expired).",
   "Las compras a crédito y las facturas que registres aparecerán aquí hasta que las pagues.":
     "Credit purchases and invoices you record appear here until you pay them.",
+  "Las etiquetas EAN-13 que empiezan con 20 a 29 traen el código del producto (PLU) y el peso o el precio. Al escanearlas se agrega el producto con su cantidad. El PLU es el código de barras o el SKU del producto.":
+    "EAN-13 labels starting with 20 to 29 carry the product code (PLU) and the weight or price. Scanning one adds the product with its quantity. The PLU is the product's barcode or SKU.",
   "Las sucursales usan monedas distintas; los totales suman importes sin convertir.":
     "Branches use different currencies; totals add amounts without conversion.",
   "Las ventas guardadas en el equipo conservan su fecha si se sincronizan dentro de este plazo.":
@@ -818,6 +840,7 @@ export const en: Record<string, string> = {
   "Las ventas rechazadas no afectaron el inventario. Regístralas de nuevo si corresponde.":
     "Rejected sales did not affect inventory. Record them again if needed.",
   "Libra (granel)": "Pound (bulk)",
+  Libras: "Pounds",
   "Libro diario": "Journal",
   "Libro diario y mayor, estados financieros, aportes y retiros del dueño y cierre de mes.":
     "Journal and ledger, financial statements, owner contributions and withdrawals, and month-end close.",
@@ -992,6 +1015,7 @@ export const en: Record<string, string> = {
   Oculto: "Hidden",
   "Ocurrió un error": "An error occurred",
   Onza: "Ounce",
+  Onzas: "Ounces",
   Opcional: "Optional",
   Operación: "Operating",
   "Orden #{folio}": "Order #{folio}",
@@ -1067,6 +1091,10 @@ export const en: Record<string, string> = {
   Periodo: "Period",
   "Periodo de la proyección": "Projection period",
   Persona: "Person",
+  "Pesando…": "Weighing…",
+  Pesar: "Weigh",
+  "Pesar {name}": "Weigh {name}",
+  "Peso leído: {weight}": "Weight read: {weight}",
   Pieza: "Piece",
   Plan: "Plan",
   "Plan eliminado": "Plan deleted",
@@ -1111,6 +1139,7 @@ export const en: Record<string, string> = {
   Preparar: "Start",
   "Prima de antigüedad: {amount}": "Seniority premium: {amount}",
   Principal: "Main",
+  "Probar lectura": "Test reading",
   "Procesadas {processed}: {stamped} emitidas, {pending} pendientes, {errors} con error":
     "Processed {processed}: {stamped} issued, {pending} pending, {errors} with errors",
   Producto: "Product",
@@ -1127,6 +1156,7 @@ export const en: Record<string, string> = {
   "Promociones por WhatsApp": "WhatsApp promotions",
   Promoción: "Promotion",
   "Promoción guardada": "Promotion saved",
+  Protocolo: "Protocol",
   Proveedor: "Supplier",
   "Proveedor guardado": "Supplier saved",
   Proveedores: "Suppliers",
@@ -1186,6 +1216,7 @@ export const en: Record<string, string> = {
   "Recibir mercancía": "Receive goods",
   "Recibir orden #{folio}": "Receive order #{folio}",
   "Recoge en tienda": "Pickup in store",
+  "Reconocer etiquetas de peso al escanear": "Recognize weight labels when scanning",
   Recurrente: "Recurring",
   Recurrentes: "Recurring",
   Reembolso: "Refund",
@@ -1283,6 +1314,7 @@ export const en: Record<string, string> = {
   "Se paga": "Paid",
   "Se paga con": "Paid with",
   "Se pagó con dinero de la caja": "Paid with money from the register",
+  "Se pide el peso (Toledo, CAS y la mayoría)": "Weight is requested (Toledo, CAS and most scales)",
   "Se prepara en cocina (aparece en la pantalla de cocina)": "Prepared in the kitchen (shown on the kitchen display)",
   "Se recalcula con cada compra (promedio)": "Recalculated with every purchase (average)",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
@@ -1464,6 +1496,7 @@ export const en: Record<string, string> = {
   "Un solo pago": "Single payment",
   "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.":
     "A public page with your products and prices. Customers build their order and send it to you on WhatsApp.",
+  "Unidad del peso": "Weight unit",
   "Unidades por caja (opcional)": "Units per box (optional)",
   "Usar cuentas abiertas y pantalla de cocina": "Use open tabs and kitchen display",
   "Uso de la plataforma": "Platform usage",
@@ -1503,6 +1536,7 @@ export const en: Record<string, string> = {
   Variante: "Variant",
   "Variantes y extras": "Variants and extras",
   "Varias sucursales y mercancía entre ellas.": "Several branches and goods between them.",
+  "Velocidad (baudios)": "Speed (baud)",
   Vence: "Due",
   "Vence (opcional)": "Expires (optional)",
   "Vence esta semana": "Due this week",
@@ -1609,6 +1643,7 @@ export const en: Record<string, string> = {
   "{created} creados · {updated} actualizados": "{created} created · {updated} updated",
   "{name} está suspendido. Contacta al administrador para reactivarlo. Tus datos se conservan.":
     "{name} is suspended. Contact the administrator to reactivate it. Your data is kept.",
+  "{name} no se vende por peso; revisa la unidad del producto": "{name} is not sold by weight; check the product unit",
   "{n} clientes": "{n} customers",
   "{n} clientes recibirán el mensaje": "{n} customers will receive the message",
   "{n} con error.": "{n} with errors.",

@@ -137,6 +137,9 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Mensajes con `{nombre}`, `{puntos}` y `{cupón}`.
   - Envío asistido por enlace, o directo con la API de WhatsApp Business.
   - Cupones que se aplican en el punto de venta, con resultados de canjes y ventas atribuidas.
+- **Balanza conectada** ([`docs/plan-balanza.md`](docs/plan-balanza.md)):
+  - Balanza por USB o puerto serie en Chrome y Edge. El botón *Pesar* llena la cantidad de lo que se vende por libra o kilo.
+  - Etiquetas de peso EAN-13 (prefijo 20-29) con el peso o el precio: al escanearlas se agrega el producto con su cantidad.
 
 ## Requisitos
 

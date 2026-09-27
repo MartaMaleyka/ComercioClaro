@@ -13,6 +13,7 @@ export const zh: Record<string, string> = {
   "10% · otros comercios": "10% · 其他商店",
   "15% · comida rápida": "15% · 快餐",
   "160% (cigarros)": "160%（香烟）",
+  "2 = centavos": "2 = 分",
   "20% · farmacia (medicamentos)": "20% · 药店（药品）",
   "25% · restaurante o fonda (consumo individual)": "25% · 餐厅或小饭馆（个人消费）",
   "26.5% (cerveza)": "26.5%（啤酒）",
@@ -20,6 +21,7 @@ export const zh: Record<string, string> = {
   "2x1 Cerveza Panamá": "巴拿马啤酒买一送一",
   "2x1, 3 por B/.1, % de descuento. Se aplican solas al vender.": "买二付一、B/.1 三件、折扣百分比。销售时自动生效。",
   "2x1, precio por cantidad y porcentaje.": "买二送一、按数量定价和百分比折扣。",
+  "3 = milésimas": "3 = 千分位",
   "30 días": "30 天",
   "30% (vinos y licores)": "30%（葡萄酒和烈酒）",
   "31 a 60 días": "31 至 60 天",
@@ -160,6 +162,9 @@ export const zh: Record<string, string> = {
   "Bajo el mínimo": "低于最低库存",
   "Bajo inventario": "库存不足",
   "Balance general": "资产负债表",
+  Balanza: "秤",
+  "Balanza conectada": "秤已连接",
+  "Balanza conectada a esta computadora": "连接到这台电脑的秤",
   Bancos: "银行",
   "Base gravable": "应税基数",
   Billetes: "纸币",
@@ -202,6 +207,7 @@ export const zh: Record<string, string> = {
   Cajas: "箱",
   Cajero: "收银员",
   "Calculando destinatarios…": "正在计算收件人…",
+  "Cambiar balanza": "更换秤",
   "Cambiar contraseña": "修改密码",
   "Cambio {amount}": "找零 {amount}",
   "Cambio:": "找零：",
@@ -324,6 +330,7 @@ export const zh: Record<string, string> = {
   Conciliados: "已核对",
   Conciliar: "对账",
   "Conciliar con el banco": "与银行对账",
+  "Conectar balanza": "连接秤",
   "Configura las comisiones en Configuración": "请在“设置”中配置手续费",
   Configuración: "设置",
   Confirmar: "确认",
@@ -344,6 +351,8 @@ export const zh: Record<string, string> = {
   "Contraseña temporal": "临时密码",
   "Control de facturas electrónicas y de los límites del facturador gratuito": "电子发票及免费开票系统限额管理",
   "Controlar lotes y fecha de caducidad": "管理批次和有效期",
+  "Conéctala por USB o con un adaptador serie. En el punto de venta aparece el botón Pesar en los productos por libra o kilo.":
+    "通过 USB 或串口适配器连接。收银台中按磅或公斤销售的商品会显示“称重”按钮。",
   "Copia el texto que no se entiende y escribe cómo lo dirías tú. Se guarda con esta pantalla.":
     "复制看不懂的文字，并写下你会怎么说。报告会连同当前页面一起保存。",
   "Copiar el catálogo de productos (sin existencias)": "复制商品目录（不含库存）",
@@ -418,6 +427,7 @@ export const zh: Record<string, string> = {
   Dañado: "损坏",
   "De contado (banco u otro medio)": "现付（银行或其他方式）",
   Debe: "借方",
+  Decimales: "小数位",
   "Define impuestos, facturación y formatos. Al cambiarlo se ajustan moneda, formato y zona horaria.":
     "决定税费、开票和格式。更改后会调整货币、格式和时区。",
   "Dejará de aparecer en el catálogo, pero se conserva su historial de ventas y compras.":
@@ -486,6 +496,7 @@ export const zh: Record<string, string> = {
   "Días de prueba": "试用天数",
   "Días de visita, condiciones de pago...": "拜访日、付款条件……",
   "Días que se aceptan ventas hechas sin conexión": "接受离线销售的天数",
+  "Dígitos del PLU": "PLU 位数",
   Editar: "编辑",
   "Editar cliente": "编辑客户",
   "Editar cupón": "编辑优惠券",
@@ -539,6 +550,8 @@ export const zh: Record<string, string> = {
     "金额会退回发票余额。如果是从收银台付出的，会作为现金收入退回。",
   "El pago de tu plan está pendiente. Contacta al administrador para evitar la suspensión.":
     "你的套餐付款待处理。请联系管理员以免被暂停。",
+  "El peso": "重量",
+  "El precio": "价格",
   "El saldo de {amount} dejará de poder usarse. No se devuelve dinero.": "余额 {amount} 将无法再使用，不退还现金。",
   "El saldo quedaría en {amount} la semana del {date}. Adelanta cobros de fiado o negocia fechas con tus proveedores.":
     "{date} 那一周余额将为 {amount}。请提前收回赊账，或与供应商协商付款日期。",
@@ -622,6 +635,7 @@ export const zh: Record<string, string> = {
   "Este producto es": "此商品规格",
   Etiqueta: "标签",
   Etiquetas: "价签",
+  "Etiquetas de peso (balanza etiquetadora)": "称重标签（打印秤）",
   Exento: "免税",
   "Existencia actual:": "当前库存：",
   "Existencia ajustada": "库存已调整",
@@ -677,6 +691,8 @@ export const zh: Record<string, string> = {
   "Forma de pago": "付款方式",
   "Forma de pago {n}": "付款方式 {n}",
   Formato: "格式",
+  "Formato de etiquetas guardado. Vuelve a abrir el punto de venta para usarlo.":
+    "标签格式已保存。请重新打开收银台以使用。",
   Funciones: "功能",
   "Funciones actualizadas": "功能已更新",
   "Funciones incluidas": "包含的功能",
@@ -700,6 +716,7 @@ export const zh: Record<string, string> = {
   "Global · público en general": "汇总 · 一般公众",
   "Gracias, revisaremos la traducción": "谢谢，我们会检查这条翻译",
   Gramo: "克",
+  Gramos: "克",
   "Grupo de variantes": "规格组",
   "Gráfica de ventas y ganancia neta por día": "每日销售额和净利润图表",
   "Guarda este reporte: Acodeco puede pedir la prueba de los descuentos otorgados.":
@@ -771,9 +788,12 @@ export const zh: Record<string, string> = {
   "Jubilado o pensionado ({rate}%)": "退休人员或领取养老金者（{rate}%）",
   Jubilados: "退休人员",
   "Kilogramo (granel)": "千克（散装）",
+  Kilos: "公斤",
   "La API de WhatsApp Business está configurada: puedes enviar todos a la vez.":
     "已配置 WhatsApp Business API：可以一次全部发送。",
+  "La balanza envía el peso sola": "秤自动发送重量",
   "La contraseña actual deja de funcionar y deberá cambiarla al entrar.": "当前密码将失效，登录后必须修改。",
+  "La etiqueta trae": "标签包含",
   "La factura deja de estar por pagar.": "该发票将不再列为应付款。",
   "La facturación electrónica está disponible para México y Panamá.": "电子发票适用于墨西哥和巴拿马。",
   "La facturación no está activa. Contrata un PAC (por ejemplo Facturama) y configura":
@@ -794,6 +814,8 @@ export const zh: Record<string, string> = {
     "有效期从当前到期日延长（如已过期则从今天起）。",
   "Las compras a crédito y las facturas que registres aparecerán aquí hasta que las pagues.":
     "赊购和你登记的发票会显示在这里，直到付清。",
+  "Las etiquetas EAN-13 que empiezan con 20 a 29 traen el código del producto (PLU) y el peso o el precio. Al escanearlas se agrega el producto con su cantidad. El PLU es el código de barras o el SKU del producto.":
+    "以 20 到 29 开头的 EAN-13 标签包含商品代码（PLU）以及重量或价格。扫描后会按数量加入商品。PLU 是商品的条码或 SKU。",
   "Las sucursales usan monedas distintas; los totales suman importes sin convertir.":
     "各分店使用不同货币；合计未经换算直接相加。",
   "Las ventas guardadas en el equipo conservan su fecha si se sincronizan dentro de este plazo.":
@@ -801,6 +823,7 @@ export const zh: Record<string, string> = {
   "Las ventas rechazadas no afectaron el inventario. Regístralas de nuevo si corresponde.":
     "被拒绝的销售未影响库存。如有需要，请重新登记。",
   "Libra (granel)": "磅（散装）",
+  Libras: "磅",
   "Libro diario": "日记账",
   "Libro diario y mayor, estados financieros, aportes y retiros del dueño y cierre de mes.":
     "日记账和总账、财务报表、店主投入与提取以及月结。",
@@ -967,6 +990,7 @@ export const zh: Record<string, string> = {
   Oculto: "隐藏",
   "Ocurrió un error": "出现错误",
   Onza: "盎司",
+  Onzas: "盎司",
   Opcional: "可选",
   Operación: "经营活动",
   "Orden #{folio}": "订单 #{folio}",
@@ -1041,6 +1065,10 @@ export const zh: Record<string, string> = {
   Periodo: "期间",
   "Periodo de la proyección": "预测期间",
   Persona: "人员",
+  "Pesando…": "称重中…",
+  Pesar: "称重",
+  "Pesar {name}": "称重 {name}",
+  "Peso leído: {weight}": "读取的重量：{weight}",
   Pieza: "件",
   Plan: "套餐",
   "Plan eliminado": "套餐已删除",
@@ -1084,6 +1112,7 @@ export const zh: Record<string, string> = {
   Preparar: "开始制作",
   "Prima de antigüedad: {amount}": "工龄补偿：{amount}",
   Principal: "总店",
+  "Probar lectura": "测试读数",
   "Procesadas {processed}: {stamped} emitidas, {pending} pendientes, {errors} con error":
     "已处理 {processed}：开具 {stamped}，待处理 {pending}，出错 {errors}",
   Producto: "商品",
@@ -1100,6 +1129,7 @@ export const zh: Record<string, string> = {
   "Promociones por WhatsApp": "WhatsApp 促销",
   Promoción: "促销",
   "Promoción guardada": "促销已保存",
+  Protocolo: "协议",
   Proveedor: "供应商",
   "Proveedor guardado": "供应商已保存",
   Proveedores: "供应商",
@@ -1159,6 +1189,7 @@ export const zh: Record<string, string> = {
   "Recibir mercancía": "收货",
   "Recibir orden #{folio}": "收货：订单 #{folio}",
   "Recoge en tienda": "到店自取",
+  "Reconocer etiquetas de peso al escanear": "扫描时识别称重标签",
   Recurrente: "固定",
   Recurrentes: "固定支出",
   Reembolso: "退款",
@@ -1251,6 +1282,7 @@ export const zh: Record<string, string> = {
   "Se paga": "发薪方式",
   "Se paga con": "付款方式",
   "Se pagó con dinero de la caja": "用钱箱里的钱支付",
+  "Se pide el peso (Toledo, CAS y la mayoría)": "请求重量（Toledo、CAS 及大多数秤）",
   "Se prepara en cocina (aparece en la pantalla de cocina)": "需厨房制作（显示在厨房显示屏上）",
   "Se recalcula con cada compra (promedio)": "每次进货后重新计算（加权平均）",
   "Se retirará la mercancía del inventario. Si ya se vendió, no se podrá cancelar.":
@@ -1425,6 +1457,7 @@ export const zh: Record<string, string> = {
   "Un solo pago": "单一付款",
   "Una página pública con tus productos y precios. Tus clientes arman su pedido y te lo envían por WhatsApp.":
     "展示商品和价格的公开页面。客户选好商品后通过 WhatsApp 发给你。",
+  "Unidad del peso": "重量单位",
   "Unidades por caja (opcional)": "每箱数量（可选）",
   "Usar cuentas abiertas y pantalla de cocina": "使用挂单和厨房显示屏",
   "Uso de la plataforma": "平台使用情况",
@@ -1464,6 +1497,7 @@ export const zh: Record<string, string> = {
   Variante: "规格",
   "Variantes y extras": "规格和加料",
   "Varias sucursales y mercancía entre ellas.": "多家分店及其间的商品调拨。",
+  "Velocidad (baudios)": "速率（波特）",
   Vence: "到期",
   "Vence (opcional)": "到期日（可选）",
   "Vence esta semana": "本周到期",
@@ -1569,6 +1603,7 @@ export const zh: Record<string, string> = {
   "{created} creados · {updated} actualizados": "新建 {created} · 更新 {updated}",
   "{name} está suspendido. Contacta al administrador para reactivarlo. Tus datos se conservan.":
     "{name} 已被暂停。请联系管理员重新启用。你的数据会保留。",
+  "{name} no se vende por peso; revisa la unidad del producto": "{name} 不按重量销售；请检查商品单位",
   "{n} clientes": "{n} 位客户",
   "{n} clientes recibirán el mensaje": "{n} 位顾客将收到消息",
   "{n} con error.": "{n} 笔出错。",
