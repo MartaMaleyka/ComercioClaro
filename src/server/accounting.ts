@@ -32,17 +32,23 @@ export const ACCOUNTS = {
   RECEIVABLE: { code: "1103", name: "Cuentas por cobrar (fiado)", type: "ASSET" },
   INVENTORY: { code: "1104", name: "Inventario", type: "ASSET" },
   TAX_CREDIT: { code: "1105", name: "ITBMS crédito fiscal", type: "ASSET" },
+  ADVANCES: { code: "1106", name: "Adelantos a empleados", type: "ASSET" },
   TRANSFERS: { code: "1190", name: "Traspasos entre sucursales", type: "ASSET" },
   CASH_CLEARING: { code: "1199", name: "Movimientos de caja por clasificar", type: "ASSET" },
   PAYABLE: { code: "2101", name: "Cuentas por pagar (proveedores)", type: "LIABILITY" },
   TAX_PAYABLE: { code: "2102", name: "ITBMS por pagar", type: "LIABILITY" },
   GIFT_CARDS: { code: "2103", name: "Vales por canjear", type: "LIABILITY" },
   THIRD_PARTY: { code: "2104", name: "Cobros por cuenta de terceros", type: "LIABILITY" },
+  CSS_PAYABLE: { code: "2105", name: "Cuotas de la CSS por pagar", type: "LIABILITY" },
+  ISR_WITHHELD: { code: "2106", name: "ISR retenido por pagar", type: "LIABILITY" },
+  OTHER_WITHHOLDING: { code: "2107", name: "Otros descuentos por pagar", type: "LIABILITY" },
   CAPITAL: { code: "3101", name: "Capital", type: "EQUITY" },
   DRAWINGS: { code: "3102", name: "Retiros del dueño", type: "EQUITY" },
   SALES: { code: "4101", name: "Ventas", type: "INCOME" },
   OTHER_INCOME: { code: "4103", name: "Otros ingresos", type: "INCOME" },
   COGS: { code: "5101", name: "Costo de ventas", type: "EXPENSE" },
+  SALARIES: { code: "6101", name: "Sueldos y salarios", type: "EXPENSE" },
+  EMPLOYER_CONTRIBUTIONS: { code: "6102", name: "Cuotas patronales", type: "EXPENSE" },
   SHRINKAGE: { code: "6180", name: "Mermas y ajustes de inventario", type: "EXPENSE" },
   CASH_DIFF: { code: "6190", name: "Faltantes y sobrantes de caja", type: "EXPENSE" },
 } satisfies Record<string, Account>;
@@ -150,6 +156,8 @@ export async function buildJournal(businessId: string, until: Date): Promise<Jou
     supplierPayments,
     manualBills,
     ownerTransactions,
+    payrollRuns,
+    advances,
   ] = await Promise.all([
     prisma.sale.findMany({
       where: { businessId, OR: [{ createdAt: before }, { cancelledAt: before }] },
@@ -220,6 +228,14 @@ export async function buildJournal(businessId: string, until: Date): Promise<Jou
       where: { businessId, purchaseId: null, OR: [{ date: before }, { cancelledAt: before }] },
     }),
     prisma.ownerTransaction.findMany({ where: { businessId, date: before } }),
+    prisma.payrollRun.findMany({
+      where: { businessId, status: "PAID", paidAt: before },
+      include: { lines: true },
+    }),
+    prisma.salaryAdvance.findMany({
+      where: { businessId, date: before },
+      include: { employee: { select: { name: true } } },
+    }),
   ]);
 
   const entries: (JournalEntry | null)[] = [];
@@ -345,6 +361,8 @@ export async function buildJournal(businessId: string, until: Date): Promise<Jou
   }
 
   for (const x of expenses) {
+    // El gasto de una planilla se registra con su detalle (sueldos, cuotas y retenciones).
+    if (x.payrollRunId) continue;
     entries.push(
       entry(x.date, "EXPENSE", x.category, x.description ?? "Gasto", (e) => {
         e.debit(expenseAccount(x.category), x.amount);
@@ -432,6 +450,47 @@ export async function buildJournal(businessId: string, until: Date): Promise<Jou
             e.credit(paymentAccount(o.method), o.amount);
           })
     );
+  }
+
+  for (const a of advances) {
+    entries.push(
+      entry(a.date, "PAYROLL", a.employee.name, "Adelanto de sueldo", (e) => {
+        e.debit(ACCOUNTS.ADVANCES, a.amount);
+        e.credit(paymentAccount(a.method), a.amount);
+      })
+    );
+  }
+
+  for (const run of payrollRuns) {
+    const total = (field: "gross" | "net" | "incomeTax" | "advances" | "otherDeduction") =>
+      sum(run.lines.map((l) => l[field]));
+    const employer = sum(run.lines.map((l) => D(l.cssEmployer).plus(l.eduEmployer).plus(l.riskEmployer)));
+    const contributions = sum(
+      run.lines.map((l) =>
+        D(l.cssEmployee).plus(l.eduEmployee).plus(l.cssEmployer).plus(l.eduEmployer).plus(l.riskEmployer)
+      )
+    );
+    const ref = `Planilla ${run.periodStart} al ${run.periodEnd}`;
+    entries.push(
+      entry(run.paidAt!, "PAYROLL", ref, "Pago de planilla", (e) => {
+        e.debit(ACCOUNTS.SALARIES, total("gross"));
+        e.debit(ACCOUNTS.EMPLOYER_CONTRIBUTIONS, employer);
+        e.credit(paymentAccount(run.paidMethod ?? "TRANSFER"), total("net"));
+        e.credit(ACCOUNTS.CSS_PAYABLE, contributions);
+        e.credit(ACCOUNTS.ISR_WITHHELD, total("incomeTax"));
+        e.credit(ACCOUNTS.ADVANCES, total("advances"));
+        e.credit(ACCOUNTS.OTHER_WITHHOLDING, total("otherDeduction"));
+      })
+    );
+    if (inRange(run.contributionsPaidAt)) {
+      entries.push(
+        entry(run.contributionsPaidAt, "PAYROLL", ref, "Pago de cuotas a la CSS e ISR retenido", (e) => {
+          e.debit(ACCOUNTS.CSS_PAYABLE, contributions);
+          e.debit(ACCOUNTS.ISR_WITHHELD, total("incomeTax"));
+          e.credit(ACCOUNTS.BANK, contributions.plus(total("incomeTax")));
+        })
+      );
+    }
   }
 
   return entries.filter((e): e is JournalEntry => e !== null).sort((a, b) => a.date.getTime() - b.date.getTime());

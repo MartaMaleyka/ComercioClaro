@@ -566,6 +566,54 @@ export const reopenPeriodSchema = z.object({
   reason: text(300, "Indica por qué se reabre el mes"),
 });
 
+const dayKeyInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
+const payFrequency = z.enum(["QUINCENAL", "MENSUAL"]);
+
+export const employeeSchema = z.object({
+  name: text(120, "El nombre es obligatorio"),
+  idNumber: optText(30),
+  socialSecurityNumber: optText(30),
+  position: optText(80),
+  salary: positiveMoney,
+  frequency: payFrequency.default("QUINCENAL"),
+  hireDate: dayKeyInput,
+  vacationSince: dayKeyInput.nullish().or(z.literal("")).transform((v) => v || null),
+  active: z.boolean().default(true),
+});
+
+export const salaryAdvanceSchema = z.object({
+  employeeId: id,
+  amount: positiveMoney,
+  method: z.enum(["CASH", "TRANSFER", "YAPPY"]).default("CASH"),
+  notes: optText(200),
+});
+
+export const payrollRunSchema = z.object({ frequency: payFrequency, date: dayKeyInput });
+
+export const payrollLineSchema = z.object({
+  overtimeHours: z.coerce.number().min(0).max(400, "Máximo 400 horas"),
+  otherDeduction: moneyInput.default(0),
+});
+
+export const payPayrollSchema = z.object({ method: immediatePaymentMethod.default("TRANSFER") });
+
+const payrollRate = z.coerce.number().min(0).max(1, "La tasa debe estar entre 0 y 1");
+export const payrollSettingsSchema = z.object({
+  cssEmployee: payrollRate,
+  cssEmployer: payrollRate,
+  eduEmployee: payrollRate,
+  eduEmployer: payrollRate,
+  riskEmployer: payrollRate,
+  thirteenthCssEmployee: payrollRate,
+  thirteenthCssEmployer: payrollRate,
+  isrExempt: moneyInput,
+  isrMiddleLimit: moneyInput,
+  isrMiddleRate: payrollRate,
+  isrTopRate: payrollRate,
+  overtimeFactor: z.coerce.number().min(1).max(3),
+  monthlyHours: z.coerce.number().int().min(1).max(400),
+});
+
 export const cashflowQuerySchema = z.object({
   days: z.coerce.number().int().refine((d) => [30, 60, 90].includes(d), "Periodo inválido").default(30),
   opening: z.coerce.number().min(-MAX_MONEY).max(MAX_MONEY).optional(),

@@ -21,6 +21,18 @@ export function PageHeader({
   );
 }
 
+/**
+ * Contenedor con desplazamiento horizontal para tablas anchas: se puede enfocar con el teclado
+ * para desplazarlo con las flechas (WCAG 2.1.1).
+ */
+export function ScrollArea({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={label}>
+      {children}
+    </div>
+  );
+}
+
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cn("animate-pulse bg-slate-100 rounded-xl", className)} />;
 }

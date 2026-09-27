@@ -125,6 +125,12 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - Aportes y retiros del dueño.
   - ITBMS a pagar menos el crédito fiscal.
   - Cierre de mes con reapertura registrada en la bitácora.
+- **Planilla panameña** ([`docs/plan-planilla.md`](docs/plan-planilla.md)):
+  - Empleados quincenales o mensuales.
+  - CSS, seguro educativo, riesgos profesionales e ISR por tramos, con valores por defecto editables (verificar con el contador).
+  - Décimo tercer mes en sus tres partidas, vacaciones y prima de antigüedad acumuladas.
+  - Adelantos que se descuentan en la siguiente planilla y comprobantes de pago.
+  - Al pagarse genera el gasto y alimenta el flujo de caja y la contabilidad.
 
 ## Requisitos
 

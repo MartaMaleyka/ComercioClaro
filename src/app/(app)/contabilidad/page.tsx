@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
-import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
+import { ErrorState, ListSkeleton, PageHeader, Stat, ScrollArea } from "@/components/ui/Misc";
 
 type Tab = "estados" | "diario" | "mayor" | "dueno" | "cierre";
 
@@ -363,7 +363,7 @@ function JournalView({ range }: { range: { from: string; to: string } }) {
             })}
           </p>
         )}
-        <div className="overflow-x-auto">
+        <ScrollArea label={tr("Libro diario")}>
           <table className="w-full text-sm min-w-[640px]">
             <caption className="sr-only">{tr("Libro diario")}</caption>
             <thead>
@@ -402,7 +402,7 @@ function JournalView({ range }: { range: { from: string; to: string } }) {
               </tbody>
             ))}
           </table>
-        </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );
@@ -421,7 +421,7 @@ function LedgerView({ range }: { range: { from: string; to: string } }) {
   return (
     <Card>
       <CardContent>
-        <div className="overflow-x-auto">
+        <ScrollArea label={tr("Libro mayor")}>
           <table className="w-full text-sm min-w-[600px]">
             <caption className="sr-only">{tr("Libro mayor")}</caption>
             <thead>
@@ -464,7 +464,7 @@ function LedgerView({ range }: { range: { from: string; to: string } }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollArea>
       </CardContent>
       {open && <LedgerDetail account={data.accounts.find((a) => a.code === open)!} onClose={() => setOpen(null)} />}
     </Card>
@@ -476,7 +476,7 @@ function LedgerDetail({ account, onClose }: { account: LedgerAccount; onClose: (
   const fmt = useFormat();
   return (
     <Modal open onClose={onClose} title={`${account.code} · ${tr(account.name)}`} size="lg">
-      <div className="overflow-x-auto">
+      <ScrollArea label={tr(account.name)}>
         <table className="w-full text-sm min-w-[520px]">
           <caption className="sr-only">{tr(account.name)}</caption>
           <thead>
@@ -519,7 +519,7 @@ function LedgerDetail({ account, onClose }: { account: LedgerAccount; onClose: (
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollArea>
     </Modal>
   );
 }
