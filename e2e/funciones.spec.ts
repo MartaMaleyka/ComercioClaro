@@ -28,7 +28,9 @@ test("el super admin apaga Pagos divididos a un negocio y el punto de venta lo r
   const dialog = page.getByRole("dialog", { name: "Pagos divididos" });
   const control = dialog.getByRole("radiogroup", { name: `Pagos divididos en ${BUSINESS.mexico}` });
   const saveFeature = () =>
-    page.waitForResponse((r) => /\/api\/admin\/businesses\/[^/]+\/features$/.test(r.url()) && r.request().method() === "PUT");
+    page.waitForResponse(
+      (r) => /\/api\/admin\/businesses\/[^/]+\/features$/.test(r.url()) && r.request().method() === "PUT"
+    );
   let saved = saveFeature();
   await control.getByRole("radio", { name: "Desactivada solo para este negocio" }).click();
   expect((await saved).ok()).toBe(true);

@@ -20,7 +20,10 @@ describe.skipIf(!hasDatabase)("funciones en el super admin", () => {
     });
     const a = await createOwner();
     const b = await createOwner();
-    await prisma.business.updateMany({ where: { id: { in: [a.businessId, b.businessId] } }, data: { planId: plan.id } });
+    await prisma.business.updateMany({
+      where: { id: { in: [a.businessId, b.businessId] } },
+      data: { planId: plan.id },
+    });
     const features = async (id: string) =>
       resolveFeatures(await prisma.business.findUniqueOrThrow({ where: { id }, include: { plan: true } }));
     return { plan, a, b, features };

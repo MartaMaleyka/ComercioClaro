@@ -70,6 +70,7 @@ Detalle en [`docs/plan-super-admin.md`](docs/plan-super-admin.md).
   - Registrar pagos y entrar como soporte.
 - **Usuarios:** administradores, bloqueo, cierre de sesiones y contraseña temporal.
 - **Bitácora** de todo lo que hace el super admin.
+- **Funciones por plan** (pestaña de *Planes y precios*): interruptores por plan agrupados por categoría, con buscador y aviso de funciones nuevas; ajuste por negocio con *Plan / Sí / No* desde la ficha o desde *En uso*.
 
 ### Más ventas y control
 

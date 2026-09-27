@@ -38,9 +38,10 @@ export async function adminFeatureMatrix() {
     }),
     prisma.business.findMany({ select: { featureOverrides: true, plan: { select: { features: true } } } }),
   ]);
-  const usage = Object.fromEntries(
-    FEATURE_KEYS.map((k) => [k, { active: 0, forcedOn: 0, forcedOff: 0 }])
-  ) as Record<FeatureKey, FeatureUsage>;
+  const usage = Object.fromEntries(FEATURE_KEYS.map((k) => [k, { active: 0, forcedOn: 0, forcedOff: 0 }])) as Record<
+    FeatureKey,
+    FeatureUsage
+  >;
   for (const business of businesses) {
     for (const key of resolveFeatures(business)) usage[key].active++;
     for (const [key, enabled] of Object.entries(parseOverrides(business.featureOverrides)) as [FeatureKey, boolean][]) {
@@ -65,7 +66,10 @@ export async function adminFeatureMatrix() {
 
 /** Incluye o quita una función de un plan: cambia al momento en todos sus negocios (salvo ajustes a mano). */
 export async function adminSetPlanFeature(admin: Admin, planId: string, feature: FeatureKey, enabled: boolean) {
-  const plan = await prisma.plan.findUnique({ where: { id: planId }, include: { _count: { select: { businesses: true } } } });
+  const plan = await prisma.plan.findUnique({
+    where: { id: planId },
+    include: { _count: { select: { businesses: true } } },
+  });
   if (!plan) throw notFound("Plan");
   const current = new Set(plan.features);
   if (enabled) current.add(feature);
@@ -106,7 +110,12 @@ export async function adminFeatureBusinesses(feature: FeatureKey) {
 }
 
 /** Ajuste de una sola función para un negocio (se guarda al momento, sin tocar las demás). */
-export async function adminSetBusinessFeature(admin: Admin, businessId: string, feature: FeatureKey, mode: FeatureMode) {
+export async function adminSetBusinessFeature(
+  admin: Admin,
+  businessId: string,
+  feature: FeatureKey,
+  mode: FeatureMode
+) {
   const business = await prisma.business.findUnique({ where: { id: businessId }, include: { plan: true } });
   if (!business) throw notFound("Negocio");
   const overrides: FeatureOverrides = parseOverrides(business.featureOverrides);

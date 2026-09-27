@@ -140,9 +140,9 @@ export function PlanFeaturesMatrix({ onChanged }: { onChanged?: () => void }) {
           {newPending && newPending.length > 0 && filter !== "new" && (
             <div
               role="note"
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200 bg-purple-50 px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-purple-50 px-4 py-3"
             >
-              <p className="flex items-center gap-2 text-sm text-purple-800">
+              <p className="flex items-center gap-2 text-sm text-purple-700">
                 <Sparkles className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {tr("{n} función(es) nueva(s) no están en todos los planes activos. Revisa dónde deben estar.", {
                   n: newPending.length,
