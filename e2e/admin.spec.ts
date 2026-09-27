@@ -36,8 +36,12 @@ test("el super admin ve el resumen y desactiva una función a un negocio", async
     expect((await res.json()).error).toMatch(/Tu plan no incluye/);
   } finally {
     await page.getByLabel("Función Vales (tarjetas de regalo)").selectOption("plan");
+    // El aviso del primer guardado puede seguir visible: se espera la respuesta de este guardado.
+    const saved = page.waitForResponse(
+      (r) => r.url().includes("/api/admin/businesses/") && r.request().method() === "PATCH"
+    );
     await page.getByRole("button", { name: "Guardar funciones" }).click();
-    await expect(page.getByText("Funciones actualizadas")).toBeVisible();
+    expect((await saved).ok()).toBe(true);
   }
   await owner.goto("/dashboard");
   await expect(owner.getByRole("link", { name: "Vales" }).first()).toBeVisible();

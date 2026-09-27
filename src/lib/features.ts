@@ -38,6 +38,11 @@ export const FEATURES = [
     label: "Recetas e insumos",
     description: "Cada plato descuenta sus insumos al venderse; costo por plato y merma.",
   },
+  {
+    key: "cashflow",
+    label: "Flujo de caja y punto de equilibrio",
+    description: "Proyección a 30, 60 y 90 días, gastos recurrentes y ventas necesarias para no perder.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

@@ -113,6 +113,11 @@ Cada prioridad llega en su propio PR, con su plan en `docs/`.
   - El cambio sale solo del efectivo.
   - Caja, reportes, conciliación, fiado y facturas leen cada parte.
   - Las ventas anteriores se migran con un pago cada una.
+- **Flujo de caja y punto de equilibrio** ([`docs/plan-flujo-equilibrio.md`](docs/plan-flujo-equilibrio.md)):
+  - Gastos recurrentes que se registran solos cada mes.
+  - Proyección a 30, 60 y 90 días, semana a semana: ventas, cobros de fiado, facturas por pagar, gastos fijos y compras.
+  - Alerta si el saldo baja de cero.
+  - Ventas necesarias para no perder, en monto y en días del mes.
 
 ## Requisitos
 

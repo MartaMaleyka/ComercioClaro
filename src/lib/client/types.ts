@@ -169,6 +169,7 @@ export interface Purchase {
 }
 
 export interface Expense {
+  recurringId?: string | null;
   id: string;
   category: string;
   description: string | null;
