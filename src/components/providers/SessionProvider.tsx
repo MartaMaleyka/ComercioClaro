@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { AccessState, FeatureKey } from "@/lib/features";
+import type { WeightBarcodeFormat } from "@/lib/scale";
 
 export interface SessionBusiness {
   id: string;
@@ -30,6 +31,8 @@ export interface SessionBusiness {
   seniorDiscountRate: number;
   /** Días que se aceptan ventas guardadas sin conexión */
   offlineDays: number;
+  /** Cómo leer las etiquetas de peso de la balanza (prefijo 20-29) */
+  weightBarcode: WeightBarcodeFormat;
   region: string | null;
   /** Funciones del plan activas en el negocio */
   features: FeatureKey[];

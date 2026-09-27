@@ -2,6 +2,7 @@ import type { AuthContext } from "@/lib/auth";
 import type { SessionData } from "@/components/providers/SessionProvider";
 import { listMemberships } from "./account";
 import type { FeatureKey } from "@/lib/features";
+import { weightBarcodeFormat } from "@/lib/scale";
 
 /** Datos de la sesión que se pasan a los componentes cliente (sin secretos ni el QR completo). */
 export async function sessionData(auth: AuthContext): Promise<SessionData> {
@@ -44,6 +45,7 @@ export async function sessionData(auth: AuthContext): Promise<SessionData> {
       loyaltyPointValue: business.loyaltyPointValue.toNumber(),
       seniorDiscountRate: business.seniorDiscountRate.toNumber(),
       offlineDays: business.offlineDays,
+      weightBarcode: weightBarcodeFormat(business.weightBarcode, business.country),
       region: business.region,
       features: auth.features,
       plan: business.plan ? { name: business.plan.name, code: business.plan.code } : null,

@@ -177,6 +177,8 @@ model Business {
   deliveryZones        Json?
   // Parámetros de planilla (tasas de CSS, seguro educativo, ISR...): ver src/lib/payroll.ts
   payrollSettings      Json?
+  // Etiquetas de balanza EAN-13 (prefijo 20-29): ver src/lib/scale.ts
+  weightBarcode        Json?
   // Datos fiscales (CFDI 4.0)
   rfc                  String?
   legalName            String?
