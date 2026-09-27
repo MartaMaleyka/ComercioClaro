@@ -804,6 +804,24 @@ function ProfileSettings() {
   return (
     <div className="space-y-4">
       <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-medium text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-brand-600" aria-hidden="true" /> {tr("Seguridad")}
+            </p>
+            <p className="text-sm text-slate-500">
+              {tr("Verificación en dos pasos, sesiones abiertas en otros dispositivos y actividad reciente.")}
+            </p>
+          </div>
+          <Link
+            href="/seguridad"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {tr("Abrir seguridad")}
+          </Link>
+        </CardContent>
+      </Card>
+      <Card>
         <CardHeader>
           <h2 className="font-semibold text-slate-900">{user.name}</h2>
           <p className="text-sm text-slate-500">{user.email}</p>

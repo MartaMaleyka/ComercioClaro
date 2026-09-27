@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { SegmentedControl } from "@/components/ui/Switch";
+import { SegmentedControl, Switch } from "@/components/ui/Switch";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 import type { PlanOption } from "@/components/admin/types";
 import { ACTION_LABELS } from "@/components/admin/labels";
@@ -50,6 +50,7 @@ interface Detail {
   access: AccessState;
   businessType: string | null;
   signupSource: "SELF" | "ADMIN" | null;
+  requireMfa: boolean;
   closedAt: string | null;
   closedReason: string | null;
   plan: Plan | null;
@@ -69,6 +70,7 @@ interface Detail {
     emailVerifiedAt: string | null;
     lastLoginAt: string | null;
     termsAcceptedAt: string | null;
+    totpEnabledAt: string | null;
   }[];
   payments: {
     id: string;
@@ -114,7 +116,25 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
   const [paying, setPaying] = useState(false);
   const [closing, setClosing] = useState(false);
   const [acting, setActing] = useState(false);
+  const [savingMfa, setSavingMfa] = useState(false);
   const confirm = useConfirm();
+
+  async function toggleMfa(on: boolean) {
+    setSavingMfa(true);
+    try {
+      await api(`/api/admin/businesses/${id}`, { method: "PATCH", body: { requireMfa: on } });
+      toast.success(
+        on
+          ? tr("Los usuarios de este negocio deberán usar la verificación en dos pasos")
+          : tr("La verificación en dos pasos vuelve a ser opcional en este negocio")
+      );
+      mutate();
+    } catch (err) {
+      toast.error(err);
+    } finally {
+      setSavingMfa(false);
+    }
+  }
 
   async function enterSupport() {
     try {
@@ -301,7 +321,24 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
           <CardHeader>
             <h2 className="font-semibold text-slate-900">{tr("Usuarios del negocio")}</h2>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+              <span className="text-sm">
+                <span className="font-medium text-slate-900">{tr("Exigir verificación en dos pasos")}</span>
+                <span className="block text-xs text-slate-500">
+                  {tr("Quien no la tenga deberá activarla al entrar. {n} de {total} ya la usan.", {
+                    n: data.members.filter((m) => m.totpEnabledAt).length,
+                    total: data.members.length,
+                  })}
+                </span>
+              </span>
+              <Switch
+                checked={data.requireMfa}
+                onChange={toggleMfa}
+                busy={savingMfa}
+                label={tr("Exigir verificación en dos pasos")}
+              />
+            </div>
             <ul className="divide-y divide-slate-100 text-sm">
               {data.members.map((m) => (
                 <li key={m.id} className="py-2 flex justify-between gap-2">
@@ -318,6 +355,7 @@ export default function AdminBusinessPage({ params }: { params: Promise<{ id: st
                   </span>
                   <span className="flex flex-wrap gap-1 items-start justify-end">
                     <Badge>{m.role === "OWNER" ? tr("Dueño") : tr("Cajero")}</Badge>
+                    {m.totpEnabledAt && <Badge tone="green">{tr("Dos pasos")}</Badge>}
                     {m.emailVerifiedAt ? (
                       <Badge tone="green">{tr("Correo confirmado")}</Badge>
                     ) : (

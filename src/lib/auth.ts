@@ -22,8 +22,41 @@ export function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-export async function startSession(payload: SessionPayload) {
-  const token = await createToken(payload);
+/** Datos del dispositivo al abrir una sesión nueva. */
+export interface SessionMeta {
+  ip: string | null;
+  userAgent: string | null;
+}
+
+/**
+ * Guarda la cookie de sesión. Con `meta` abre una sesión nueva (inicio de sesión o registro);
+ * sin él conserva la del dispositivo actual (cambiar de negocio, soporte, nueva contraseña).
+ */
+export async function startSession(payload: SessionPayload, meta?: SessionMeta) {
+  let sid = payload.sid;
+  if (meta) {
+    const record = await prisma.userSession.create({
+      data: {
+        userId: payload.sub,
+        tokenVersion: payload.tv,
+        ip: meta.ip,
+        userAgent: meta.userAgent?.slice(0, 300) ?? null,
+        expiresAt: new Date(Date.now() + EXPIRY_SECONDS * 1000),
+      },
+    });
+    sid = record.id;
+  } else if (!sid) {
+    const current = await readSession();
+    if (current?.sid && current.sub === payload.sub) {
+      sid = current.sid;
+      // Tras cambiar la contraseña la sesión actual sigue valiendo con la versión nueva.
+      await prisma.userSession.updateMany({
+        where: { id: sid, userId: payload.sub },
+        data: { tokenVersion: payload.tv },
+      });
+    }
+  }
+  const token = await createToken({ ...payload, ...(sid ? { sid } : {}) });
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -32,6 +65,31 @@ export async function startSession(payload: SessionPayload) {
     maxAge: EXPIRY_SECONDS,
     path: "/",
   });
+  return sid ?? null;
+}
+
+const TOUCH_MS = 5 * 60 * 1000;
+
+/**
+ * ¿La sesión (dispositivo) sigue abierta? Las sesiones sin id (anteriores a este cambio) valen hasta
+ * que venzan. Actualiza la última actividad cada 5 minutos.
+ */
+async function sessionActive(session: SessionPayload, tokenVersion: number) {
+  if (!session.sid) return true;
+  const record = await prisma.userSession.findUnique({ where: { id: session.sid } });
+  if (!record || record.userId !== session.sub || record.revokedAt || record.expiresAt < new Date()) return false;
+  if (record.tokenVersion !== tokenVersion) return false;
+  if (Date.now() - record.lastSeenAt.getTime() > TOUCH_MS) {
+    await prisma.userSession
+      .update({ where: { id: record.id }, data: { lastSeenAt: new Date() } })
+      .catch(() => undefined);
+  }
+  return true;
+}
+
+/** Id de la sesión actual (para marcarla como "este dispositivo"). */
+export async function currentSessionId() {
+  return (await readSession())?.sid ?? null;
 }
 
 export async function clearSessionCookie() {
@@ -68,12 +126,15 @@ export interface AuthContext {
   access: AccessState;
   /** El super admin entró al negocio como soporte (sin ser miembro) */
   support: boolean;
+  /** El negocio exige la verificación en dos pasos y el usuario aún no la activa */
+  mfaSetupRequired: boolean;
 }
 
 /** Usuario de la sesión, si el token sigue vigente y no está bloqueado. */
 async function sessionUser(session: SessionPayload) {
   const user = await prisma.user.findUnique({ where: { id: session.sub } });
   if (!user || user.tokenVersion !== session.tv || user.disabledAt) return null;
+  if (!(await sessionActive(session, user.tokenVersion))) return null;
   return user;
 }
 
@@ -100,6 +161,7 @@ export async function getAuth(): Promise<AuthContext | null> {
     support = true;
   }
   if (!user || !business || user.tokenVersion !== session.tv || user.disabledAt) return null;
+  if (membership && !(await sessionActive(session, user.tokenVersion))) return null;
 
   return {
     userId: user.id,
@@ -118,6 +180,7 @@ export async function getAuth(): Promise<AuthContext | null> {
     features: resolveFeatures(business),
     access: accessState(business),
     support,
+    mfaSetupRequired: !support && business.requireMfa && !user.totpEnabledAt,
   };
 }
 
@@ -127,6 +190,9 @@ export async function getAuth(): Promise<AuthContext | null> {
  */
 export async function requireAuth(...roles: Role[]): Promise<AuthContext> {
   const auth = await requireSession(...roles);
+  if (auth.mfaSetupRequired) {
+    throw new AppError(403, "Este negocio exige la verificación en dos pasos. Actívala en Seguridad para continuar.");
+  }
   if (auth.access.blocked && !auth.support) {
     throw new AppError(
       403,
@@ -192,13 +258,27 @@ export async function getSuperAdmin() {
   return user?.isSuperAdmin ? user : null;
 }
 
+/** El super admin debe tener activa la verificación en dos pasos (salvo ADMIN_MFA_REQUIRED=false). */
+export function adminNeedsMfa(user: { totpEnabledAt: Date | null }) {
+  return process.env.ADMIN_MFA_REQUIRED !== "false" && !user.totpEnabledAt;
+}
+
 export async function requireSuperAdmin() {
   const user = await getSuperAdmin();
   if (!user) {
     const session = await readSession();
     throw session ? forbidden() : unauthorized();
   }
+  if (adminNeedsMfa(user)) {
+    throw new AppError(403, "Activa la verificación en dos pasos en Seguridad para usar el panel de administración.");
+  }
   return user;
+}
+
+/** Usuario de la sesión (sin exigir negocio): para las páginas de cuenta como Seguridad. */
+export async function getSessionUser() {
+  const session = await readSession();
+  return session ? sessionUser(session) : null;
 }
 
 export function requireOwner(auth: AuthContext) {

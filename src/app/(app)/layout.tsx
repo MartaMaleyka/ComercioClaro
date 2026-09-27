@@ -15,6 +15,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     redirect("/login");
   }
   if (auth.user.mustChangePassword) redirect("/cambiar-contrasena");
+  if (auth.mfaSetupRequired) redirect("/seguridad?motivo=negocio");
   const blocked = auth.access.blocked && !auth.support;
 
   return (

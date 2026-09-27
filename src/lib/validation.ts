@@ -2,6 +2,7 @@ import { z } from "zod";
 import { CASH_DENOMINATIONS } from "./cash";
 import { FEATURE_KEYS, type FeatureKey } from "./features";
 import { BUSINESS_TYPE_KEYS } from "./business-types";
+import { isCommonPassword } from "./password-policy";
 import { isValidTimeZone } from "./dates";
 
 const MAX_MONEY = 99_999_999;
@@ -38,7 +39,8 @@ export const email = z
 export const password = z
   .string({ error: "La contraseña es obligatoria" })
   .min(8, "La contraseña debe tener al menos 8 caracteres")
-  .max(128, "La contraseña es demasiado larga");
+  .max(128, "La contraseña es demasiado larga")
+  .refine((value) => !isCommonPassword(value), "Esa contraseña es de las más usadas y fácil de adivinar; elige otra");
 
 export const paymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "CREDIT", "YAPPY", "GIFT_CARD"], { error: "Forma de pago inválida" });
 export const immediatePaymentMethod = z.enum(["CASH", "CARD", "TRANSFER", "YAPPY"], { error: "Forma de pago inválida" });
@@ -924,6 +926,7 @@ export const adminBusinessSchema = z.object({
   suspendedReason: optKeep(300),
   featureOverrides: z.record(z.string(), z.boolean()).nullish(),
   adminNotes: optKeep(2000),
+  requireMfa: z.boolean().optional(),
 });
 
 export const subscriptionPaymentSchema = z.object({
@@ -1015,3 +1018,19 @@ export const businessFeatureSchema = z.object({
 export const verifyEmailSchema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/, "El enlace de confirmación no es válido"),
 });
+
+/** Código de la app de autenticación (6 dígitos) o de recuperación (XXXX-XXXX). */
+export const mfaCodeSchema = z.object({
+  code: z
+    .string({ error: "Escribe el código" })
+    .trim()
+    .min(6, "Escribe el código")
+    .max(12, "El código no es válido"),
+});
+
+export const mfaDisableSchema = z.object({
+  password: z.string().min(1, "Escribe tu contraseña").max(128),
+  code: z.string().trim().min(6, "Escribe el código").max(12),
+});
+
+export const adminEmailSchema = z.object({ email });
