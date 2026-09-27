@@ -40,7 +40,10 @@ export const GET = handler(async (request) => {
     ];
   }
 
-  const include = { category: { select: { id: true, name: true } } };
+  const include = {
+    category: { select: { id: true, name: true } },
+    _count: { select: { recipeItems: true } },
+  };
   const view = (p: Parameters<typeof publicProduct>[0]) => publicProduct(p, auth.role);
 
   // Catálogo completo para el punto de venta (y su copia sin conexión).

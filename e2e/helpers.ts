@@ -1,4 +1,5 @@
-import type { Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+import { expect, type Page } from "@playwright/test";
 
 // Cuentas de demostración (npm run db:seed). El dueño y el cajero tienen acceso a todos los negocios de ejemplo.
 export const OWNER = "demo@comercioclaro.com";
@@ -52,4 +53,16 @@ export async function adminBusinessId(page: Page, name: string) {
   const found = list.find((b: { name: string }) => b.name === name);
   if (!found) throw new Error(`No existe ${name}`);
   return found.id as string;
+}
+
+const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+
+/** Revisa la página con axe (WCAG 2.2 AA). Sin url, revisa la página tal como está. */
+export async function expectAccessible(page: Page, url?: string) {
+  if (url) await page.goto(url);
+  // Algunas pantallas consultan al servidor cada pocos segundos; no esperar indefinidamente a la red inactiva.
+  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => undefined);
+  const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
+  const summary = violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
+  expect(summary, `${url ?? page.url()} tiene problemas de accesibilidad`).toEqual([]);
 }

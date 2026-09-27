@@ -51,6 +51,7 @@ export async function createProduct(actor: Actor, input: ProductInput) {
         sendToKitchen: input.sendToKitchen ?? false,
         trackStock: input.trackStock ?? true,
         seniorEligible: input.seniorEligible ?? true,
+        isIngredient: input.isIngredient ?? false,
         variantLabel: input.variantLabel ?? null,
         ...(input.modifiers?.length ? { modifiers: input.modifiers } : {}),
         businessId: actor.businessId,
@@ -115,6 +116,7 @@ export async function updateProduct(
   if (input.sendToKitchen !== undefined) data.sendToKitchen = input.sendToKitchen;
   if (input.trackStock !== undefined) data.trackStock = input.trackStock;
   if (input.seniorEligible !== undefined) data.seniorEligible = input.seniorEligible;
+  if (input.isIngredient !== undefined) data.isIngredient = input.isIngredient;
   if (input.variantLabel !== undefined) data.variantLabel = input.variantLabel;
   if (input.modifiers !== undefined) data.modifiers = input.modifiers?.length ? input.modifiers : Prisma.DbNull;
 

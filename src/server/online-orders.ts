@@ -73,7 +73,7 @@ export async function createOnlineOrder(slug: string, input: OnlineOrderInput) {
     const zoneIds = new Set(zones.map((z) => z.productId));
     const ids = [...new Set(input.items.map((i) => i.productId))].filter((id) => !zoneIds.has(id));
     const products = await tx.product.findMany({
-      where: { id: { in: ids }, businessId: business.id, archivedAt: null },
+      where: { id: { in: ids }, businessId: business.id, archivedAt: null, isIngredient: false },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
     const items: OnlineOrderItem[] = [];

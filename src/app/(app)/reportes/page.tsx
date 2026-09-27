@@ -29,6 +29,7 @@ import { TaxesView } from "@/components/reports/TaxesView";
 import { TeamView } from "@/components/reports/TeamView";
 import { SeniorsView } from "@/components/reports/SeniorsView";
 import { ReconciliationView } from "@/components/reports/ReconciliationView";
+import { WasteView } from "@/components/reports/WasteView";
 
 interface Report {
   from: string;
@@ -106,7 +107,7 @@ export default function ReportsPage() {
   const [to, setTo] = useState(todayKey(business.timezone));
   const [scope, setScope] = useState<"business" | "all">("business");
   const [showTable, setShowTable] = useState(false);
-  const [view, setView] = useState<"summary" | "taxes" | "seniors" | "team" | "reconcile">("summary");
+  const [view, setView] = useState<"summary" | "taxes" | "seniors" | "team" | "reconcile" | "waste">("summary");
 
   const query = period === "custom" ? { from, to } : { period };
   const { data, error, mutate } = useSWR<Report>(
@@ -157,6 +158,7 @@ export default function ReportsPage() {
           ...(business.seniorDiscountRate > 0 ? [{ value: "seniors" as const, label: tr("Jubilados") }] : []),
           ...(has("advancedReports") ? [{ value: "team" as const, label: tr("Equipo") }] : []),
           ...(has("reconciliation") ? [{ value: "reconcile" as const, label: tr("Conciliación") }] : []),
+          { value: "waste" as const, label: tr("Merma") },
         ]}
         value={view}
         onChange={setView}
@@ -198,6 +200,8 @@ export default function ReportsPage() {
 
           {view === "team" ? (
             <TeamView query={Object.fromEntries(Object.entries(query).map(([k, v]) => [k, String(v)]))} />
+          ) : view === "waste" ? (
+            <WasteView query={Object.fromEntries(Object.entries(query).map(([k, v]) => [k, String(v)]))} />
           ) : (
             <>
               {ownedBranches > 1 && (

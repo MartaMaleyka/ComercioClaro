@@ -7,7 +7,9 @@ import { createSale } from "../src/server/sales";
 import { addCustomerPayment } from "../src/server/customers";
 import { openCashSession } from "../src/server/cash";
 import { syncDeliveryZones } from "../src/server/delivery";
-import { FEATURE_KEYS } from "../src/lib/features";
+import { FEATURE_KEYS, type FeatureKey } from "../src/lib/features";
+import { saveRecipe } from "../src/server/recipes";
+import { adjustStock } from "../src/server/inventory";
 import type { Prisma } from "../src/generated/prisma/client";
 
 const DEMO_EMAIL = "demo@comercioclaro.com";
@@ -892,6 +894,14 @@ const PLANS = [
   },
 ];
 
+/**
+ * Funciones que se agregaron después de crear los planes: al volver a correr el seed se suman
+ * a los planes existentes (sin quitar lo que el super admin haya cambiado).
+ */
+const PLAN_ADDITIONS: Record<string, FeatureKey[]> = {
+  empresarial: ["recipes"],
+};
+
 /** Planes, super admin y la suscripción de cada negocio de demostración. */
 async function seedPlatform() {
   const plans: Record<string, string> = {};
@@ -903,6 +913,10 @@ async function seedPlatform() {
       update: {},
     });
     plans[code] = saved.id;
+    const missing = (PLAN_ADDITIONS[code] ?? []).filter((f) => !saved.features.includes(f));
+    if (missing.length > 0) {
+      await prisma.plan.update({ where: { id: saved.id }, data: { features: [...saved.features, ...missing] } });
+    }
   }
 
   if (!(await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } }))) {
@@ -961,6 +975,69 @@ async function seedPlatform() {
   console.log(`   Super admin: ${ADMIN_EMAIL} / ${DEMO_PASSWORD} (panel en /admin)`);
 }
 
+/** Negocio de demostración del dueño y su actor (para las demostraciones que se agregan después). */
+async function demoBusiness(name: string) {
+  const { owner } = await demoUsers();
+  const business = await prisma.business.findFirst({ where: { name, memberships: { some: { userId: owner.id } } } });
+  return business ? { business, actor: { userId: owner.id, businessId: business.id, role: "OWNER" as const } } : null;
+}
+
+/** Recetas de la fonda: insumos por libra y lo que lleva cada plato. */
+async function seedRecipes() {
+  const demo = await demoBusiness("Fonda La Chiricana");
+  if (!demo) return;
+  const { business, actor } = demo;
+  if (await prisma.product.findFirst({ where: { businessId: business.id, isIngredient: true } })) return;
+  const base = {
+    description: null,
+    sku: null,
+    barcode: null,
+    wholesalePrice: null,
+    wholesaleMinQty: null,
+    trackExpiry: false,
+    packSize: null,
+    iepsRate: 0,
+    satProductKey: "01010101",
+    satUnitKey: "LBR",
+    categoryId: null,
+    taxRate: 0,
+    price: 0,
+    isIngredient: true,
+  };
+  const ingredient = async (name: string, unit: "LB" | "PIECE", cost: number, stock: number, minStock: number) =>
+    (await createProduct(actor, { ...base, name, unit, cost, stock, minStock })).id;
+  const chicken = await ingredient("Pollo (insumo)", "LB", 1.6, 40, 10);
+  const yam = await ingredient("Ñame", "LB", 0.9, 25, 8);
+  const rice = await ingredient("Arroz (insumo)", "LB", 0.55, 50, 15);
+  const cilantro = await ingredient("Culantro (mazo)", "PIECE", 0.35, 12, 4);
+  const dishes = await prisma.product.findMany({
+    where: { businessId: business.id, name: { in: ["Sancocho", "Pollo guisado con arroz"] } },
+  });
+  const byName = new Map(dishes.map((d) => [d.name, d.id]));
+  // Olla de sancocho: rinde 10 platos.
+  if (byName.has("Sancocho")) {
+    await saveRecipe(actor, byName.get("Sancocho")!, {
+      recipeYield: 10,
+      items: [
+        { ingredientId: chicken, quantity: 5 },
+        { ingredientId: yam, quantity: 4 },
+        { ingredientId: cilantro, quantity: 2 },
+      ],
+    });
+  }
+  if (byName.has("Pollo guisado con arroz")) {
+    await saveRecipe(actor, byName.get("Pollo guisado con arroz")!, {
+      recipeYield: null,
+      items: [
+        { ingredientId: chicken, quantity: 0.5 },
+        { ingredientId: rice, quantity: 0.4 },
+      ],
+    });
+  }
+  await adjustStock(actor, cilantro, { mode: "delta", quantity: -2, reason: "WASTE", notes: "Se marchitó" });
+  console.log("✅ Recetas e insumos de la fonda");
+}
+
 async function main() {
   await seedMexico();
   await integrateLegacyDemoAccounts();
@@ -968,6 +1045,7 @@ async function main() {
   await seedFonda();
   await seedInterior();
   await seedPlatform();
+  await seedRecipes();
 }
 
 main()

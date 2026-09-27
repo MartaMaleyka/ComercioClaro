@@ -2,8 +2,9 @@
 
 import { useText } from "@/lib/client/i18n";
 import { useState } from "react";
+import useSWR from "swr";
 import { Plus, ScanBarcode, Trash2 } from "lucide-react";
-import { api } from "@/lib/client/api";
+import { api, fetcher } from "@/lib/client/api";
 import type { Category, Product } from "@/lib/client/types";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BarcodeScanner } from "@/components/pos/BarcodeScanner";
 import { useSession } from "@/components/providers/SessionProvider";
 import { countryConfig } from "@/lib/country";
+import { RecipeEditor, recipeBody, recipeDraft, type RecipeData, type RecipeDraft } from "./RecipeEditor";
 
 const UNITS = [
   { value: "PIECE", label: "Pieza", sat: "H87" },
@@ -56,6 +58,7 @@ const empty = {
   sendToKitchen: false,
   trackStock: true,
   seniorEligible: true,
+  isIngredient: false,
 };
 
 type FormState = typeof empty;
@@ -86,6 +89,7 @@ function toForm(product: Product | null): FormState {
     sendToKitchen: product.sendToKitchen ?? false,
     trackStock: product.trackStock ?? true,
     seniorEligible: product.seniorEligible ?? true,
+    isIngredient: product.isIngredient ?? false,
   };
 }
 
@@ -107,6 +111,7 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
   const toast = useToast();
   const { business } = useSession();
   const canVariants = business.features.includes("variants");
+  const canRecipes = business.features.includes("recipes");
   const country = countryConfig(business.country);
   const [form, setForm] = useState<FormState>(() => {
     const initial = toForm(product);
@@ -124,6 +129,13 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
   const [newVariants, setNewVariants] = useState("");
   const [baseLabel, setBaseLabel] = useState(product?.variantLabel ?? "");
   const [creatingVariants, setCreatingVariants] = useState(false);
+  // Receta: se carga al abrirla y solo se guarda si se modificó.
+  const [recipeOpen, setRecipeOpen] = useState(false);
+  const [recipe, setRecipe] = useState<RecipeDraft | null>(null);
+  const savedRecipe = useSWR<RecipeData>(
+    recipeOpen && product && canRecipes ? `/api/products/${product.id}/recipe` : null,
+    fetcher
+  );
 
   async function createVariants() {
     if (!product) return;
@@ -171,16 +183,20 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
       sendToKitchen: form.sendToKitchen,
       trackStock: form.trackStock,
       seniorEligible: form.seniorEligible,
+      isIngredient: form.isIngredient,
       modifiers: modifiers
         .filter((m) => m.name.trim())
         .map((m) => ({ id: m.id, name: m.name.trim(), price: Number(m.price.replace(",", ".")) || 0 })),
       ...(product ? {} : { stock: form.stock || 0 }),
     };
     try {
-      await api(product ? `/api/products/${product.id}` : "/api/products", {
+      const saved = await api<Product>(product ? `/api/products/${product.id}` : "/api/products", {
         method: product ? "PUT" : "POST",
         body,
       });
+      if (recipe && canRecipes && !form.isIngredient) {
+        await api(`/api/products/${saved.id}/recipe`, { method: "PUT", body: recipeBody(recipe) });
+      }
       toast.success(product ? tr("Producto actualizado") : tr("Producto creado"));
       onSaved();
     } catch (err) {
@@ -331,6 +347,36 @@ function ProductFormDialog({ open, product, categories, onClose, onSaved }: Prod
               onChange={(e) => set("seniorEligible", e.target.checked)}
             />
           )}
+          {canRecipes && (
+            <Checkbox
+              label={tr("Es un insumo: se usa en recetas y no se vende en la caja")}
+              checked={form.isIngredient}
+              onChange={(e) => set("isIngredient", e.target.checked)}
+            />
+          )}
+          {canRecipes && !form.isIngredient && (
+            <button
+              type="button"
+              aria-expanded={recipeOpen}
+              onClick={() => setRecipeOpen((v) => !v)}
+              className="block text-sm text-brand-700 dark:text-brand-300 underline"
+            >
+              {recipeOpen ? tr("Ocultar") : tr("Mostrar")} {tr("receta e insumos")}
+            </button>
+          )}
+          {recipeOpen &&
+            canRecipes &&
+            !form.isIngredient &&
+            (product && !savedRecipe.data ? (
+              <p className="text-sm text-slate-500">{tr("Cargando...")}</p>
+            ) : (
+              <RecipeEditor
+                productId={product?.id ?? null}
+                price={Number(form.price) || 0}
+                initial={recipe ?? recipeDraft(savedRecipe.data)}
+                onChange={setRecipe}
+              />
+            ))}
           <Checkbox
             label={tr("Controlar lotes y fecha de caducidad")}
             checked={form.trackExpiry}

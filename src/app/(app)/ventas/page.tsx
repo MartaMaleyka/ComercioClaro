@@ -250,9 +250,13 @@ export default function PosPage() {
   } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Los servicios (entrega, etc.) no llevan existencias: nunca se agotan en el punto de venta.
+  // Los servicios (entrega, etc.) y los platos con receta no llevan existencias: nunca se agotan.
+  // Los insumos no se venden en la caja.
   const products = useMemo(
-    () => (catalog.list ?? []).map((p) => (p.trackStock === false ? { ...p, stock: UNLIMITED } : p)),
+    () =>
+      (catalog.list ?? [])
+        .filter((p) => !p.isIngredient)
+        .map((p) => (p.trackStock === false ? { ...p, stock: UNLIMITED } : p)),
     [catalog.list]
   );
   const categories = useMemo(() => {

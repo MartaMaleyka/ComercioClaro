@@ -33,6 +33,11 @@ export const FEATURES = [
   { key: "variants", label: "Variantes y extras", description: "Tallas, colores y extras con precio." },
   { key: "inventoryCounts", label: "Conteo físico", description: "Conteo del anaquel con ajuste de diferencias." },
   { key: "export", label: "Exportar a CSV", description: "Descarga de ventas, productos y movimientos." },
+  {
+    key: "recipes",
+    label: "Recetas e insumos",
+    description: "Cada plato descuenta sus insumos al venderse; costo por plato y merma.",
+  },
 ] as const;
 
 export type FeatureKey = (typeof FEATURES)[number]["key"];

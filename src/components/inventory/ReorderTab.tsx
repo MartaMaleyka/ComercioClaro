@@ -34,6 +34,7 @@ interface Suggestion {
   supplierContact: string | null;
   packSize: number | null;
   lastCost: number;
+  isIngredient?: boolean;
   low: boolean;
 }
 
@@ -157,7 +158,14 @@ export function ReorderTab() {
             <Card key={s.productId}>
               <CardContent className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">{s.name}</p>
+                  <p className="font-medium text-slate-900">
+                    {s.name}
+                    {s.isIngredient && (
+                      <Badge tone="purple" className="ml-2">
+                        {tr("Insumo")}
+                      </Badge>
+                    )}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {tr("Hay {stock} · vendes {avg}/día", {
                       stock: fmt.qty(s.stock, s.unit),
