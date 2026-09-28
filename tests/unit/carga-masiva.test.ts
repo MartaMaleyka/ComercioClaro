@@ -46,12 +46,12 @@ describe("carga masiva: lectura de lo pegado desde Excel", () => {
   it("valida cada fila y nombra la columna como en la plantilla", () => {
     expect(checkRow("products", { name: "Arroz", price: "3.95" }).ok).toBe(true);
     const bad = checkRow("products", { name: "Arroz", price: "tres" });
-    expect(bad).toEqual({ ok: false, error: "Precio: Debe ser un número" });
+    expect(bad).toEqual({ ok: false, error: "Precio: Debe ser un número", field: "price" });
     const noName = checkRow("customers", { phone: "6000-0000" });
     expect(noName.ok).toBe(false);
     if (!noName.ok) expect(noName.error).toMatch(/^Nombre:/);
     const email = checkRow("suppliers", { name: "Distri", email: "no-es-correo" });
-    expect(email).toEqual({ ok: false, error: "Correo: Correo inválido" });
+    expect(email).toEqual({ ok: false, error: "Correo: Correo inválido", field: "email" });
   });
 
   it("la plantilla trae los encabezados y un ejemplo que pasa la validación", () => {
@@ -72,9 +72,9 @@ describe("carga masiva: lectura de lo pegado desde Excel", () => {
     expect(toInput("employees", { frequency: "Quincena" })).toMatchObject({ frequency: "QUINCENAL" });
     expect(toInput("employees", { frequency: "cada mes" })).toMatchObject({ frequency: "MENSUAL" });
     const bad = checkRow("employees", { name: "Ana", salary: "650", hireDate: "01/02/2025", frequency: "semanal" });
-    expect(bad).toEqual({ ok: false, error: "Frecuencia: Frecuencia inválida: usa quincenal o mensual" });
+    expect(bad).toEqual({ ok: false, error: "Frecuencia: Frecuencia inválida: usa quincenal o mensual", field: "frequency" });
     const pago = checkRow("expenses", { date: "01/08/2026", category: "Luz", amount: "10", paymentMethod: "cheque" });
-    expect(pago).toEqual({ ok: false, error: "Forma de pago: Forma de pago inválida" });
+    expect(pago).toEqual({ ok: false, error: "Forma de pago: Forma de pago inválida", field: "paymentMethod" });
   });
 
   it.each(["en", "zh"])("los textos de cada tipo tienen traducción en %s", (language) => {
