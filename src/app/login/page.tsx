@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Store } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input, PasswordInput } from "@/components/ui/Input";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -141,9 +141,8 @@ export default function LoginPage() {
             autoComplete="email"
             required
           />
-          <Input
+          <PasswordInput
             label="Contraseña"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"

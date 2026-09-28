@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/Input";
 
 export default function ForcedPasswordChangePage() {
   const router = useRouter();
@@ -52,9 +52,9 @@ export default function ForcedPasswordChangePage() {
             {error}
           </div>
         )}
-        <Input label="Contraseña temporal" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
-        <Input label="Nueva contraseña" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required hint="Mínimo 8 caracteres" />
-        <Input label="Repite la nueva contraseña" type="password" autoComplete="new-password" value={confirmValue} onChange={(e) => setConfirmValue(e.target.value)} required />
+        <PasswordInput label="Contraseña temporal" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+        <PasswordInput label="Nueva contraseña" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required hint="Mínimo 8 caracteres" />
+        <PasswordInput label="Repite la nueva contraseña" autoComplete="new-password" value={confirmValue} onChange={(e) => setConfirmValue(e.target.value)} required />
         <Button type="submit" className="w-full" loading={loading}>
           Guardar y continuar
         </Button>

@@ -1,4 +1,6 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useText } from "@/lib/client/i18n";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -60,6 +62,42 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
         className={cn(fieldClass, error && "border-red-600 focus:ring-red-600/15 focus:border-red-600", className)}
         {...props}
       />
+    </FieldWrapper>
+  );
+}
+
+/**
+ * Contraseña con botón para verla. El nombre del botón va en texto oculto (no en aria-label)
+ * para que "Contraseña" siga identificando solo al campo.
+ */
+export function PasswordInput({ label, error, hint, className, id, ...props }: Omit<InputProps, "type">) {
+  const tr = useText();
+  const generated = useId();
+  const inputId = id || generated;
+  const [visible, setVisible] = useState(false);
+  return (
+    <FieldWrapper id={inputId} label={label} error={error} hint={hint} required={props.required}>
+      <div className="relative">
+        <input
+          id={inputId}
+          type={visible ? "text" : "password"}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy(inputId, error, hint)}
+          className={cn(fieldClass, "pr-14", error && "border-red-600 focus:ring-red-600/15 focus:border-red-600", className)}
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-pressed={visible}
+          aria-controls={inputId}
+          title={visible ? tr("Ocultar contraseña") : tr("Mostrar contraseña")}
+          className="press absolute right-1.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+        >
+          {visible ? <EyeOff className="w-5 h-5" aria-hidden="true" /> : <Eye className="w-5 h-5" aria-hidden="true" />}
+          <span className="sr-only">{visible ? tr("Ocultar contraseña") : tr("Mostrar contraseña")}</span>
+        </button>
+      </div>
     </FieldWrapper>
   );
 }

@@ -1078,6 +1078,7 @@ export const zh: Record<string, string> = {
   Monto: "金额",
   "Monto fijo": "固定金额",
   Mostrar: "显示",
+  "Mostrar contraseña": "显示密码",
   "Mostrar montos como B/. (balboa)": "金额显示为 B/.（巴波亚）",
   Motivo: "原因",
   "Motivo 02: comprobante emitido con errores sin relación. Las ventas quedarán libres para facturarse de nuevo.":
@@ -1185,6 +1186,7 @@ export const zh: Record<string, string> = {
   "Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).":
     "年收入超过 B/.36,000 或每月超过 100 份单据时，必须使用 PAC（第 201-6299 号决议）。",
   Ocultar: "隐藏",
+  "Ocultar contraseña": "隐藏密码",
   "Ocultar la guía de primeros pasos": "隐藏入门指南",
   Oculto: "隐藏",
   "Ocurrió un error": "出现错误",

@@ -24,7 +24,7 @@ import type { FeatureKey } from "@/lib/features";
 import { LANGUAGES } from "@/lib/i18n";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Checkbox, Input, Select } from "@/components/ui/Input";
+import { Checkbox, Input, Select, PasswordInput } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
 import { Badge } from "@/components/ui/Badge";
@@ -859,17 +859,15 @@ function ProfileSettings() {
         </CardHeader>
         <CardContent>
           <form onSubmit={changePassword} className="space-y-3">
-            <Input
+            <PasswordInput
               label={tr("Contraseña actual")}
-              type="password"
               autoComplete="current-password"
               value={current}
               onChange={(e) => setCurrent(e.target.value)}
               required
             />
-            <Input
+            <PasswordInput
               label={tr("Nueva contraseña")}
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={next}

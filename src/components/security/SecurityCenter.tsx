@@ -12,7 +12,7 @@ import { ConfirmProvider, useConfirm } from "@/components/providers/ConfirmProvi
 import { Badge } from "@/components/ui/Badge";
 import { Button, buttonStyles } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { Input, PasswordInput } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { ErrorState, ListSkeleton, ScrollArea } from "@/components/ui/Misc";
 
@@ -378,9 +378,8 @@ function MfaDialog({
             : tr("Los códigos anteriores dejarán de servir.")}
         </p>
         {kind === "disable" && (
-          <Input
+          <PasswordInput
             label={tr("Contraseña")}
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff, Store } from "lucide-react";
+import { Store } from "lucide-react";
 import { BUSINESS_TYPES, type BusinessType } from "@/lib/business-types";
 import { isCommonPassword } from "@/lib/password-policy";
 import { Button } from "@/components/ui/Button";
-import { Checkbox, Input, Select } from "@/components/ui/Input";
+import { Checkbox, Input, PasswordInput, Select } from "@/components/ui/Input";
 
 export interface ChosenPlan {
   code: string;
@@ -49,7 +49,6 @@ export function RegisterForm({ plan }: { plan: ChosenPlan | null }) {
     acceptTerms: false,
     website: "",
   });
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const type = BUSINESS_TYPES.find((t) => t.key === form.businessType);
@@ -187,32 +186,15 @@ export function RegisterForm({ plan }: { plan: ChosenPlan | null }) {
             required
           />
           <div className="space-y-1">
-            <div className="relative">
-              <Input
-                label="Contraseña"
-                type={showPassword ? "text" : "password"}
-                value={form.password}
-                onChange={(e) => update("password", e.target.value)}
-                placeholder="Mínimo 8 caracteres"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                className="pr-11"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 bottom-1.5 p-2 rounded-lg text-slate-500 hover:bg-slate-100"
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" aria-hidden="true" />
-                ) : (
-                  <Eye className="w-4 h-4" aria-hidden="true" />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              label="Contraseña"
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              placeholder="Mínimo 8 caracteres"
+              required
+              minLength={8}
+              autoComplete="new-password"
+            />
             {strength && (
               <p className={`text-xs ${strength.tone}`} aria-live="polite">
                 {strength.label}
