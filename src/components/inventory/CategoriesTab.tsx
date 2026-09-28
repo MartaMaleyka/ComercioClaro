@@ -9,6 +9,7 @@ import type { Category } from "@/lib/client/types";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { ErrorState, ListSkeleton } from "@/components/ui/Misc";
@@ -70,6 +71,7 @@ export function CategoriesTab() {
         </div>
         <Button type="submit">{tr("Agregar")}</Button>
       </form>
+      <BulkImportButton entity="categories" label={tr("Agregar varias")} onDone={() => mutate()} />
       {error ? (
         <ErrorState error={error} />
       ) : !data ? (

@@ -10,7 +10,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
 }
 
 const FOCUSABLE =
@@ -103,7 +103,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
         tabIndex={-1}
         className={cn(
           "relative w-full bg-surface-raised rounded-t-3xl sm:rounded-3xl shadow-xl max-h-[92vh] overflow-y-auto animate-in focus:outline-none",
-          size === "lg" ? "sm:max-w-3xl" : "sm:max-w-lg"
+          size === "xl" ? "sm:max-w-6xl" : size === "lg" ? "sm:max-w-3xl" : "sm:max-w-lg"
         )}
       >
         <div className="sticky top-0 z-10 bg-surface-raised px-5 sm:px-6 pt-3 sm:pt-5 pb-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">

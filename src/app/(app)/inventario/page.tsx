@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Checkbox, Select } from "@/components/ui/Input";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 import { ProductForm } from "@/components/inventory/ProductForm";
@@ -165,9 +166,12 @@ function ProductsTab() {
           ))}
         </Select>
         {isOwner && (
-          <Button onClick={() => setEditing(null)}>
-            <Plus className="w-4 h-4" /> {tr("Producto")}
-          </Button>
+          <>
+            <BulkImportButton entity="products" onDone={() => list.mutate()} />
+            <Button onClick={() => setEditing(null)}>
+              <Plus className="w-4 h-4" /> {tr("Producto")}
+            </Button>
+          </>
         )}
       </div>
       <div className="flex gap-4">
@@ -304,36 +308,6 @@ function IconButton({ label, onClick, icon: Icon }: { label: string; onClick: ()
 function ImportExportTab() {
   const tr = useText();
   const canExport = useFeature("export");
-  const toast = useToast();
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{
-    created: number;
-    updated: number;
-    errors: { row: number; error: string }[];
-  } | null>(null);
-
-  async function upload() {
-    if (!file) return;
-    setBusy(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await api<typeof result>("/api/products/import", { body: form });
-      setResult(res);
-      toast.success(tr("Importación terminada"));
-    } catch (err) {
-      toast.error(err);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const template =
-    "data:text/csv;charset=utf-8," +
-    encodeURIComponent(
-      "﻿Nombre,Código de barras,Categoría,Unidad,Precio,Costo,Existencia,Stock mínimo,IVA\nCoca-Cola 600ml,7501055300075,Bebidas,pza,18,12,24,6,16\nFrijol negro,,Granel,kg,38,26,20,5,0\n"
-    );
 
   const exports = [
     { type: "products", label: tr("Productos") },
@@ -353,42 +327,10 @@ function ImportExportTab() {
           </h2>
           <p className="text-sm text-slate-600">
             {tr(
-              "Guarda tu hoja de Excel como CSV. Columnas reconocidas: Nombre, Código de barras, SKU, Categoría, Unidad (pza, kg, l), Precio, Precio mayoreo, Mayoreo desde, Costo, Existencia, Stock mínimo, IVA, IEPS. Si el código de barras (o el nombre) ya existe se actualiza el producto."
+              "Copia tus filas de Excel y pégalas, o sube un CSV. Verás cada fila revisada antes de guardar. Si el código de barras (o el nombre) ya existe se actualiza el producto."
             )}
           </p>
-          <a
-            href={template}
-            download="plantilla-productos.csv"
-            className="text-sm text-brand-700 dark:text-brand-300 underline"
-          >
-            {tr("Descargar plantilla")}
-          </a>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            aria-label={tr("Archivo CSV")}
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-slate-600 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700"
-          />
-          <Button onClick={upload} loading={busy} disabled={!file}>
-            {tr("Importar")}
-          </Button>
-          {result && (
-            <div className="text-sm space-y-1">
-              <p className="text-brand-700 dark:text-brand-300">
-                {tr("{created} creados · {updated} actualizados", { created: result.created, updated: result.updated })}
-              </p>
-              {result.errors.length > 0 && (
-                <ul className="text-red-600 text-xs space-y-0.5 max-h-40 overflow-y-auto">
-                  {result.errors.map((e) => (
-                    <li key={e.row}>
-                      {tr("Fila")} {e.row}: {e.error}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          <BulkImportButton entity="products" variant="primary" label={tr("Abrir carga masiva")} />
         </CardContent>
       </Card>
       <Card>

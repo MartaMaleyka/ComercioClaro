@@ -237,6 +237,17 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 - [ZXing](https://github.com/zxing-js/browser) como respaldo de `BarcodeDetector`
 - Vitest, Playwright y GitHub Actions
 
+## Carga masiva
+
+Productos, categorías, clientes, proveedores, gastos y empleados se pueden cargar de una vez: se escriben en una tabla tipo Excel donde se van agregando filas, se pegan desde Excel en cualquier celda o se sube un CSV.
+
+- Antes de guardar se ve cada fila revisada, con su error si lo tiene.
+- Los registros que ya existen se actualizan sin duplicarse.
+- Hay una plantilla por tipo.
+- El inventario permite cambiar en lote el precio, la categoría y el stock mínimo, y archivar productos.
+
+Detalle en [`docs/plan-carga-masiva.md`](docs/plan-carga-masiva.md).
+
 ## Diseño: Sistema Claro
 
 Toda la app usa un solo design system, Claro. Los principios, colores, tipografía, espacios, movimiento y componentes están en [`docs/design-system.md`](docs/design-system.md).
