@@ -9,6 +9,21 @@ Objetivo: dejar de agregar los registros uno a uno. Se entrega en 4 PR:
 | 3 | Carga masiva de clientes, proveedores, gastos y empleados. |
 | 4 | Acciones en lote en el inventario (precio, categoría, stock mínimo, archivar). |
 
+## Dónde está
+
+Botón **Carga masiva** (solo el dueño) en:
+
+| Pantalla | Tipo |
+| --- | --- |
+| Inventario (y la pestaña Importar) | Productos |
+| Inventario → Categorías ("Agregar varias") | Categorías |
+| Clientes | Clientes |
+| Proveedores | Proveedores |
+| Gastos | Gastos |
+| Planilla → Empleados | Empleados |
+
+La ventana muestra un aviso cuando la carga no cambia algo: la existencia de los productos y la caja en los gastos.
+
 ## Cómo funciona la carga masiva
 
 1. **Datos:** se pegan filas copiadas de Excel (con los encabezados) o se sube un CSV. Hay una plantilla descargable por tipo.
@@ -35,7 +50,8 @@ Objetivo: dejar de agregar los registros uno a uno. Se entrega en 4 PR:
    - "sí/no".
    - Unidades en palabras ("libra", "pza").
    - Impuestos como `7%` o "exento".
-   - Formas de pago en palabras.
+   - Formas de pago en palabras ("tarjeta de débito", "depósito", "Yappy").
+   - Frecuencia de pago en palabras ("quincena", "cada mes").
 7. **Límites:**
    - 2,000 filas y 2 MB por carga.
    - Solo el dueño puede cargar.

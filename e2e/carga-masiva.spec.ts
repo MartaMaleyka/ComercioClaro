@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectAccessible, login, OWNER } from "./helpers";
+import { BUSINESS, expectAccessible, login, OWNER } from "./helpers";
 
 // Carga masiva: se pega desde Excel, se ve la vista previa fila por fila y se guardan solo las filas listas.
 
@@ -57,3 +57,80 @@ for (const scheme of ["light", "dark"] as const) {
     await expectAccessible(page);
   });
 }
+
+// Clientes, proveedores, gastos y empleados usan la misma ventana: se pega, se revisa y se guarda.
+
+test("clientes: pegar con otros nombres de columna y guardar", async ({ page }) => {
+  const tag = unique();
+  await login(page, OWNER);
+  await page.goto("/clientes");
+  await page.getByRole("button", { name: "Carga masiva" }).click();
+  const dialog = page.getByRole("dialog", { name: "Carga masiva de clientes" });
+  await dialog
+    .getByLabel("Pega aquí tus filas")
+    .fill(`Cliente\tCelular\tLímite\nRosa ${tag}\t6${tag.slice(-3)}-0001\t$40\nLuis ${tag}\t\t\n`);
+  await expect(dialog.getByText("2 listas")).toBeVisible();
+  await dialog.getByRole("button", { name: "Importar 2 filas" }).click();
+  await expect(dialog.getByRole("status").filter({ hasText: "2 nuevos · 0 actualizados" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Listo" }).click();
+  await page.getByPlaceholder(/Buscar/).first().fill(tag);
+  await expect(page.getByText(`Rosa ${tag}`)).toBeVisible();
+});
+
+test("proveedores: el segundo archivo actualiza en lugar de duplicar", async ({ page }) => {
+  const tag = unique();
+  await login(page, OWNER);
+  await page.goto("/proveedores");
+  for (const [rows, expected] of [
+    [`Proveedor\tDías de crédito\nDistri ${tag}\t45\n`, "1 nuevos · 0 actualizados"],
+    [`Nombre\tTeléfono\ndistri ${tag}\t6700-0000\n`, "0 nuevos · 1 actualizados"],
+  ] as const) {
+    await page.getByRole("button", { name: "Carga masiva" }).click();
+    const dialog = page.getByRole("dialog", { name: "Carga masiva de proveedores" });
+    await dialog.getByLabel("Pega aquí tus filas").fill(rows);
+    await dialog.getByRole("button", { name: "Importar 1 filas" }).click();
+    await expect(dialog.getByRole("status").filter({ hasText: expected })).toBeVisible();
+    await dialog.getByRole("button", { name: "Listo" }).click();
+  }
+  await page.getByPlaceholder("Buscar proveedor").fill(tag);
+  await expect(page.getByText(`Distri ${tag}`)).toHaveCount(1);
+});
+
+test("gastos: se avisa que son gastos pasados y se guardan con la forma de pago en palabras", async ({ page }) => {
+  const tag = unique();
+  await login(page, OWNER);
+  await page.goto("/gastos");
+  await page.getByRole("button", { name: "Carga masiva" }).click();
+  const dialog = page.getByRole("dialog", { name: "Carga masiva de gastos" });
+  await expect(dialog.getByRole("note")).toContainText("no salen de la caja abierta");
+  const today = new Date();
+  const day = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+  await dialog
+    .getByLabel("Pega aquí tus filas")
+    .fill(`Fecha\tTipo\tMonto\tForma de pago\tConcepto\n${day}\tLuz\t$12.50\tTarjeta de débito\tRecibo ${tag}\n`);
+  await expect(dialog.getByText("1 listas")).toBeVisible();
+  await dialog.getByRole("button", { name: "Importar 1 filas" }).click();
+  await expect(dialog.getByRole("status").filter({ hasText: "1 nuevos · 0 actualizados" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Listo" }).click();
+  await expect(page.getByText(`Recibo ${tag}`)).toBeVisible();
+});
+
+test("empleados: frecuencia en palabras y error nombrando la columna", async ({ page, isMobile }) => {
+  test.skip(isMobile, "Se cubre en escritorio");
+  const tag = unique();
+  await login(page, OWNER, BUSINESS.fonda);
+  await page.goto("/planilla");
+  await page.getByRole("button", { name: "Carga masiva" }).click();
+  const dialog = page.getByRole("dialog", { name: "Carga masiva de empleados" });
+  await dialog
+    .getByLabel("Pega aquí tus filas")
+    .fill(
+      `Nombre\tSalario\tFecha de ingreso\tFrecuencia\nMarta ${tag}\t700\t01/02/2025\tcada mes\nOtro ${tag}\t700\t01/02/2025\tsemanal\n`
+    );
+  await expect(dialog.getByText("Frecuencia: Frecuencia inválida: usa quincenal o mensual")).toBeVisible();
+  await expectAccessible(page);
+  await dialog.getByRole("button", { name: "Importar 1 filas listas" }).click();
+  await expect(dialog.getByRole("status").filter({ hasText: "1 nuevos · 0 actualizados" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Listo" }).click();
+  await expect(page.getByText(`Marta ${tag}`)).toBeVisible();
+});

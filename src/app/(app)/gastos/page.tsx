@@ -22,6 +22,7 @@ import { ErrorState, ListSkeleton, LoadMore, PageHeader, Stat } from "@/componen
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
 import { RecurringTab } from "@/components/expenses/RecurringTab";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 
 const DEFAULT_CATEGORIES = [
   "Renta",
@@ -123,6 +124,7 @@ function Expenses() {
                 <Download className="w-4 h-4" /> {tr("CSV")}
               </a>
             )}
+            <BulkImportButton entity="expenses" onDone={() => list.mutate()} />
             <Button onClick={() => setOpen(true)}>
               <Plus className="w-4 h-4" /> {tr("Gasto")}
             </Button>

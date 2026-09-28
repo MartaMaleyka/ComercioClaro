@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Tabs } from "@/components/ui/Tabs";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { ErrorState, ListSkeleton, PageHeader, Stat, ScrollArea } from "@/components/ui/Misc";
 
 type Frequency = "QUINCENAL" | "MENSUAL";
@@ -132,9 +133,12 @@ function EmployeesTab() {
           value={fmt.money(monthly)}
           hint={tr("{n} empleados activos", { n: data.filter((e) => e.active).length })}
         />
-        <Button onClick={() => setEditing(null)}>
-          <UserPlus className="w-4 h-4" aria-hidden="true" /> {tr("Empleado")}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <BulkImportButton entity="employees" onDone={() => mutate()} />
+          <Button onClick={() => setEditing(null)}>
+            <UserPlus className="w-4 h-4" aria-hidden="true" /> {tr("Empleado")}
+          </Button>
+        </div>
       </div>
       {data.length === 0 ? (
         <EmptyState

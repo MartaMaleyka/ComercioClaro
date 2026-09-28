@@ -986,6 +986,7 @@ export const zh: Record<string, string> = {
   "La balanza envía el peso sola": "秤自动发送重量",
   "La contraseña actual deja de funcionar y deberá cambiarla al entrar.": "当前密码将失效，登录后必须修改。",
   "La etiqueta trae": "标签包含",
+  "La existencia de un producto que ya existe no cambia: ajústala con un conteo físico.": "已有商品的库存不会改变：请通过实物盘点调整。",
   "La factura deja de estar por pagar.": "该发票将不再列为应付款。",
   "La facturación electrónica está disponible para México y Panamá.": "电子发票适用于墨西哥和巴拿马。",
   "La facturación no está activa. Contrata un PAC (por ejemplo Facturama) y configura":
@@ -1577,6 +1578,7 @@ export const zh: Record<string, string> = {
   "Se descuenta en la siguiente planilla.": "将在下一期工资中扣除。",
   "Se genera sola con tus ventas, compras, pagos y gastos. Lista para tu contador.":
     "根据你的销售、采购、付款和支出自动生成，可直接交给会计师。",
+  "Se guardan como gastos pasados: no salen de la caja abierta y no se aceptan fechas futuras ni meses cerrados.": "将作为过去的支出保存：不从当前收银中扣除，不接受未来日期或已结账的月份。",
   "Se muestra en el punto de venta al cobrar con Yappy.": "用 Yappy 收款时在收银台显示。",
   "Se muestran las primeras 100 filas.": "仅显示前 100 行。",
   "Se muestran los últimos {n} de {total} asientos. Descarga el libro completo en Excel.":

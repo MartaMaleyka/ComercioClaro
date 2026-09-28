@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { missingTexts } from "@/lib/i18n-text";
 import { BULK_SPECS, checkRow, dateCell, mapTable, normalizeHeader, parseTable, templateCsv, toInput } from "@/lib/bulk";
 
 describe("carga masiva: lectura de lo pegado desde Excel", () => {
@@ -62,5 +63,27 @@ describe("carga masiva: lectura de lo pegado desde Excel", () => {
       const check = checkRow(spec.entity, table.records[0]);
       expect(check.ok, `${spec.entity}: ${JSON.stringify(check)}`).toBe(true);
     }
+  });
+
+  it("formas de pago y frecuencias en palabras, sin importar acentos", () => {
+    expect(toInput("expenses", { paymentMethod: "Tarjeta de Débito" })).toMatchObject({ paymentMethod: "CARD" });
+    expect(toInput("expenses", { paymentMethod: " Depósito " })).toMatchObject({ paymentMethod: "TRANSFER" });
+    expect(toInput("expenses", { paymentMethod: "YAPPY" })).toMatchObject({ paymentMethod: "YAPPY" });
+    expect(toInput("employees", { frequency: "Quincena" })).toMatchObject({ frequency: "QUINCENAL" });
+    expect(toInput("employees", { frequency: "cada mes" })).toMatchObject({ frequency: "MENSUAL" });
+    const bad = checkRow("employees", { name: "Ana", salary: "650", hireDate: "01/02/2025", frequency: "semanal" });
+    expect(bad).toEqual({ ok: false, error: "Frecuencia: Frecuencia inválida: usa quincenal o mensual" });
+    const pago = checkRow("expenses", { date: "01/08/2026", category: "Luz", amount: "10", paymentMethod: "cheque" });
+    expect(pago).toEqual({ ok: false, error: "Forma de pago: Forma de pago inválida" });
+  });
+
+  it.each(["en", "zh"])("los textos de cada tipo tienen traducción en %s", (language) => {
+    const texts = Object.values(BULK_SPECS).flatMap((s) => [
+      s.noun,
+      s.matchBy,
+      ...(s.note ? [s.note] : []),
+      ...s.columns.map((c) => c.label),
+    ]);
+    expect(missingTexts(language, texts)).toEqual([]);
   });
 });

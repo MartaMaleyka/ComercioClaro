@@ -1011,6 +1011,7 @@ export const en: Record<string, string> = {
   "La contraseña actual deja de funcionar y deberá cambiarla al entrar.":
     "The current password stops working and must be changed on sign-in.",
   "La etiqueta trae": "The label carries",
+  "La existencia de un producto que ya existe no cambia: ajústala con un conteo físico.": "Stock of a product that already exists is not changed: adjust it with a physical count.",
   "La factura deja de estar por pagar.": "The invoice will no longer be payable.",
   "La facturación electrónica está disponible para México y Panamá.": "E-invoicing is available for Mexico and Panama.",
   "La facturación no está activa. Contrata un PAC (por ejemplo Facturama) y configura":
@@ -1621,6 +1622,7 @@ export const en: Record<string, string> = {
   "Se descuenta en la siguiente planilla.": "It's deducted in the next payroll.",
   "Se genera sola con tus ventas, compras, pagos y gastos. Lista para tu contador.":
     "Generated automatically from your sales, purchases, payments and expenses. Ready for your accountant.",
+  "Se guardan como gastos pasados: no salen de la caja abierta y no se aceptan fechas futuras ni meses cerrados.": "They are saved as past expenses: they don't come out of the open register, and future dates or closed months are not accepted.",
   "Se muestra en el punto de venta al cobrar con Yappy.": "Shown at the POS when charging with Yappy.",
   "Se muestran las primeras 100 filas.": "Showing the first 100 rows.",
   "Se muestran los últimos {n} de {total} asientos. Descarga el libro completo en Excel.":

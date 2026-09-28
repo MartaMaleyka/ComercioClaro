@@ -178,6 +178,11 @@ export function BulkImportModal({
             placeholder={spec.columns.map((c) => c.label).join("\t")}
             hint={tr("Si ya existe, se reconoce por: {key}", { key: tr(spec.matchBy) })}
           />
+          {spec.note && (
+            <p role="note" className="rounded-2xl bg-slate-100 text-slate-700 px-4 py-2.5 text-sm">
+              {tr(spec.note)}
+            </p>
+          )}
           <label className="press inline-flex items-center gap-2 min-h-11 px-4 rounded-xl border-[1.5px] border-slate-300 text-sm font-semibold text-slate-800 cursor-pointer hover:border-slate-900">
             <FileUp className="w-4 h-4" aria-hidden="true" />
             {tr("Subir archivo CSV")}

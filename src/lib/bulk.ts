@@ -37,6 +37,8 @@ export interface BulkSpec {
   columns: BulkColumn[];
   /** Cómo se evita duplicar: qué columna identifica un registro que ya existe */
   matchBy: string;
+  /** Aviso que se muestra en la ventana (qué no cambia la carga) */
+  note?: string;
 }
 
 const col = (key: string, label: string, aliases: string[], example: string, required = false): BulkColumn => ({
@@ -52,6 +54,7 @@ export const BULK_SPECS: Record<BulkEntity, BulkSpec> = {
     entity: "products",
     noun: "productos",
     matchBy: "Código de barras o nombre",
+    note: "La existencia de un producto que ya existe no cambia: ajústala con un conteo físico.",
     columns: [
       col("name", "Nombre", ["nombre", "producto", "name"], "Arroz 5 lb", true),
       col("barcode", "Código de barras", ["codigo de barras", "codigo", "barcode", "ean"], "7501234567890"),
@@ -114,6 +117,7 @@ export const BULK_SPECS: Record<BulkEntity, BulkSpec> = {
     entity: "expenses",
     noun: "gastos",
     matchBy: "No se combinan: cada fila es un gasto nuevo",
+    note: "Se guardan como gastos pasados: no salen de la caja abierta y no se aceptan fechas futuras ni meses cerrados.",
     columns: [
       col("date", "Fecha", ["fecha", "date"], "01/09/2026", true),
       col("category", "Categoría", ["categoria", "tipo", "category"], "Luz", true),
@@ -242,12 +246,32 @@ const PAYMENT_ALIASES: Record<string, string> = {
   efectivo: "CASH",
   cash: "CASH",
   tarjeta: "CARD",
+  "tarjeta de credito": "CARD",
+  "tarjeta de debito": "CARD",
+  credito: "CARD",
+  debito: "CARD",
   card: "CARD",
   transferencia: "TRANSFER",
+  "transferencia bancaria": "TRANSFER",
+  deposito: "TRANSFER",
+  spei: "TRANSFER",
   ach: "TRANSFER",
   transfer: "TRANSFER",
   yappy: "YAPPY",
 };
+
+const FREQUENCY_ALIASES: Record<string, string> = {
+  quincenal: "QUINCENAL",
+  quincena: "QUINCENAL",
+  "cada quincena": "QUINCENAL",
+  mensual: "MENSUAL",
+  mes: "MENSUAL",
+  "cada mes": "MENSUAL",
+};
+
+/** Busca la palabra sin acentos ni mayúsculas; si no está, se manda tal cual para que el esquema avise. */
+const wordCell = (aliases: Record<string, string>, v?: string) =>
+  v === undefined ? undefined : (aliases[normalizeHeader(v)] ?? v.trim().toUpperCase());
 
 const rateCell = (v?: string) => {
   if (v === undefined) return undefined;
@@ -288,16 +312,14 @@ export function toInput(entity: BulkEntity, r: Record<string, string>): Record<s
         ...r,
         amount: moneyCell(r.amount),
         date: dateCell(r.date),
-        paymentMethod: r.paymentMethod
-          ? (PAYMENT_ALIASES[r.paymentMethod.trim().toLowerCase()] ?? r.paymentMethod.toUpperCase())
-          : undefined,
+        paymentMethod: wordCell(PAYMENT_ALIASES, r.paymentMethod),
       };
     case "employees":
       return {
         ...r,
         salary: moneyCell(r.salary),
         hireDate: dateCell(r.hireDate),
-        frequency: r.frequency ? r.frequency.trim().toUpperCase() : undefined,
+        frequency: wordCell(FREQUENCY_ALIASES, r.frequency),
       };
   }
 }

@@ -19,6 +19,7 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 
 interface Statement {
@@ -181,9 +182,12 @@ export default function CustomersPage() {
         title={tr("Clientes")}
         description={tr("Cuentas de fiado y datos para factura")}
         actions={
-          <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> {tr("Cliente")}
-          </Button>
+          <>
+            {isOwner && <BulkImportButton entity="customers" onDone={() => mutate()} />}
+            <Button onClick={() => openForm(null)}>
+              <Plus className="w-4 h-4" /> {tr("Cliente")}
+            </Button>
+          </>
         }
       />
 

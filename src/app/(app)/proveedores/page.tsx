@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { ErrorState, ListSkeleton, PageHeader } from "@/components/ui/Misc";
 
 interface SupplierDetail {
@@ -103,9 +104,12 @@ export default function SuppliersPage() {
         title={tr("Proveedores")}
         description={tr("Contactos e historial de precios")}
         actions={
-          <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> {tr("Proveedor")}
-          </Button>
+          <>
+            <BulkImportButton entity="suppliers" onDone={() => mutate()} />
+            <Button onClick={() => openForm(null)}>
+              <Plus className="w-4 h-4" /> {tr("Proveedor")}
+            </Button>
+          </>
         }
       />
       <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar proveedor")} />
