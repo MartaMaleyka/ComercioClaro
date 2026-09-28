@@ -1,5 +1,6 @@
 /* Service worker de ComercioClaro: permite abrir la app y vender sin conexión. */
-const VERSION = "v2";
+// Subir la versión borra las cachés anteriores (páginas, datos, íconos) en todos los equipos.
+const VERSION = "v3";
 const STATIC_CACHE = `static-${VERSION}`;
 const PAGES_CACHE = `pages-${VERSION}`;
 const DATA_CACHE = `data-${VERSION}`;
@@ -48,6 +49,19 @@ async function networkFirst(request, cacheName, fallbackUrl) {
   }
 }
 
+/** Guarda y responde desde la caché, pero actualiza la copia en segundo plano (íconos). */
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cached = await cache.match(request);
+  const network = fetch(request)
+    .then((response) => {
+      if (response.ok) cache.put(request, response.clone());
+      return response;
+    })
+    .catch(() => cached);
+  return cached || network;
+}
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -65,8 +79,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/icons/")) {
+  // En producción los archivos de /_next/static/ llevan el contenido en el nombre: no cambian nunca.
+  // (En desarrollo el service worker no se registra y el que haya quedado se da de baja.)
+  if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));
+    return;
+  }
+
+  if (url.pathname.startsWith("/icons/")) {
+    event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
