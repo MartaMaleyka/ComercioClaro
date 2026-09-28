@@ -11,6 +11,7 @@ import type { Supplier } from "@/lib/client/types";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button } from "@/components/ui/Button";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -103,9 +104,12 @@ export default function SuppliersPage() {
         title={tr("Proveedores")}
         description={tr("Contactos e historial de precios")}
         actions={
-          <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> {tr("Proveedor")}
-          </Button>
+          <>
+            <BulkImportButton entity="suppliers" onDone={() => mutate()} />
+            <Button onClick={() => openForm(null)}>
+              <Plus className="w-4 h-4" /> {tr("Proveedor")}
+            </Button>
+          </>
         }
       />
       <SearchBar value={search} onChange={setSearch} placeholder={tr("Buscar proveedor")} />

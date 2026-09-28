@@ -13,6 +13,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button, buttonStyles } from "@/components/ui/Button";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -123,6 +124,7 @@ function Expenses() {
                 <Download className="w-4 h-4" /> {tr("CSV")}
               </a>
             )}
+            <BulkImportButton entity="expenses" onDone={() => list.mutate()} />
             <Button onClick={() => setOpen(true)}>
               <Plus className="w-4 h-4" /> {tr("Gasto")}
             </Button>

@@ -9,6 +9,7 @@ export const en: Record<string, string> = {
   "/ mín.": "/ min.",
   "0 = sin límite": "0 = no limit",
   "1 a 30 días": "1 to 30 days",
+  "1 fila": "1 row",
   "1% + ITBMS = 1.07%": "1% + ITBMS = 1.07%",
   "10% · otros comercios": "10% · other stores",
   "15% · comida rápida": "15% · fast food",
@@ -964,6 +965,8 @@ export const en: Record<string, string> = {
   "Importación terminada": "Import finished",
   Importar: "Import",
   "Importar / exportar": "Import / export",
+  "Importar 1 fila": "Import 1 row",
+  "Importar 1 fila lista": "Import 1 ready row",
   "Importar productos (CSV / Excel)": "Import products (CSV / Excel)",
   "Importar {n} filas": "Import {n} rows",
   "Importar {n} filas listas": "Import {n} ready rows",
@@ -1072,6 +1075,8 @@ export const en: Record<string, string> = {
   "Los cambios se aplican a los {n} negocio(s) con este plan.": "Changes apply to the {n} business(es) on this plan.",
   "Los clientes acumulan y canjean puntos.": "Customers earn and redeem points.",
   "Los códigos anteriores dejarán de servir.": "The previous codes will stop working.",
+  "Los gastos cargados en lote no salen de la caja abierta y no pueden tener fecha futura.":
+    "Expenses imported in bulk are not taken from the open register and cannot be future-dated.",
   "Los pagos exceden el total": "Payments exceed the total",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "Dishes prepared in the kitchen are sent to the kitchen display.",

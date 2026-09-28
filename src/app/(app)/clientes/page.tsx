@@ -13,6 +13,7 @@ import type { Customer } from "@/lib/client/types";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -181,9 +182,12 @@ export default function CustomersPage() {
         title={tr("Clientes")}
         description={tr("Cuentas de fiado y datos para factura")}
         actions={
-          <Button onClick={() => openForm(null)}>
-            <Plus className="w-4 h-4" /> {tr("Cliente")}
-          </Button>
+          <>
+            {role === "OWNER" && <BulkImportButton entity="customers" onDone={() => mutate()} />}
+            <Button onClick={() => openForm(null)}>
+              <Plus className="w-4 h-4" /> {tr("Cliente")}
+            </Button>
+          </>
         }
       />
 

@@ -157,6 +157,9 @@ export function BulkImportModal({
             </li>
           </ol>
 
+          {spec.note && (
+            <p className="rounded-2xl bg-blue-50 text-blue-800 px-4 py-2.5 text-sm font-medium">{tr(spec.note)}</p>
+          )}
           <div className="flex flex-wrap gap-1.5" aria-label={tr("Columnas que se reconocen")}>
             {spec.columns.map((c) => (
               <Badge key={c.key} tone={table?.mapping.includes(c.key) ? "green" : c.required ? "amber" : "gray"} dot={table?.mapping.includes(c.key)}>
@@ -199,7 +202,7 @@ export function BulkImportModal({
           {table && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2" role="status">
-                <Badge tone="gray">{tr("{n} filas", { n: checks.length })}</Badge>
+                <Badge tone="gray">{checks.length === 1 ? tr("1 fila") : tr("{n} filas", { n: checks.length })}</Badge>
                 <Badge tone="green" dot>
                   {tr("{n} listas", { n: valid })}
                 </Badge>
@@ -290,9 +293,13 @@ export function BulkImportModal({
               loading={saving}
               disabled={!table || valid === 0 || table.missing.length > 0 || tooMany}
             >
-              {invalid > 0
-                ? tr("Importar {n} filas listas", { n: valid })
-                : tr("Importar {n} filas", { n: valid })}
+              {valid === 1
+                ? invalid > 0
+                  ? tr("Importar 1 fila lista")
+                  : tr("Importar 1 fila")
+                : invalid > 0
+                  ? tr("Importar {n} filas listas", { n: valid })
+                  : tr("Importar {n} filas", { n: valid })}
             </Button>
           </div>
         </div>

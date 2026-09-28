@@ -13,6 +13,7 @@ import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Checkbox, Input, Select } from "@/components/ui/Input";
@@ -132,9 +133,12 @@ function EmployeesTab() {
           value={fmt.money(monthly)}
           hint={tr("{n} empleados activos", { n: data.filter((e) => e.active).length })}
         />
-        <Button onClick={() => setEditing(null)}>
-          <UserPlus className="w-4 h-4" aria-hidden="true" /> {tr("Empleado")}
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <BulkImportButton entity="employees" onDone={() => mutate()} />
+          <Button onClick={() => setEditing(null)}>
+            <UserPlus className="w-4 h-4" aria-hidden="true" /> {tr("Empleado")}
+          </Button>
+        </div>
       </div>
       {data.length === 0 ? (
         <EmptyState

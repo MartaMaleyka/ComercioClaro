@@ -9,6 +9,7 @@ export const zh: Record<string, string> = {
   "/ mín.": "/ 最低",
   "0 = sin límite": "0 = 不限",
   "1 a 30 días": "1 至 30 天",
+  "1 fila": "1 行",
   "1% + ITBMS = 1.07%": "1% + ITBMS = 1.07%",
   "10% · otros comercios": "10% · 其他商店",
   "15% · comida rápida": "15% · 快餐",
@@ -941,6 +942,8 @@ export const zh: Record<string, string> = {
   "Importación terminada": "导入完成",
   Importar: "导入",
   "Importar / exportar": "导入 / 导出",
+  "Importar 1 fila": "导入 1 行",
+  "Importar 1 fila lista": "导入 1 行就绪的数据",
   "Importar productos (CSV / Excel)": "导入商品（CSV / Excel）",
   "Importar {n} filas": "导入 {n} 行",
   "Importar {n} filas listas": "导入 {n} 行就绪的数据",
@@ -1044,6 +1047,8 @@ export const zh: Record<string, string> = {
   "Los cambios se aplican a los {n} negocio(s) con este plan.": "更改将应用于使用此套餐的 {n} 家店铺。",
   "Los clientes acumulan y canjean puntos.": "客户累积并兑换积分。",
   "Los códigos anteriores dejarán de servir.": "之前的恢复码将失效。",
+  "Los gastos cargados en lote no salen de la caja abierta y no pueden tener fecha futura.":
+    "批量导入的支出不会从当前收银中扣除，日期不能是未来。",
   "Los pagos exceden el total": "付款金额超过总额",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "需要厨房制作的菜品会发送到厨房显示屏。",
