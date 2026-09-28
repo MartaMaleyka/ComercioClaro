@@ -1111,6 +1111,7 @@ export const en: Record<string, string> = {
   Monto: "Amount",
   "Monto fijo": "Fixed amount",
   Mostrar: "Show",
+  "Mostrar contraseña": "Show password",
   "Mostrar montos como B/. (balboa)": "Show amounts as B/. (balboa)",
   Motivo: "Reason",
   "Motivo 02: comprobante emitido con errores sin relación. Las ventas quedarán libres para facturarse de nuevo.":
@@ -1221,6 +1222,7 @@ export const en: Record<string, string> = {
   "Obligatoria con PAC si superas B/.36,000 al año o 100 documentos al mes (Resolución 201-6299).":
     "Required with a PAC if you exceed B/.36,000 a year or 100 documents a month (Resolution 201-6299).",
   Ocultar: "Hide",
+  "Ocultar contraseña": "Hide password",
   "Ocultar la guía de primeros pasos": "Hide the first-steps guide",
   Oculto: "Hidden",
   "Ocurrió un error": "An error occurred",

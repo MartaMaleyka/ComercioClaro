@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { Store, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import { Input, PasswordInput } from "@/components/ui/Input";
 
 function ResetForm() {
   const searchParams = useSearchParams();
@@ -110,9 +110,8 @@ function ResetForm() {
             <div role="alert" className="p-3 bg-red-50 text-red-600 text-sm rounded-xl">{error}</div>
           )}
           {token ? (
-            <Input
+            <PasswordInput
               label="Nueva contraseña"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mínimo 8 caracteres"

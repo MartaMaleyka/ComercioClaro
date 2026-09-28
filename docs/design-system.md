@@ -93,6 +93,7 @@ Viven en `src/components/ui`. Usa siempre estos en lugar de clases sueltas, así
 | `Button` | `ui/Button.tsx` | Variantes: `primary`, `secondary`, `ghost`, `danger` y `accent` (Mango). Tamaños `sm` (36 px), `md` (48 px), `lg` (56 px) y `xl` (64 px, cobrar). Se hunde al presionar; al cargar muestra un indicador sin cambiar de tamaño. |
 | `buttonStyles(variant, size)` | `ui/Button.tsx` | Las mismas clases de `Button` para enlaces (`<Link>`, `<a>`). Nunca metas un `Button` dentro de un `Link`. |
 | `Input`, `Select`, `Textarea`, `Checkbox` | `ui/Input.tsx` | 48 px de alto, borde de 1.5 px y anillo verde al enfocar. El error se marca con borde coral y mensaje enlazado (`aria-describedby`). |
+| `PasswordInput` | `ui/Input.tsx` | Contraseña con ojito para verla u ocultarla. El nombre del botón va en texto oculto: el campo se sigue llamando solo por su etiqueta. |
 | `SearchBar` | `ui/SearchBar.tsx` | 48 px, lupa a la izquierda y botón para limpiar. |
 | `Card` | `ui/Card.tsx` | Radio de 20 px, borde Arena y sombra suave. |
 | `Badge` | `ui/Badge.tsx` | Con `dot`, el estado se lee por el punto y la palabra. |
