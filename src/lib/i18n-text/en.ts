@@ -10,6 +10,7 @@ export const en: Record<string, string> = {
   "0 = sin límite": "0 = no limit",
   "1 a 30 días": "1 to 30 days",
   "1 fila": "1 row",
+  "1 fila no se guardó": "1 row was not saved",
   "1% + ITBMS = 1.07%": "1% + ITBMS = 1.07%",
   "10% · otros comercios": "10% · other stores",
   "15% · comida rápida": "15% · fast food",
@@ -118,7 +119,9 @@ export const en: Record<string, string> = {
     "Add your first product or import your catalog from Excel.",
   "Agrega tus productos": "Add your products",
   Agregar: "Add",
+  "Agregar 10 filas": "Add 10 rows",
   "Agregar extra": "Add extra",
+  "Agregar fila": "Add row",
   "Agregar forma de pago": "Add payment method",
   "Agregar insumo": "Add ingredient",
   "Agregar las {n} sugerencias de reabastecimiento": "Add the {n} restock suggestions",
@@ -458,6 +461,7 @@ export const en: Record<string, string> = {
   "Copiar el catálogo de productos (sin existencias)": "Copy the product catalog (without stock)",
   Copias: "Copies",
   Correcto: "Successful",
+  "Corregir las que faltaron": "Fix the ones left",
   Correo: "Email",
   "Correo cambiado: le enviamos el enlace para confirmarlo": "Email changed: we sent the confirmation link",
   "Correo confirmado": "Email confirmed",
@@ -788,6 +792,8 @@ export const en: Record<string, string> = {
   "Escanear con la cámara": "Scan with the camera",
   "Escanear código": "Scan code",
   "Escribe el código de 6 dígitos que muestra la app.": "Enter the 6-digit code the app shows.",
+  "Escribe en la tabla o pega desde Excel en cualquier celda. Si copias los encabezados, cada columna cae en su lugar.":
+    "Type in the table or paste from Excel into any cell. If you copy the headers, each column lands in its place.",
   "Escribe las cantidades de la receta completa; se dividen entre las porciones":
     "Enter the quantities for the whole recipe; they are divided by the portions",
   "Escribe lo que realmente llegó. Si falta algo, la orden queda abierta para recibirlo después.":
@@ -1076,7 +1082,7 @@ export const en: Record<string, string> = {
   "Los clientes acumulan y canjean puntos.": "Customers earn and redeem points.",
   "Los códigos anteriores dejarán de servir.": "The previous codes will stop working.",
   "Los gastos cargados en lote no salen de la caja abierta y no pueden tener fecha futura.":
-    "Expenses imported in bulk are not taken from the open register and cannot be future-dated.",
+    "Expenses imported in bulk don't come out of the open register and can't have a future date.",
   "Los pagos exceden el total": "Payments exceed the total",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "Dishes prepared in the kitchen are sent to the kitchen display.",
@@ -1474,6 +1480,7 @@ export const en: Record<string, string> = {
   "Quitar administrador": "Remove administrator",
   "Quitar del plan": "Remove from plan",
   "Quitar dos pasos": "Remove two-step",
+  "Quitar fila {n}": "Remove row {n}",
   "Quitar filtros ({n})": "Clear filters ({n})",
   "Quitar selección": "Clear selection",
   "Quitar tarjeta": "Remove card",
@@ -1623,6 +1630,8 @@ export const en: Record<string, string> = {
     "It will turn off right away for {n} business(es) on this plan, except those with it turned on manually. No data is deleted: turn it back on and everything is still there.",
   "Se aplica con el botón Jubilado en el punto de venta y queda en el reporte mensual.":
     "Applied with the Retiree button at the point of sale and recorded in the monthly report.",
+  "Se cargaron {n} filas del archivo": "{n} rows loaded from the file",
+  "Se cargó 1 fila del archivo": "1 row loaded from the file",
   "Se descuenta en la siguiente planilla.": "It's deducted in the next payroll.",
   "Se genera sola con tus ventas, compras, pagos y gastos. Lista para tu contador.":
     "Generated automatically from your sales, purchases, payments and expenses. Ready for your accountant.",
@@ -1776,6 +1785,7 @@ export const en: Record<string, string> = {
   Suspendidos: "Suspended",
   "Suspendió por falta de pago": "Suspended for non-payment",
   Sí: "Yes",
+  "Tabla de carga": "Import table",
   "Tallas, colores y extras con precio.": "Sizes, colors and priced extras.",
   Tamaño: "Size",
   Tarjeta: "Card",
@@ -1963,6 +1973,7 @@ export const en: Record<string, string> = {
   "Ver detalle": "View details",
   "Ver el negocio": "View the business",
   "Ver gráfica": "View chart",
+  "Ver menos columnas": "Show fewer columns",
   "Ver mi plan": "See my plan",
   "Ver negocio": "View business",
   "Ver pagadas y canceladas": "Show paid and cancelled",
@@ -1973,6 +1984,7 @@ export const en: Record<string, string> = {
   "Ver solo las nuevas": "Show only new ones",
   "Ver tabla": "View table",
   "Ver todas": "View all",
+  "Ver todas las columnas ({n} más)": "Show all columns ({n} more)",
   "Ver todo": "View all",
   "Ver todos los negocios": "See all businesses",
   "Verificación en dos pasos": "Two-step verification",
@@ -2047,6 +2059,7 @@ export const en: Record<string, string> = {
   "{amount} vence esta semana ({n})": "{amount} due this week ({n})",
   "{amount} vencido ({n})": "{amount} overdue ({n})",
   "{amount} vencido · {days} d": "{amount} overdue · {days} d",
+  "{col} fila {n}": "{col} row {n}",
   "{created} creados · {updated} actualizados": "{created} created · {updated} updated",
   "{created} nuevos · {updated} actualizados": "{created} new · {updated} updated",
   "{done} de {total} listos": "{done} of {total} done",

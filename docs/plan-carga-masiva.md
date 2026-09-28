@@ -11,7 +11,7 @@ Objetivo: dejar de agregar los registros uno a uno. Se entrega en 4 PR:
 
 ## Cómo funciona la carga masiva
 
-1. **Datos:** se pegan filas copiadas de Excel (con los encabezados) o se sube un CSV. Hay una plantilla descargable por tipo.
+1. **Datos:** una tabla editable tipo hoja de cálculo. Se escribe fila por fila ("Agregar fila", "Agregar 10 filas", Enter baja a la fila siguiente y siempre queda una fila vacía al final), se pega desde Excel en cualquier celda (con encabezados cada columna cae en su lugar; sin ellos se llena desde la celda actual) o se sube un CSV que llena la tabla. Hay una plantilla descargable por tipo. Cada fila se revisa mientras se escribe y la celda con el error queda marcada; al guardar, las filas pendientes se pueden corregir en la misma tabla.
 2. **Columnas:** se reconocen por su nombre, sin importar acentos, mayúsculas ni el asterisco de las obligatorias. Cada columna acepta varios nombres ("Producto", "Nombre"; "Celular", "Teléfono"…). Las columnas que no se reconocen se muestran y no se usan.
 3. **Vista previa:** cada fila se valida en el navegador con el mismo esquema que usa el servidor (`src/lib/bulk.ts`) y se ve lista o con su error, nombrando la columna. Se pueden ver solo las filas con errores.
 4. **Guardado:**

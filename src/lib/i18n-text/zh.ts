@@ -10,6 +10,7 @@ export const zh: Record<string, string> = {
   "0 = sin límite": "0 = 不限",
   "1 a 30 días": "1 至 30 天",
   "1 fila": "1 行",
+  "1 fila no se guardó": "1 行未保存",
   "1% + ITBMS = 1.07%": "1% + ITBMS = 1.07%",
   "10% · otros comercios": "10% · 其他商店",
   "15% · comida rápida": "15% · 快餐",
@@ -114,7 +115,9 @@ export const zh: Record<string, string> = {
   "Agrega tu primer producto o importa tu catálogo desde Excel.": "添加第一个商品，或从 Excel 导入商品目录。",
   "Agrega tus productos": "添加商品",
   Agregar: "添加",
+  "Agregar 10 filas": "添加 10 行",
   "Agregar extra": "添加加料",
+  "Agregar fila": "添加一行",
   "Agregar forma de pago": "添加付款方式",
   "Agregar insumo": "添加原料",
   "Agregar las {n} sugerencias de reabastecimiento": "添加 {n} 条补货建议",
@@ -446,6 +449,7 @@ export const zh: Record<string, string> = {
   "Copiar el catálogo de productos (sin existencias)": "复制商品目录（不含库存）",
   Copias: "份数",
   Correcto: "成功",
+  "Corregir las que faltaron": "修正未保存的行",
   Correo: "邮箱",
   "Correo cambiado: le enviamos el enlace para confirmarlo": "邮箱已更改：已发送确认链接",
   "Correo confirmado": "邮箱已确认",
@@ -767,6 +771,8 @@ export const zh: Record<string, string> = {
   "Escanear con la cámara": "用摄像头扫描",
   "Escanear código": "扫描条码",
   "Escribe el código de 6 dígitos que muestra la app.": "输入应用显示的 6 位验证码。",
+  "Escribe en la tabla o pega desde Excel en cualquier celda. Si copias los encabezados, cada columna cae en su lugar.":
+    "直接在表格中输入，或在任意单元格粘贴 Excel 内容。如果连表头一起复制，每列会自动对应。",
   "Escribe las cantidades de la receta completa; se dividen entre las porciones":
     "填写整份配方的用量；系统会按份数平均分摊",
   "Escribe lo que realmente llegó. Si falta algo, la orden queda abierta para recibirlo después.":
@@ -1048,7 +1054,7 @@ export const zh: Record<string, string> = {
   "Los clientes acumulan y canjean puntos.": "客户累积并兑换积分。",
   "Los códigos anteriores dejarán de servir.": "之前的恢复码将失效。",
   "Los gastos cargados en lote no salen de la caja abierta y no pueden tener fecha futura.":
-    "批量导入的支出不会从当前收银中扣除，日期不能是未来。",
+    "批量导入的支出不会从当前收银中扣除，且日期不能是未来。",
   "Los pagos exceden el total": "付款金额超过总额",
   "Los platillos que se preparan en cocina se envían a la pantalla de cocina.":
     "需要厨房制作的菜品会发送到厨房显示屏。",
@@ -1436,6 +1442,7 @@ export const zh: Record<string, string> = {
   "Quitar administrador": "取消管理员",
   "Quitar del plan": "从套餐移除",
   "Quitar dos pasos": "移除两步验证",
+  "Quitar fila {n}": "删除第 {n} 行",
   "Quitar filtros ({n})": "清除筛选（{n}）",
   "Quitar selección": "取消选择",
   "Quitar tarjeta": "移除银行卡",
@@ -1579,6 +1586,8 @@ export const zh: Record<string, string> = {
     "该套餐的 {n} 家店铺将立即关闭此功能（手动开启的除外）。不会删除任何数据：重新开启后一切仍在。",
   "Se aplica con el botón Jubilado en el punto de venta y queda en el reporte mensual.":
     "在收银台点击“退休人员”按钮即可应用，并计入月度报告。",
+  "Se cargaron {n} filas del archivo": "已从文件载入 {n} 行",
+  "Se cargó 1 fila del archivo": "已从文件载入 1 行",
   "Se descuenta en la siguiente planilla.": "将在下一期工资中扣除。",
   "Se genera sola con tus ventas, compras, pagos y gastos. Lista para tu contador.":
     "根据你的销售、采购、付款和支出自动生成，可直接交给会计师。",
@@ -1725,6 +1734,7 @@ export const zh: Record<string, string> = {
   Suspendidos: "已暂停",
   "Suspendió por falta de pago": "因未付款停用",
   Sí: "是",
+  "Tabla de carga": "导入表格",
   "Tallas, colores y extras con precio.": "尺码、颜色和收费加料。",
   Tamaño: "尺寸",
   Tarjeta: "刷卡",
@@ -1908,6 +1918,7 @@ export const zh: Record<string, string> = {
   "Ver detalle": "查看明细",
   "Ver el negocio": "查看店铺",
   "Ver gráfica": "查看图表",
+  "Ver menos columnas": "显示较少列",
   "Ver mi plan": "查看我的套餐",
   "Ver negocio": "查看店铺",
   "Ver pagadas y canceladas": "查看已付和已取消",
@@ -1918,6 +1929,7 @@ export const zh: Record<string, string> = {
   "Ver solo las nuevas": "只看新功能",
   "Ver tabla": "查看表格",
   "Ver todas": "查看全部",
+  "Ver todas las columnas ({n} más)": "显示所有列（另有 {n} 列）",
   "Ver todo": "查看全部",
   "Ver todos los negocios": "查看所有店铺",
   "Verificación en dos pasos": "两步验证",
@@ -1990,6 +2002,7 @@ export const zh: Record<string, string> = {
   "{amount} vence esta semana ({n})": "{amount} 本周到期（{n}）",
   "{amount} vencido ({n})": "逾期 {amount}（{n}）",
   "{amount} vencido · {days} d": "逾期 {amount} · {days} 天",
+  "{col} fila {n}": "{col} 第 {n} 行",
   "{created} creados · {updated} actualizados": "新建 {created} · 更新 {updated}",
   "{created} nuevos · {updated} actualizados": "新增 {created} · 更新 {updated}",
   "{done} de {total} listos": "已完成 {done}/{total}",
