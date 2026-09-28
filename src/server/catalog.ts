@@ -5,7 +5,7 @@ import { D, money, qty, unitCost } from "@/lib/decimal";
 import { parseCsv } from "@/lib/csv";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
-import { productCreateSchema } from "@/lib/validation";
+import { productBulkEditSchema, productCreateSchema } from "@/lib/validation";
 import { applyStockChange, type Actor } from "./inventory";
 import { countryConfig } from "@/lib/country";
 import { assertWithinLimit } from "./limits";
@@ -127,6 +127,40 @@ export async function updateProduct(
     });
     return product;
   });
+}
+
+/**
+ * Edición masiva desde la tabla del inventario: cada fila trae solo lo que cambió.
+ * Se guarda producto por producto; un error no detiene al resto.
+ */
+export async function bulkUpdateProducts(actor: Actor, rows: Record<string, unknown>[]) {
+  const result = { updated: 0, archived: 0, restored: 0, errors: [] as { id: string; error: string }[] };
+  for (const raw of rows) {
+    const parsed = productBulkEditSchema.safeParse(raw);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      result.errors.push({ id: String(raw.id ?? ""), error: issue.message });
+      continue;
+    }
+    const { id, ...input } = parsed.data;
+    try {
+      await updateProduct(actor, id, input);
+      if (input.archived === true) result.archived++;
+      else if (input.archived === false) result.restored++;
+      if (Object.keys(input).some((k) => k !== "archived")) result.updated++;
+    } catch (err) {
+      result.errors.push({ id, error: err instanceof AppError ? err.message : "No se pudo guardar" });
+    }
+  }
+  await prisma.$transaction((tx) =>
+    audit(tx, actor, "bulk.update", "Product", null, {
+      updated: result.updated,
+      archived: result.archived,
+      restored: result.restored,
+      errors: result.errors.length,
+    })
+  );
+  return result;
 }
 
 /** Importación desde un archivo CSV: misma lectura y validación que la carga masiva. */

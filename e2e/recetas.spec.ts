@@ -23,8 +23,8 @@ test("la venta de un plato descuenta sus insumos", async ({ page }) => {
   // El editor muestra el costo por plato.
   await page.goto("/inventario");
   await page.getByPlaceholder("Buscar por nombre, código o SKU").fill("Sancocho");
-  await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(1);
-  await page.getByRole("button", { name: "Editar" }).click();
+  await expect(page.getByRole("button", { name: "Editar", exact: true })).toHaveCount(1);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Editar producto" });
   await dialog.getByRole("button", { name: /receta e insumos/ }).click();
   await expect(dialog.getByText(/Costo por plato: B\/\./)).toBeVisible();

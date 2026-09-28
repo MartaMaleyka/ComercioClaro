@@ -266,12 +266,31 @@ export const productCreateSchema = z.object({
   stock: nonNegativeQty.default(0),
 });
 
+/** Al editar solo se tocan los campos que llegan: sin valores por defecto, que borrarían lo guardado. */
+const productBaseNoDefaults = Object.fromEntries(
+  Object.entries(productBase).map(([key, schema]) => [key, schema instanceof z.ZodDefault ? schema.removeDefault() : schema])
+) as { [K in keyof typeof productBase]: (typeof productBase)[K] extends z.ZodDefault<infer T> ? T : (typeof productBase)[K] };
+
 export const productUpdateSchema = z
   .object({
-    ...productBase,
+    ...productBaseNoDefaults,
     archived: z.boolean(),
   })
   .partial();
+
+/** Una fila de la edición masiva de productos: solo los campos que se editan en la tabla. */
+export const productBulkEditSchema = z.object({
+  id,
+  ...productUpdateSchema.pick({
+    name: true,
+    price: true,
+    cost: true,
+    wholesalePrice: true,
+    minStock: true,
+    categoryId: true,
+    archived: true,
+  }).shape,
+});
 
 export const recipeSchema = z.object({
   recipeYield: number.gt(0, "Las porciones deben ser mayores a 0").max(10_000).nullish().transform((v) => v ?? null),

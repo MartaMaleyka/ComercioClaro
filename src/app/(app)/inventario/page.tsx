@@ -20,6 +20,7 @@ import { SearchBar } from "@/components/ui/SearchBar";
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
 import { BulkImportButton } from "@/components/bulk/BulkImport";
+import { BulkEditButton } from "@/components/inventory/BulkEditModal";
 import { Checkbox, Select } from "@/components/ui/Input";
 import { ErrorState, ListSkeleton, LoadMore, PageHeader } from "@/components/ui/Misc";
 import { ProductForm } from "@/components/inventory/ProductForm";
@@ -167,6 +168,11 @@ function ProductsTab() {
         </Select>
         {isOwner && (
           <>
+            <BulkEditButton
+              filters={{ search: debounced, categoryId, lowStock, archived }}
+              categories={categories ?? []}
+              onDone={() => list.mutate()}
+            />
             <BulkImportButton entity="products" onDone={() => list.mutate()} />
             <Button onClick={() => setEditing(null)}>
               <Plus className="w-4 h-4" /> {tr("Producto")}
