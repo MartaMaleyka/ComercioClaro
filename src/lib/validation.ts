@@ -278,6 +278,20 @@ export const productUpdateSchema = z
   })
   .partial();
 
+/** Una fila de la edición masiva de productos: solo los campos que se editan en la tabla. */
+export const productBulkEditSchema = z.object({
+  id,
+  ...productUpdateSchema.pick({
+    name: true,
+    price: true,
+    cost: true,
+    wholesalePrice: true,
+    minStock: true,
+    categoryId: true,
+    archived: true,
+  }).shape,
+});
+
 export const recipeSchema = z.object({
   recipeYield: number.gt(0, "Las porciones deben ser mayores a 0").max(10_000).nullish().transform((v) => v ?? null),
   items: z

@@ -244,7 +244,7 @@ Productos, categorías, clientes, proveedores, gastos y empleados se pueden carg
 - Antes de guardar se ve cada fila revisada, con su error si lo tiene.
 - Los registros que ya existen se actualizan sin duplicarse.
 - Hay una plantilla por tipo.
-- El inventario permite cambiar en lote el precio, la categoría y el stock mínimo, y archivar productos.
+- *Editar en lote* en el inventario: los productos de la lista en una tabla para cambiar precio, costo, categoría y stock mínimo (subir un %, sumar, fijar, con redondeo), o archivarlos, y guardar todo junto.
 
 Detalle en [`docs/plan-carga-masiva.md`](docs/plan-carga-masiva.md).
 
