@@ -45,12 +45,12 @@ describe("carga masiva: lectura de lo pegado desde Excel", () => {
   it("valida cada fila y nombra la columna como en la plantilla", () => {
     expect(checkRow("products", { name: "Arroz", price: "3.95" }).ok).toBe(true);
     const bad = checkRow("products", { name: "Arroz", price: "tres" });
-    expect(bad).toEqual({ ok: false, error: "Precio: Debe ser un número" });
+    expect(bad).toEqual({ ok: false, error: "Precio: Debe ser un número", field: "price" });
     const noName = checkRow("customers", { phone: "6000-0000" });
     expect(noName.ok).toBe(false);
     if (!noName.ok) expect(noName.error).toMatch(/^Nombre:/);
     const email = checkRow("suppliers", { name: "Distri", email: "no-es-correo" });
-    expect(email).toEqual({ ok: false, error: "Correo: Correo inválido" });
+    expect(email).toEqual({ ok: false, error: "Correo: Correo inválido", field: "email" });
   });
 
   it("la plantilla trae los encabezados y un ejemplo que pasa la validación", () => {
