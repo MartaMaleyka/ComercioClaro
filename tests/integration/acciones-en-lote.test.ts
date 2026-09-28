@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { batchUpdateProducts } from "@/server/catalog";
+import { batchUpdateProducts, updateProduct } from "@/server/catalog";
+import { productUpdateSchema } from "@/lib/validation";
 import { createOwner, hasDatabase, makeProduct, resetDatabase } from "../helpers";
 
 describe.skipIf(!hasDatabase)("acciones en lote del inventario", () => {
@@ -75,5 +76,20 @@ describe.skipIf(!hasDatabase)("acciones en lote del inventario", () => {
     await expect(
       batchUpdateProducts(owner, { ids: [theirs.id], action: { type: "archive" } })
     ).rejects.toThrow("No se encontraron los productos");
+  });
+});
+
+describe.skipIf(!hasDatabase)("editar un producto", () => {
+  beforeEach(resetDatabase);
+
+  it("restaurar un producto archivado conserva su costo, stock mínimo, unidad y claves SAT", async () => {
+    const owner = await createOwner();
+    const p = await makeProduct(owner, { cost: 6.5, minStock: 12, unit: "KG", satProductKey: "50192100", satUnitKey: "KGM" });
+    await updateProduct(owner, p.id, productUpdateSchema.parse({ archived: true }));
+    await updateProduct(owner, p.id, productUpdateSchema.parse({ archived: false }));
+    const saved = await prisma.product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(saved).toMatchObject({ archivedAt: null, unit: "KG", satProductKey: "50192100", satUnitKey: "KGM" });
+    expect(Number(saved.cost)).toBe(6.5);
+    expect(Number(saved.minStock)).toBe(12);
   });
 });
