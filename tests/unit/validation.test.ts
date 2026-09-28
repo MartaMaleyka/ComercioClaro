@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loginSchema, productCreateSchema, registerSchema, saleSchema } from "@/lib/validation";
+import { loginSchema, productCreateSchema, productUpdateSchema, registerSchema, saleSchema } from "@/lib/validation";
 import { whatsappLink } from "@/lib/client/receipt";
 
 describe("validación de entradas", () => {
@@ -26,6 +26,11 @@ describe("validación de entradas", () => {
     expect(p).toMatchObject({ name: "Pan", price: 12.5, unit: "PIECE", minStock: 5 });
     // Sin tasa explícita se usa la del país del negocio al crear el producto.
     expect(p.taxRate).toBeUndefined();
+  });
+
+  it("al editar un producto no aplica valores por defecto (solo llegan los campos enviados)", () => {
+    expect(productUpdateSchema.parse({ archived: false })).toEqual({ archived: false });
+    expect(productUpdateSchema.parse({ price: "9" })).toEqual({ price: 9 });
   });
 });
 

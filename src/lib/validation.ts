@@ -266,9 +266,14 @@ export const productCreateSchema = z.object({
   stock: nonNegativeQty.default(0),
 });
 
+/** Al editar solo se tocan los campos que llegan: sin valores por defecto, que borrarían lo guardado. */
+const productBaseNoDefaults = Object.fromEntries(
+  Object.entries(productBase).map(([key, schema]) => [key, schema instanceof z.ZodDefault ? schema.removeDefault() : schema])
+) as { [K in keyof typeof productBase]: (typeof productBase)[K] extends z.ZodDefault<infer T> ? T : (typeof productBase)[K] };
+
 export const productUpdateSchema = z
   .object({
-    ...productBase,
+    ...productBaseNoDefaults,
     archived: z.boolean(),
   })
   .partial();
