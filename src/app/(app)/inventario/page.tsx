@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Download, History, Package, Pencil, Plus, RotateCcw, SlidersHorizontal, Archive, Upload } from "lucide-react";
 import useSWR from "swr";
 import { api, fetcher, withQuery } from "@/lib/client/api";
-import { useDebounce, usePaginated } from "@/lib/client/hooks";
+import { useDebounce, usePaginated, useRevalidateAll } from "@/lib/client/hooks";
 import { useFormat } from "@/lib/client/format";
 import type { Category, Product } from "@/lib/client/types";
 import { useFeature, useSession } from "@/components/providers/SessionProvider";
@@ -28,6 +28,7 @@ import { MovementsModal } from "@/components/inventory/MovementsModal";
 import { ReorderTab } from "@/components/inventory/ReorderTab";
 import { ExpiringTab } from "@/components/inventory/ExpiringTab";
 import { CategoriesTab } from "@/components/inventory/CategoriesTab";
+import { BatchBar } from "@/components/inventory/BatchActions";
 import { CountTab } from "@/components/inventory/CountTab";
 import { LabelsTab } from "@/components/inventory/LabelsTab";
 import { TransfersTab } from "@/components/inventory/TransfersTab";
@@ -118,6 +119,23 @@ function ProductsTab() {
   const [editing, setEditing] = useState<Product | null | undefined>(undefined);
   const [adjusting, setAdjusting] = useState<Product | null>(null);
   const [kardex, setKardex] = useState<Product | null>(null);
+  const revalidateProducts = useRevalidateAll("/api/products");
+
+  // La selección es de la lista que se ve: al cambiar un filtro se empieza de nuevo.
+  const filterKey = JSON.stringify([debounced, categoryId, lowStock, archived]);
+  const [selection, setSelection] = useState({ key: filterKey, ids: new Set<string>() });
+  const selectedIds = selection.key === filterKey ? selection.ids : new Set<string>();
+  const selected = list.items.filter((p) => selectedIds.has(p.id));
+  const allSelected = list.items.length > 0 && selected.length === list.items.length;
+  const toggle = (id: string) => {
+    const ids = new Set(selectedIds);
+    if (ids.has(id)) ids.delete(id);
+    else ids.add(id);
+    setSelection({ key: filterKey, ids });
+  };
+  const toggleAll = () =>
+    setSelection({ key: filterKey, ids: allSelected ? new Set() : new Set(list.items.map((p) => p.id)) });
+  const clearSelection = () => setSelection({ key: filterKey, ids: new Set() });
 
   async function archive(p: Product) {
     const ok = await confirm({
@@ -130,7 +148,7 @@ function ProductsTab() {
     try {
       await api(`/api/products/${p.id}`, { method: "DELETE" });
       toast.success(tr("Producto archivado"));
-      list.mutate();
+      revalidateProducts();
     } catch (err) {
       toast.error(err);
     }
@@ -140,7 +158,7 @@ function ProductsTab() {
     try {
       await api(`/api/products/${p.id}`, { method: "PUT", body: { archived: false } });
       toast.success(tr("Producto restaurado"));
-      list.mutate();
+      revalidateProducts();
     } catch (err) {
       toast.error(err);
     }
@@ -174,7 +192,14 @@ function ProductsTab() {
           </>
         )}
       </div>
-      <div className="flex gap-4">
+      <div className="flex gap-4 flex-wrap">
+        {isOwner && list.items.length > 0 && (
+          <Checkbox
+            label={tr("Seleccionar todos ({n})", { n: list.items.length })}
+            checked={allSelected}
+            onChange={toggleAll}
+          />
+        )}
         <Checkbox
           label={tr("Solo bajo inventario")}
           checked={lowStock}
@@ -208,7 +233,16 @@ function ProductsTab() {
             return (
               <Card key={p.id}>
                 <CardContent className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                  {isOwner && (
+                    <input
+                      type="checkbox"
+                      aria-label={tr("Seleccionar {name}", { name: p.name })}
+                      checked={selectedIds.has(p.id)}
+                      onChange={() => toggle(p.id)}
+                      className="w-5 h-5 shrink-0 rounded accent-brand-600 cursor-pointer"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium text-slate-900 truncate">{p.name}</p>
                     <p className="text-xs text-slate-500">
                       {fmt.money(p.price)}
@@ -266,6 +300,15 @@ function ProductsTab() {
             );
           })}
           <LoadMore hasMore={list.hasMore} loading={list.loadingMore} onClick={list.loadMore} />
+          {isOwner && (
+            <BatchBar
+              selected={selected}
+              archivedView={archived}
+              categories={categories ?? []}
+              onClear={clearSelection}
+              onDone={revalidateProducts}
+            />
+          )}
         </div>
       )}
 

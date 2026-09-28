@@ -584,7 +584,7 @@ export const reopenPeriodSchema = z.object({
 });
 
 const dayKeyInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida");
-const payFrequency = z.enum(["QUINCENAL", "MENSUAL"]);
+const payFrequency = z.enum(["QUINCENAL", "MENSUAL"], { error: "Frecuencia inválida: usa quincenal o mensual" });
 
 export const employeeSchema = z.object({
   name: text(120, "El nombre es obligatorio"),
