@@ -134,3 +134,58 @@ test("empleados: frecuencia en palabras y error nombrando la columna", async ({ 
   await dialog.getByRole("button", { name: "Listo" }).click();
   await expect(page.getByText(`Marta ${tag}`)).toBeVisible();
 });
+
+// Acciones en lote del inventario: se eligen productos y se cambia el precio, la categoría o se archivan.
+
+test("acciones en lote: subir el precio con vista previa, mover de categoría, archivar y restaurar", async ({ page }) => {
+  const tag = unique();
+  await login(page, OWNER);
+  for (const [name, price] of [
+    [`Lote A ${tag}`, 10],
+    [`Lote B ${tag}`, 20],
+  ] as const) {
+    const res = await page.request.post("/api/products", { data: { name, price, stock: 5 } });
+    expect(res.ok()).toBe(true);
+  }
+  const category = await (await page.request.post("/api/categories", { data: { name: `Lote ${tag}` } })).json();
+
+  await page.goto("/inventario");
+  await page.getByLabel("Buscar por nombre, código o SKU").fill(tag);
+  await expect(page.getByText(`Lote B ${tag}`)).toBeVisible();
+  await page.getByLabel("Seleccionar todos (2)").check();
+  const bar = page.getByRole("region", { name: "Acciones en lote" });
+  await expect(bar.getByText("2 seleccionados")).toBeVisible();
+  await expectAccessible(page);
+
+  await bar.getByRole("button", { name: "Precio" }).click();
+  const priceDialog = page.getByRole("dialog", { name: "Cambiar el precio de 2 productos" });
+  await priceDialog.getByLabel("Porcentaje").fill("10");
+  await expect(priceDialog.getByText("22.00")).toBeVisible();
+  await expectAccessible(page);
+  await priceDialog.getByRole("button", { name: "Cambiar 2 precios" }).click();
+  await expect(priceDialog).toBeHidden();
+  await expect(page.getByText(/\$11\.00/)).toBeVisible();
+  await expect(page.getByText(/\$22\.00/)).toBeVisible();
+
+  await page.getByLabel(`Seleccionar Lote A ${tag}`).check();
+  await page.getByLabel(`Seleccionar Lote B ${tag}`).check();
+  await bar.getByRole("button", { name: "Categoría" }).click();
+  const categoryDialog = page.getByRole("dialog", { name: "Cambiar la categoría de 2 productos" });
+  await categoryDialog.getByLabel("Categoría nueva").selectOption(category.id);
+  await categoryDialog.getByRole("button", { name: "Mover 2 productos" }).click();
+  await expect(categoryDialog).toBeHidden();
+  const moved = await (await page.request.get(`/api/products?search=${encodeURIComponent(tag)}`)).json();
+  expect(moved.items.map((p: { categoryId: string }) => p.categoryId)).toEqual([category.id, category.id]);
+
+  await page.getByLabel("Seleccionar todos (2)").check();
+  await bar.getByRole("button", { name: "Archivar" }).click();
+  await page.getByRole("dialog", { name: "Archivar 2 productos" }).getByRole("button", { name: "Archivar" }).click();
+  await expect(page.getByText(`Lote A ${tag}`)).toHaveCount(0);
+
+  await page.getByLabel("Ver archivados").check();
+  await page.getByLabel("Seleccionar todos (2)").check();
+  await bar.getByRole("button", { name: "Restaurar" }).click();
+  await expect(page.getByText(`Lote A ${tag}`)).toHaveCount(0);
+  await page.getByLabel("Ver archivados").uncheck();
+  await expect(page.getByText(`Lote A ${tag}`)).toBeVisible();
+});

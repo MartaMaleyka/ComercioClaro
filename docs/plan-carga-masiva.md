@@ -63,3 +63,20 @@ La ventana muestra un aviso cuando la carga no cambia algo: la existencia de los
 - Los **gastos** cargados en lote son históricos: no salen de la caja abierta, respetan el cierre de mes y no aceptan fechas futuras.
 - La **existencia** de un producto que ya existe no se cambia desde la carga: se ajusta con un conteo físico, para que quede en el kardex.
 - El CSV de productos que ya existía (`/api/products/import`) ahora usa la misma lectura y validación.
+
+## Acciones en lote del inventario
+
+En Inventario → Productos, el dueño marca productos (uno por uno o "Seleccionar todos" de la lista que se ve) y aparece una barra con:
+
+| Acción | Qué hace |
+| --- | --- |
+| Precio | Subir o bajar un porcentaje, sumar o restar un monto, o poner el mismo precio a todos. Antes de guardar se ve el precio de antes y el nuevo de cada producto. |
+| Categoría | Mueve los productos a otra categoría o los deja sin categoría. |
+| Stock mínimo | Pone el mismo stock mínimo a todos. |
+| Archivar / Restaurar | Archiva los elegidos (pide confirmación). En "Ver archivados", los restaura. |
+
+- **API:** `POST /api/products/batch` con `{ ids, action }` (`src/lib/product-batch.ts` valida y calcula el precio igual en el navegador y en el servidor).
+- **Todo o nada:** si a algún producto el precio le quedaría en cero o menos, no se cambia ninguno y el aviso nombra cuáles.
+- **Límites:** hasta 500 productos por cambio. Solo el dueño. Restaurar respeta el límite de productos del plan.
+- **Auditoría:** cada producto deja su entrada (`product.update` o `product.archive`, con el precio de antes y el nuevo) y el cambio completo una entrada `product.batch`.
+- **Selección:** es de la lista que se ve; al cambiar un filtro se empieza de nuevo. Después de un cambio se refrescan todas las listas de productos (activos y archivados).

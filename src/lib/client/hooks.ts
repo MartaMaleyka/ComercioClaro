@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSWRConfig } from "swr";
 import useSWRInfinite from "swr/infinite";
 import { fetcher, withQuery } from "./api";
 
@@ -54,5 +55,19 @@ export function usePaginated<T>(path: string, params: Record<string, string | nu
     hasMore,
     loadingMore: swr.isValidating && swr.size > pages.length,
     loadMore: () => swr.setSize(swr.size + 1),
+  };
+}
+
+/**
+ * Vuelve a pedir todas las listas paginadas de una ruta, con cualquier filtro (p. ej. activos y
+ * archivados): sin esto, la lista con otro filtro se queda con la copia de antes del cambio.
+ * (El filtro de mutate() de SWR no incluye las listas paginadas; por eso se recorre la caché).
+ */
+export function useRevalidateAll(path: string) {
+  const { cache, mutate } = useSWRConfig();
+  return () => {
+    for (const key of cache.keys()) {
+      if (key.startsWith(`$inf$${path}`)) mutate(key);
+    }
   };
 }
