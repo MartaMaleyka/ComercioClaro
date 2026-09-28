@@ -239,7 +239,7 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 
 ## Carga masiva
 
-Productos, categorías, clientes, proveedores, gastos y empleados se pueden cargar de una vez: se pegan filas desde Excel o se sube un CSV.
+Productos, categorías, clientes, proveedores, gastos y empleados se pueden cargar de una vez: se escriben en una tabla tipo Excel donde se van agregando filas, se pegan desde Excel en cualquier celda o se sube un CSV.
 
 - Antes de guardar se ve cada fila revisada, con su error si lo tiene.
 - Los registros que ya existen se actualizan sin duplicarse.

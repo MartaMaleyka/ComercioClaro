@@ -37,6 +37,8 @@ export interface BulkSpec {
   columns: BulkColumn[];
   /** Cómo se evita duplicar: qué columna identifica un registro que ya existe */
   matchBy: string;
+  /** Aviso que se muestra en la ventana de carga */
+  note?: string;
 }
 
 const col = (key: string, label: string, aliases: string[], example: string, required = false): BulkColumn => ({
@@ -114,6 +116,7 @@ export const BULK_SPECS: Record<BulkEntity, BulkSpec> = {
     entity: "expenses",
     noun: "gastos",
     matchBy: "No se combinan: cada fila es un gasto nuevo",
+    note: "Los gastos cargados en lote no salen de la caja abierta y no pueden tener fecha futura.",
     columns: [
       col("date", "Fecha", ["fecha", "date"], "01/09/2026", true),
       col("category", "Categoría", ["categoria", "tipo", "category"], "Luz", true),
@@ -315,7 +318,8 @@ const FIELD_LABELS = Object.fromEntries(
   Object.values(BULK_SPECS).flatMap((s) => s.columns.map((c) => [`${s.entity}.${c.key}`, c.label]))
 );
 
-export type RowCheck = { ok: true; data: unknown } | { ok: false; error: string };
+/** `field` es la columna con el error (su clave), para marcar la celda. */
+export type RowCheck = { ok: true; data: unknown } | { ok: false; error: string; field?: string };
 
 /** Valida una fila; el mensaje nombra la columna como aparece en la plantilla. */
 export function checkRow(entity: BulkEntity, record: Record<string, string>): RowCheck {
@@ -324,7 +328,7 @@ export function checkRow(entity: BulkEntity, record: Record<string, string>): Ro
   const issue = parsed.error.issues[0];
   const field = String(issue.path[0] ?? "");
   const label = FIELD_LABELS[`${entity}.${field}`] ?? field;
-  return { ok: false, error: label ? `${label}: ${issue.message}` : issue.message };
+  return { ok: false, error: label ? `${label}: ${issue.message}` : issue.message, field: field || undefined };
 }
 
 /** Plantilla CSV con los encabezados y una fila de ejemplo. */
