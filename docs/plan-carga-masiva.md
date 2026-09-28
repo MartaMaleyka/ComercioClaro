@@ -9,6 +9,21 @@ Objetivo: dejar de agregar los registros uno a uno. Se entrega en 4 PR:
 | 3 | Carga masiva de clientes, proveedores, gastos y empleados. |
 | 4 | Acciones en lote en el inventario (precio, categoría, stock mínimo, archivar). |
 
+## Dónde está
+
+Botón **Carga masiva** (solo el dueño) en:
+
+| Pantalla | Tipo |
+| --- | --- |
+| Inventario (y la pestaña Importar) | Productos |
+| Inventario → Categorías ("Agregar varias") | Categorías |
+| Clientes | Clientes |
+| Proveedores | Proveedores |
+| Gastos | Gastos |
+| Planilla → Empleados | Empleados |
+
+La ventana muestra un aviso cuando la carga no cambia algo: la existencia de los productos y la caja en los gastos.
+
 ## Cómo funciona la carga masiva
 
 1. **Datos:** una tabla editable tipo hoja de cálculo. Se escribe fila por fila ("Agregar fila", "Agregar 10 filas", Enter baja a la fila siguiente y siempre queda una fila vacía al final), se pega desde Excel en cualquier celda (con encabezados cada columna cae en su lugar; sin ellos se llena desde la celda actual) o se sube un CSV que llena la tabla. Hay una plantilla descargable por tipo. Cada fila se revisa mientras se escribe y la celda con el error queda marcada; al guardar, las filas pendientes se pueden corregir en la misma tabla.
@@ -35,7 +50,8 @@ Objetivo: dejar de agregar los registros uno a uno. Se entrega en 4 PR:
    - "sí/no".
    - Unidades en palabras ("libra", "pza").
    - Impuestos como `7%` o "exento".
-   - Formas de pago en palabras.
+   - Formas de pago en palabras ("tarjeta de débito", "depósito", "Yappy").
+   - Frecuencia de pago en palabras ("quincena", "cada mes").
 7. **Límites:**
    - 2,000 filas y 2 MB por carga.
    - Solo el dueño puede cargar.
@@ -67,3 +83,20 @@ La misma idea de tabla, para los productos que ya existen:
 ### Arreglo incluido
 
 Actualizar un producto con solo algunos campos (por ejemplo *Restaurar*) volvía a sus valores por defecto el costo, el stock mínimo, la unidad, el IEPS y las claves SAT, porque zod 4 aplica los `default()` también en `.partial()`. El esquema de actualización ya no tiene valores por defecto.
+
+## Acciones en lote del inventario
+
+En Inventario → Productos, el dueño marca productos (uno por uno o "Seleccionar todos" de la lista que se ve) y aparece una barra con:
+
+| Acción | Qué hace |
+| --- | --- |
+| Precio | Subir o bajar un porcentaje, sumar o restar un monto, o poner el mismo precio a todos. Antes de guardar se ve el precio de antes y el nuevo de cada producto. |
+| Categoría | Mueve los productos a otra categoría o los deja sin categoría. |
+| Stock mínimo | Pone el mismo stock mínimo a todos. |
+| Archivar / Restaurar | Archiva los elegidos (pide confirmación). En "Ver archivados", los restaura. |
+
+- **API:** `POST /api/products/batch` con `{ ids, action }` (`src/lib/product-batch.ts` valida y calcula el precio igual en el navegador y en el servidor).
+- **Todo o nada:** si a algún producto el precio le quedaría en cero o menos, no se cambia ninguno y el aviso nombra cuáles.
+- **Límites:** hasta 500 productos por cambio. Solo el dueño. Restaurar respeta el límite de productos del plan.
+- **Auditoría:** cada producto deja su entrada (`product.update` o `product.archive`, con el precio de antes y el nuevo) y el cambio completo una entrada `product.batch`.
+- **Selección:** es de la lista que se ve; al cambiar un filtro se empieza de nuevo. Después de un cambio se refrescan todas las listas de productos (activos y archivados).

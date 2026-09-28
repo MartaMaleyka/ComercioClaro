@@ -9,6 +9,7 @@ import { productBulkEditSchema, productCreateSchema } from "@/lib/validation";
 import { applyStockChange, type Actor } from "./inventory";
 import { countryConfig } from "@/lib/country";
 import { assertWithinLimit } from "./limits";
+import type { ProductBatchInput } from "@/lib/product-batch";
 
 export type ProductInput = z.infer<typeof productCreateSchema>;
 
@@ -161,6 +162,89 @@ export async function bulkUpdateProducts(actor: Actor, rows: Record<string, unkn
     })
   );
   return result;
+}
+
+const BATCH_ACTION: Record<ProductBatchInput["action"]["type"], string> = {
+  price: "product.update",
+  category: "product.update",
+  minStock: "product.update",
+  archive: "product.archive",
+  restore: "product.update",
+};
+
+/**
+ * Acción en lote sobre varios productos. Es todo o nada: si a algún producto el precio le quedaría
+ * en cero o menos, no se cambia ninguno. Cada producto deja su entrada en la bitácora.
+ */
+export async function batchUpdateProducts(actor: Actor, input: ProductBatchInput) {
+  const { action } = input;
+  const ids = [...new Set(input.ids)];
+  const products = await prisma.product.findMany({
+    where: { id: { in: ids }, businessId: actor.businessId },
+    select: { id: true, name: true, price: true, archivedAt: true },
+  });
+  if (products.length === 0) throw new AppError(404, "No se encontraron los productos");
+  if (action.type === "category") await assertCategory(actor.businessId, action.categoryId);
+
+  const prices = new Map<string, Prisma.Decimal>();
+  if (action.type === "price") {
+    const invalid: string[] = [];
+    for (const p of products) {
+      const next =
+        action.mode === "set"
+          ? money(action.value)
+          : action.mode === "percent"
+            ? money(D(p.price).times(D(action.value).div(100).plus(1)))
+            : money(D(p.price).plus(action.value));
+      if (action.mode !== "set" && next.lte(0)) invalid.push(p.name);
+      prices.set(p.id, next);
+    }
+    if (invalid.length > 0) {
+      const names = invalid.slice(0, 3).join(", ") + (invalid.length > 3 ? ` y ${invalid.length - 3} más` : "");
+      throw new AppError(400, `El precio quedaría en cero o menos en: ${names}`);
+    }
+  }
+
+  // Solo se tocan los que cambian de estado al archivar o restaurar.
+  const targets =
+    action.type === "archive"
+      ? products.filter((p) => !p.archivedAt)
+      : action.type === "restore"
+        ? products.filter((p) => p.archivedAt)
+        : products;
+  if (action.type === "restore") await assertWithinLimit(prisma, actor, "products", targets.length);
+
+  const data = (id: string): Prisma.ProductUpdateInput => {
+    switch (action.type) {
+      case "price":
+        return { price: prices.get(id) };
+      case "category":
+        return { category: action.categoryId ? { connect: { id: action.categoryId } } : { disconnect: true } };
+      case "minStock":
+        return { minStock: qty(action.value) };
+      case "archive":
+        return { archivedAt: new Date() };
+      case "restore":
+        return { archivedAt: null };
+    }
+  };
+  const field = action.type === "archive" || action.type === "restore" ? "archived" : action.type === "category" ? "categoryId" : action.type;
+
+  await prisma.$transaction(
+    async (tx) => {
+      for (const p of targets) {
+        await tx.product.update({ where: { id: p.id }, data: data(p.id) });
+        await audit(tx, actor, BATCH_ACTION[action.type], "Product", p.id, {
+          fields: [field],
+          batch: true,
+          ...(action.type === "price" && { from: Number(p.price), to: Number(prices.get(p.id)) }),
+        });
+      }
+      await audit(tx, actor, "product.batch", "Product", null, { ...action, count: targets.length });
+    },
+    { timeout: 60_000 }
+  );
+  return { updated: targets.length, skipped: products.length - targets.length };
 }
 
 /** Importación desde un archivo CSV: misma lectura y validación que la carga masiva. */

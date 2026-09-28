@@ -323,7 +323,7 @@ export function BulkImportModal({
           </div>
 
           {spec.note && (
-            <p className="rounded-2xl bg-blue-50 text-blue-800 px-4 py-2.5 text-sm font-medium">{tr(spec.note)}</p>
+            <p role="note" className="rounded-2xl bg-blue-50 text-blue-800 px-4 py-2.5 text-sm font-medium">{tr(spec.note)}</p>
           )}
           {notice && (
             <p role="status" className="rounded-2xl bg-mango-50 text-mango-800 px-4 py-2.5 text-sm font-medium">
