@@ -13,13 +13,13 @@ import type { Customer } from "@/lib/client/types";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { Button } from "@/components/ui/Button";
-import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
 import { Checkbox, Input, Select, Textarea } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { ErrorState, ListSkeleton, PageHeader, Stat } from "@/components/ui/Misc";
 
 interface Statement {
@@ -183,7 +183,7 @@ export default function CustomersPage() {
         description={tr("Cuentas de fiado y datos para factura")}
         actions={
           <>
-            {role === "OWNER" && <BulkImportButton entity="customers" onDone={() => mutate()} />}
+            {isOwner && <BulkImportButton entity="customers" onDone={() => mutate()} />}
             <Button onClick={() => openForm(null)}>
               <Plus className="w-4 h-4" /> {tr("Cliente")}
             </Button>

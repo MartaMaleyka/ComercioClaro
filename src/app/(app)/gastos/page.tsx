@@ -13,7 +13,6 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useToast } from "@/components/providers/ToastProvider";
 import { useConfirm } from "@/components/providers/ConfirmProvider";
 import { Button, buttonStyles } from "@/components/ui/Button";
-import { BulkImportButton } from "@/components/bulk/BulkImport";
 import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SearchBar } from "@/components/ui/SearchBar";
@@ -23,6 +22,7 @@ import { ErrorState, ListSkeleton, LoadMore, PageHeader, Stat } from "@/componen
 import { Badge } from "@/components/ui/Badge";
 import { Tabs } from "@/components/ui/Tabs";
 import { RecurringTab } from "@/components/expenses/RecurringTab";
+import { BulkImportButton } from "@/components/bulk/BulkImport";
 
 const DEFAULT_CATEGORIES = [
   "Renta",
