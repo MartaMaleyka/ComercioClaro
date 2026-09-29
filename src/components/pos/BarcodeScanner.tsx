@@ -7,9 +7,53 @@ import { Modal } from "@/components/ui/Modal";
 interface BarcodeDetectorLike {
   detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]>;
 }
+interface BarcodeDetectorClass {
+  new (options?: { formats?: string[] }): BarcodeDetectorLike;
+  getSupportedFormats?: () => Promise<string[]>;
+}
 declare global {
   interface Window {
-    BarcodeDetector?: new (options?: { formats?: string[] }) => BarcodeDetectorLike;
+    BarcodeDetector?: BarcodeDetectorClass;
+  }
+}
+
+/** Códigos de tienda (EAN/UPC), de uso interno (128/39) y QR. */
+const FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"];
+
+/**
+ * Cámara trasera con más resolución que la que da el navegador por omisión (640×480): con menos,
+ * las barras de un EAN-13 salen borrosas y no se leen.
+ */
+const CAMERA: MediaStreamConstraints = {
+  audio: false,
+  video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+};
+
+/**
+ * Formatos que el detector nativo sí sabe leer. En algunos Android existe BarcodeDetector pero sin
+ * formatos (p. ej. sin servicios de Google): ahí no lee nada y hay que usar ZXing.
+ */
+async function nativeFormats(): Promise<string[]> {
+  const Detector = window.BarcodeDetector;
+  if (!Detector) return [];
+  try {
+    const supported = (await Detector.getSupportedFormats?.()) ?? [];
+    return FORMATS.filter((f) => supported.includes(f));
+  } catch {
+    return [];
+  }
+}
+
+/** Enfoque automático continuo, si la cámara lo permite (muchas se quedan enfocadas al infinito). */
+async function focusContinuously(stream: MediaStream | null) {
+  const track = stream?.getVideoTracks()[0];
+  if (!track?.getCapabilities) return;
+  const caps = track.getCapabilities() as MediaTrackCapabilities & { focusMode?: string[] };
+  if (!caps.focusMode?.includes("continuous")) return;
+  try {
+    await track.applyConstraints({ advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet] });
+  } catch {
+    // La cámara no aceptó el cambio: se queda como estaba.
   }
 }
 
@@ -20,8 +64,8 @@ interface ScannerProps {
 }
 
 /**
- * Escanea códigos de barras con la cámara. Usa la API nativa BarcodeDetector cuando existe
- * (Chrome/Android) y ZXing como respaldo (iOS/Safari, Firefox).
+ * Escanea códigos de barras con la cámara. Usa la API nativa BarcodeDetector cuando sabe leer
+ * EAN-13 (Chrome en Android) y ZXing en los demás casos (iOS/Safari, Firefox, Android sin formatos).
  */
 export function BarcodeScanner(props: ScannerProps) {
   return props.open ? <Scanner {...props} /> : null;
@@ -55,13 +99,15 @@ function Scanner({ open, onClose, onDetected }: ScannerProps) {
       const video = videoRef.current;
       if (!video) return;
       try {
-        if (window.BarcodeDetector) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        const formats = await nativeFormats();
+        if (stopped) return;
+        if (window.BarcodeDetector && formats.includes("ean_13")) {
+          stream = await navigator.mediaDevices.getUserMedia(CAMERA);
+          if (stopped) return stream.getTracks().forEach((t) => t.stop());
           video.srcObject = stream;
           await video.play();
-          const detector = new window.BarcodeDetector({
-            formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"],
-          });
+          await focusContinuously(stream);
+          const detector = new window.BarcodeDetector({ formats });
           const tick = async () => {
             if (stopped) return;
             try {
@@ -74,17 +120,31 @@ function Scanner({ open, onClose, onDetected }: ScannerProps) {
           };
           tick();
         } else {
-          const { BrowserMultiFormatReader } = await import("@zxing/browser");
-          const reader = new BrowserMultiFormatReader();
-          zxingControls = await reader.decodeFromConstraints(
-            { video: { facingMode: "environment" } },
-            video,
-            (result) => {
-              if (result) finish(result.getText());
-            }
-          );
+          const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
+            import("@zxing/browser"),
+            import("@zxing/library"),
+          ]);
+          const hints = new Map();
+          hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+            BarcodeFormat.EAN_13,
+            BarcodeFormat.EAN_8,
+            BarcodeFormat.UPC_A,
+            BarcodeFormat.UPC_E,
+            BarcodeFormat.CODE_128,
+            BarcodeFormat.CODE_39,
+            BarcodeFormat.QR_CODE,
+          ]);
+          hints.set(DecodeHintType.TRY_HARDER, true);
+          const reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 100 });
+          const controls = await reader.decodeFromConstraints(CAMERA, video, (result) => {
+            if (result) finish(result.getText());
+          });
+          if (stopped) return controls.stop();
+          zxingControls = controls;
+          await focusContinuously(video.srcObject as MediaStream | null);
         }
       } catch (err) {
+        if (stopped) return;
         const name = err instanceof DOMException ? err.name : "";
         setError(
           name === "NotAllowedError"
