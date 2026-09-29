@@ -225,7 +225,7 @@ Las pruebas de integración usan `TEST_DATABASE_URL` (se vacía en cada prueba).
 2. Variables de entorno: `DATABASE_URL`, `JWT_SECRET` (mínimo 32 caracteres; sin ella la app no inicia ni valida sesiones) y `APP_URL`. Opcionales: `RESEND_API_KEY` y `EMAIL_FROM` (correos), `CRON_SECRET` (alertas), `FACTURAMA_USER`, `FACTURAMA_PASSWORD` y `FACTURAMA_SANDBOX` (CFDI México), `ALANUBE_API_URL` y `ALANUBE_TOKEN` (PAC Panamá), `YAPPY_PROVIDER=bg`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_DOMAIN` y `YAPPY_API_URL` (Yappy Comercial). Ver `.env.example`.
 3. `npm run db:deploy && npm run build && npm start`.
    Después, nombra al primer super admin con `npm run admin:grant -- correo@dominio.com` y crea los planes en `/admin/planes`. Mientras no haya planes, todos los negocios tienen todas las funciones.
-4. Tareas programadas (`vercel.json`): `GET /api/cron/low-stock` y `GET /api/cron/billing` (cobro de la suscripción) una vez al día, y `GET /api/cron/einvoice` cada 15 minutos para reintentar las facturas en contingencia (en Vercel, un cron más frecuente que diario requiere el plan Pro). En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
+4. Tareas programadas (`vercel.json`), una vez al día porque el plan Hobby de Vercel no permite crons más frecuentes: `GET /api/cron/einvoice` (12:00 UTC, reintenta las facturas en contingencia), `GET /api/cron/low-stock` (13:00 UTC) y `GET /api/cron/billing` (14:00 UTC, cobro de la suscripción). Las facturas en contingencia también se reintentan a mano desde Facturas. Con el plan Pro, o llamando la ruta desde otro programador, conviene reintentar las facturas cada 5 a 15 minutos. En otro hosting, llama esas rutas con `Authorization: Bearer $CRON_SECRET`.
 
 ## Tecnologías
 
